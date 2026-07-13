@@ -13,13 +13,14 @@ link out to a dedicated instance), finanzas, salud (logistics & habits ONLY — 
 medical/therapeutic advice), familia/relaciones, aprendizaje, hogar/admin, proyectos
 personales, propósito. Periods (quarters/years) are filters, never the scope.
 
-**Engine & reference (do not reinvent):**
-- Template (clean, buildable, with FAKE multi-domain examples):
-  `https://github.com/NightZpy/employee-os` → `template/` (engine/ + seed/ +
-  seed/lifeos-examples.json — 11 fake nodes across the 8 domains with proposed group ids,
-  plus example journal/inbox/memory/done_log/ritual entries) and `template/GUIDE-CLEAN.html`
-  (the full didactic spec — architecture, DB schema key-by-key, CLI, pipeline).
-  Local mirror on this machine: `/Users/lenyndev/Documents/projects/connectly/docs/agent-evals-q2/template/`.
+**Engine & reference (bundled WITH this skill — self-contained, do not reinvent):**
+- `template/` inside this skill's own directory: `engine/` (shell, builder, CLI, protocol),
+  `seed/` (buildable placeholder instance + `lifeos-examples.json` — 11 FAKE nodes across
+  the 8 domains with proposed group ids, plus example journal/inbox/memory/done_log/ritual
+  entries) and `GUIDE-CLEAN.html` (the full didactic spec — architecture, DB schema
+  key-by-key, CLI, pipeline; open it in a browser). Verify the template builds before
+  seeding: copy engine/*+seed/* to a temp dir, rename seeds to q3-data.json/q3-prompt.txt,
+  run `python3 build_q3.py`.
 - The seed's PART 1 prompt documents every schema exactly — read it first, never guess
   formats. Everything is re-extractable from any generated HTML (RECOVERY property).
 - NOTE: the engine's GROUPS map ships with work-group ids; a Life OS instance must extend
