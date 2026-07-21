@@ -23,9 +23,11 @@ Dos flotas de executors; elige por paso. **Verifica Codex una sola vez al inicio
 
 | Tipo de paso | Codex (si disponible) | Claude (default/fallback) |
 |---|---|---|
-| Mecánico (renames, moves, reformat, lookups) | `spark` (= `gpt-5.3-codex-spark`) o `gpt-5.4-mini`, effort `low` | `model: 'haiku'` |
-| Ejecución estándar (implementar paso acotado) | `gpt-5.4` effort `medium`/`high` | `model: 'sonnet'` |
-| Review/verificación de lo ejecutado | `gpt-5.5` (regla global: review SIEMPRE Codex si está disponible; `gpt-5.6` da 400 con auth ChatGPT) | subagente fresco Opus/Sonnet solo como fallback |
+| Mecánico (renames, moves, reformat, lookups) | `gpt-5.6-luna` effort `low` (alternativa: `spark` = `gpt-5.3-codex-spark`) | `model: 'haiku'` |
+| Ejecución estándar (implementar paso acotado) | `gpt-5.6-terra` effort `medium`/`high` (alternativa: `gpt-5.4`) | `model: 'sonnet'` |
+| Review/verificación de lo ejecutado | `gpt-5.6-terra` (regla global: review SIEMPRE Codex si está disponible; fallback `gpt-5.5`) | subagente fresco Opus/Sonnet solo como fallback |
+
+Familia GPT-5.6 en Codex (verificado jul-2026 con auth ChatGPT): `gpt-5.6-terra` (balanceado) y `gpt-5.6-luna` (rápido/barato) **funcionan**; `gpt-5.6` a secas y `gpt-5.6-sol` (flagship) devuelven 400 con cuentas ChatGPT — Sol es solo para cuentas API. Ctx 272K.
 
 Cómo despachar un executor Codex — dos vías:
 - **Vía subagente** (simple): `Agent` con `subagent_type: 'codex:codex-rescue'` y el brief como prompt; el forwarder hace UNA llamada `task`. Pide `--write` para pasos que editan; añade `--model X --effort Y` en el brief si quieres fijarlos (sin flags usa el default de `~/.codex/config.toml`).
@@ -35,6 +37,26 @@ Reglas de mezcla:
 - Codex ejecuta en el working tree real (no en contexto aislado): **nunca dos writers (Codex o Claude) sobre los mismos archivos a la vez** — pasos que escriben en zonas distintas sí pueden correr en paralelo; si comparten archivos, secuéncialos o usa worktrees.
 - El brief a Codex debe ser tan autocontenido como el de un subagente Claude, y además decir explícitamente qué evidencia devolver (Codex no ve tu plan).
 - El paso de review final sigue tu regla dura global: Codex primero; Claude solo si Codex no puede correr.
+
+### Tercera flota: Frontier (modelos externos baratos)
+
+Cuándo: pasos de **generación pura** (boilerplate, tests, refactor mecánico de texto, review de diff, análisis de contexto muy largo) donde el executor no necesita tools — el modelo devuelve texto/código y tú (o un subagente) lo aplicas/verificas.
+
+Verifica disponibilidad una sola vez al inicio del EXECUTE: `node ~/.claude/plugins/cache/frontier-delegate/frontier/*/scripts/frontier-companion.mjs setup --json` → `ready: true`. Si el plugin no está instalado o no hay keys, esta flota no existe — sigue con Claude/Codex, no te detengas.
+
+Tabla de ruteo:
+
+| Tipo de paso | Modelo frontier | Equivalente |
+|---|---|---|
+| Boilerplate / bulk barato | `deepseek` | ~Haiku |
+| Codegen / refactor / tests en volumen | `qwen` | ~Sonnet (gama baja) |
+| Refactor agéntico complejo en texto | `glm` | ~Sonnet 5 |
+| Auditoría contexto 1M / razonamiento profundo | `kimi` | ~Opus (caro — solo si Claude/Codex no alcanzan el contexto) |
+| Segunda opinión / generalista frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
+
+Despacho: `node .../frontier-companion.mjs task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → recoger con `status`/`result`. El brief debe ser autocontenido e indicar el formato de salida esperado (código completo o diff unificado). El output NO está aplicado: aplicarlo y verificarlo es un paso aparte (tuyo o de un subagente barato).
+
+Regla: frontier NUNCA para pasos que requieren ejecutar comandos, explorar el repo o tomar decisiones — eso es Claude/Codex.
 
 ## Flujo
 
