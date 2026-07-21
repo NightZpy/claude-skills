@@ -70,6 +70,7 @@ Regla de sustitución mientras esté activo (el objetivo: que el plan Claude agu
 | Rol normal | En modo economía |
 |---|---|
 | Fable/Opus orquesta | Sigue, pero como **supervisor mínimo**: planea una vez, revisa evidencia destilada, veredictos cortos. NUNCA lee material crudo ni ejecuta pasos. |
+| Juicio profundo que Fable haría inline (análisis de diseño, diagnóstico sobre material dado, auditorías, resolver specs ambiguas) | Codex `gpt-5.6-terra` (lo más cercano a Fable disponible; Sol da 400 con auth ChatGPT) → sin Codex: `kimi` vía cc-delegate (AA 57 ≥ Opus 4.8, el sustituto más cercano; caro y lento — solo para pasos de juicio, no volumen) con TODO el material en `--file`. Fable solo emite el veredicto final sobre la respuesta. |
 | Sonnet ejecución estándar | Codex `gpt-5.6-terra` (si hay cuota) → si el paso es generación pura, `glm`/`qwen` vía cc-delegate |
 | Haiku mecánico | Codex `luna`; si es transformación de texto pura, `deepseek` vía cc-delegate |
 | Review | Codex primero (regla global); sin Codex → `glm` + segunda opinión `grok` vía cc-delegate; review Claude SOLO para paths de seguridad críticos |
