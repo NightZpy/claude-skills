@@ -58,6 +58,26 @@ Despacho: `node .../companion.mjs task --background --model <alias> --file <ctx>
 
 Regla: frontier NUNCA para pasos que requieren ejecutar comandos, explorar el repo o tomar decisiones — eso es Claude/Codex.
 
+### Modo economía (límite de plan Claude cerca)
+
+Cuándo se activa (cualquiera de estas señales):
+1. El harness muestra warnings de límite de uso en la conversación (señal más fiable).
+2. El usuario lo pide o comparte su `/usage` ("modo economía", "vamos al 80% y el reset es en 3 días").
+3. Al inicio de un run largo, chequeo barato: `npx -y ccusage blocks --json` (bloque activo: burnRate/projection) — estima consumo desde transcripts locales; NO conoce el límite real del plan, úsalo como proxy junto con lo que diga el usuario. Claude no puede leer los números exactos de `/usage` por sí mismo.
+
+Regla de sustitución mientras esté activo (el objetivo: que el plan Claude aguante hasta el reset):
+
+| Rol normal | En modo economía |
+|---|---|
+| Fable/Opus orquesta | Sigue, pero como **supervisor mínimo**: planea una vez, revisa evidencia destilada, veredictos cortos. NUNCA lee material crudo ni ejecuta pasos. |
+| Sonnet ejecución estándar | Codex `gpt-5.6-terra` (si hay cuota) → si el paso es generación pura, `glm`/`qwen` vía cc-delegate |
+| Haiku mecánico | Codex `luna`; si es transformación de texto pura, `deepseek` vía cc-delegate |
+| Review | Codex primero (regla global); sin Codex → `glm` + segunda opinión `grok` vía cc-delegate; review Claude SOLO para paths de seguridad críticos |
+| Scouts/lecturas de investigación | Si es leer/resumir material textual: `kimi`/`glm` con `--file`. Subagente Claude solo cuando hacen falta tools del repo. |
+
+- Los pasos que requieren tools (explorar repo, correr tests, editar en el árbol) no pueden ir a cc-delegate (texto puro): van a Codex; Sonnet queda como última opción.
+- Desactivar al pasar el reset o cuando el usuario lo indique; anota en el reporte final qué corrió en modo economía.
+
 ## Flujo
 
 ### 1. PLAN (tú, sin delegar)
