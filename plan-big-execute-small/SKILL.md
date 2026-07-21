@@ -42,7 +42,7 @@ Reglas de mezcla:
 
 Cuándo: pasos de **generación pura** (boilerplate, tests, refactor mecánico de texto, review de diff, análisis de contexto muy largo) donde el executor no necesita tools — el modelo devuelve texto/código y tú (o un subagente) lo aplicas/verificas.
 
-Verifica disponibilidad una sola vez al inicio del EXECUTE: `node ~/.claude/plugins/cache/frontier-delegate/frontier/*/scripts/frontier-companion.mjs setup --json` → `ready: true`. Si el plugin no está instalado o no hay keys, esta flota no existe — sigue con Claude/Codex, no te detengas.
+Verifica disponibilidad una sola vez al inicio del EXECUTE: `node ~/.claude/plugins/cache/claude-code-delegate/frontier/*/scripts/frontier-companion.mjs setup --json` → `ready: true`. Si el plugin no está instalado o no hay keys, esta flota no existe — sigue con Claude/Codex, no te detengas.
 
 Tabla de ruteo:
 
