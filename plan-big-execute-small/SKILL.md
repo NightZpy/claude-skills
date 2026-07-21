@@ -42,7 +42,7 @@ Reglas de mezcla:
 
 Cuándo: pasos de **generación pura** (boilerplate, tests, refactor mecánico de texto, review de diff, análisis de contexto muy largo) donde el executor no necesita tools — el modelo devuelve texto/código y tú (o un subagente) lo aplicas/verificas.
 
-Verifica disponibilidad una sola vez al inicio del EXECUTE: `node ~/.claude/plugins/cache/claude-code-delegate/frontier/*/scripts/frontier-companion.mjs setup --json` → `ready: true`. Si el plugin no está instalado o no hay keys, esta flota no existe — sigue con Claude/Codex, no te detengas.
+Verifica disponibilidad una sola vez al inicio del EXECUTE: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json` → `ready: true`. Si el plugin no está instalado o no hay keys, esta flota no existe — sigue con Claude/Codex, no te detengas.
 
 Tabla de ruteo:
 
@@ -54,7 +54,7 @@ Tabla de ruteo:
 | Auditoría contexto 1M / razonamiento profundo | `kimi` | ~Opus (caro — solo si Claude/Codex no alcanzan el contexto) |
 | Segunda opinión / generalista frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
 
-Despacho: `node .../frontier-companion.mjs task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → recoger con `status`/`result`. El brief debe ser autocontenido e indicar el formato de salida esperado (código completo o diff unificado). El output NO está aplicado: aplicarlo y verificarlo es un paso aparte (tuyo o de un subagente barato).
+Despacho: `node .../companion.mjs task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → recoger con `status`/`result`. El brief debe ser autocontenido e indicar el formato de salida esperado (código completo o diff unificado). El output NO está aplicado: aplicarlo y verificarlo es un paso aparte (tuyo o de un subagente barato).
 
 Regla: frontier NUNCA para pasos que requieren ejecutar comandos, explorar el repo o tomar decisiones — eso es Claude/Codex.
 
