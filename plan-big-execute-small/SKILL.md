@@ -54,7 +54,7 @@ Tabla de ruteo:
 | Auditoría contexto 1M / razonamiento profundo | `kimi` | ~Opus (caro — solo si Claude/Codex no alcanzan el contexto) |
 | Segunda opinión / generalista frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
 
-Despacho: `node .../companion.mjs task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → recoger con `status`/`result`. El brief debe ser autocontenido e indicar el formato de salida esperado (código completo o diff unificado). El output NO está aplicado: aplicarlo y verificarlo es un paso aparte (tuyo o de un subagente barato).
+Despacho: `node .../companion.mjs task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → recoger con `status`/`result`. Dirección iterativa: `task --resume last "<corrección>"` reenvía el hilo completo al mismo modelo — corrige sin re-empaquetar contexto. El brief debe ser autocontenido e indicar el formato de salida esperado (código completo o diff unificado). El output NO está aplicado: aplicarlo y verificarlo es un paso aparte (tuyo o de un subagente barato).
 
 Regla: frontier NUNCA para pasos que requieren ejecutar comandos, explorar el repo o tomar decisiones — eso es Claude/Codex.
 
