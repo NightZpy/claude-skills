@@ -12,7 +12,7 @@ You (the session model: Fable/Opus) are the **planner and advisor**. The cheap s
 Bootstrap procedure in ONE single bash block + one question to the user if applicable:
 
 1. **Usage signal** (proxy, doesn't know the plan's real limit): `npx -y ccusage blocks --json` → from the active block extract `totalTokens`, `burnRate.tokensPerMinute`, `projection.totalTokens`. Indicative threshold: >150M tokens in the active block or burn >800k/min = strong signal.
-2. **Decide mode**: if there's a strong signal, harness warnings, or the user mentioned their `/usage` → ask via AskUserQuestion: **economy mode** (recommended with strong signal) / **normal mode** / **postpone**. No signal → normal mode without asking. The chosen mode governs the entire run (see "Economy mode" below).
+2. **Pick the delegation intensity** from the Claude-usage signal (three tiers — see "Delegation intensity" below). The closer to the Claude limit / the fewer days to reset, the more you delegate. Default **balanced**; on a strong signal or harness usage warnings, ask via AskUserQuestion **economy** (recommended) / **balanced** / **high-power** / **postpone**. No signal and plenty of budget → **high-power** is fine without asking. The chosen tier governs the whole run.
 3. **Verify fleets ONCE** (not per step), in the same bash block:
    - Codex: `CODEX=$(ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs | tail -1); node "$CODEX" setup --json` → `ready` + `auth.loggedIn`.
 - cc-delegate: `cc-delegate setup --json` (fallback: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`) → `ready` and active providers: the actual shape is `providers.<name>.keyPresent` / `.active` / `.quota` (there is NO field called `configured` nor a list `keys`). Active fleet = some provider with `active:true`. Also read the additive `agentic:{installed,version,serverRunning}` block: `installed:true` = agentic mode (`task --agentic`) is available for tool-requiring bounded steps this run; absent or `installed:false` = text mode only. None active → suggest `! cc-delegate-keys` ONCE and continue without it.
@@ -83,26 +83,21 @@ Routing rules:
 - Agentic NEVER for trivial generation: the ~13-14k harness overhead outweighs the savings.
 - Decisions stay with the orchestrator: agentic delegates execute bounded steps and report back — they never make design/architecture calls.
 
-### Economy mode (Claude plan limit near)
+### Delegation intensity (three tiers, driven by the Claude-usage signal)
 
-When it activates (any of these signals):
-1. The harness shows usage limit warnings in the conversation (most reliable signal).
-2. The user requests it or shares their `/usage` ("economy mode", "we're at 80% and reset is in 3 days").
-3. At the start of a long run, cheap check: `npx -y ccusage blocks --json` (active block: burnRate/projection) — estimates consumption from local transcripts; does NOT know the plan's real limit, use it as a proxy together with what the user says. Claude cannot read the exact `/usage` numbers by itself.
+The whole point: **Claude Code is always the orchestrator and the thinker for the hardest parts; everything else is delegated to cheaper fleets.** How MUCH you delegate scales with how close you are to the Claude limit / how few days remain to reset. Claude cannot read its exact `/usage`; infer the tier from: harness usage-limit warnings (most reliable), what the user tells you ("we're at 90%, reset in 3 days"), and the `npx ccusage blocks --json` proxy (>150M active-block tokens or burn >800k/min = strong signal).
 
-Substitution rule while active (goal: the plan Claude lasts until reset):
+| Tier | When | How much goes to Claude vs delegated |
+|---|---|---|
+| **High-power** | Plenty of Claude budget, far from reset | Claude does the substantive work itself; delegate ONLY the clear wins — bulk boilerplate, mechanical transforms, big mechanical test-writing, long-material reads that would bloat context. Quality-first. |
+| **Balanced** (default) | Normal | Claude orchestrates + does genuinely hard thinking (architecture, subtle bugs, security, ambiguous specs); delegate all bounded execution, standard codegen, refactors, tests, diff review, research reads. This is the everyday split. |
+| **Economy** | Near the limit / harness warnings / user says so | Delegate **100% of what can possibly be delegated**. Claude drops to **minimal supervisor**: plans once, reads only distilled evidence, issues short verdicts — NEVER reads raw material or executes steps. Even judgment steps go to `kimi`/`deepseek-pro` with all material in `--file`; Claude only ratifies. Goal: make the Claude plan last until reset. |
 
-| Normal role | In economy mode |
-|---|---|
-| Fable/Opus orchestrates | Continues, but as **minimal supervisor**: plans once, reviews distilled evidence, short verdicts. NEVER reads raw material nor executes steps. |
-| Deep judgment that Fable would do inline (design analysis, diagnosis on provided material, audits, resolving ambiguous specs) | Codex `gpt-5.6-terra` (closest available to Fable; Sol gives 400 with ChatGPT auth) → without Codex: `kimi` (full thinking — EXPENSIVE, reserve for what only Fable/Opus could do) or `deepseek-pro`/`kimi-fast` (Sonnet-tier, much cheaper) (low reasoning effort, seconds — for quick judgment calls) via cc-delegate (AA 57 ≥ Opus 4.8, the closest substitute; expensive and slow — only for judgment steps, not volume) with ALL the material in `--file`. Fable only issues the final verdict on the response. |
-| Sonnet standard execution | Codex `gpt-5.6-terra` (if quota available) → if the step is pure generation, `glm`/`qwen` via cc-delegate |
-| Haiku mechanical | Codex `luna`; if pure text transformation, `deepseek` via cc-delegate |
-| Review | Codex first (global rule); without Codex → `glm` + second opinion `grok` via cc-delegate; Claude review ONLY for security-critical paths |
-| Scouts/research reads | If reading/summarizing textual material: `kimi`/`glm` with `--file`. Claude subagent only when repo tools are needed. |
+Substitution chain when delegating (any tier — deeper tiers just push MORE work down it): Codex `gpt-5.6-terra`/`luna` (if quota) → cc-delegate (`task` text for pure generation; `task --agentic [--write]` for steps needing repo/commands/edits when the `agentic` block shows it available) → Claude subagent (`sonnet`/`haiku`) only as the last resort. Review always Codex first, else `glm` + second-opinion `grok` via cc-delegate, Claude review only for security-critical paths.
 
-- Steps that require tools (explore repo, run tests, edit in tree): Codex first; without Codex → `cc-delegate task --agentic [--write]` if the `agentic` block shows it available; Sonnet remains the last option. (Text-mode cc-delegate stays generation-only.)
-- Deactivate when the reset passes or when the user indicates; note in the final report what ran in economy mode.
+Model tiering inside cc-delegate: mechanical/bulk → `deepseek`/`qwen`; standard execution → `deepseek-pro`/`glm`; deep judgment (economy substitute for Fable) → `kimi-fast` (fast) or `kimi` (hardest, expensive — reserve it); second opinion → `grok`.
+
+Announce the active tier at Step 0; drop back toward high-power once the reset passes or the user says so; note in the final report what ran delegated vs in-session.
 
 ## Flow
 
