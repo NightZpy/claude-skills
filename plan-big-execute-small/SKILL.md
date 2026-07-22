@@ -50,6 +50,7 @@ Tabla de ruteo:
 |---|---|---|
 | Boilerplate / bulk barato | `deepseek` | ~Haiku |
 | Codegen / refactor / tests en volumen | `qwen` | ~Sonnet (gama baja) |
+| Codegen exigente al mejor precio | `deepseek-pro` | ~Sonnet (flagship DeepSeek, más barato que glm) |
 | Refactor agéntico complejo en texto | `glm` | ~Sonnet 5 |
 | Auditoría contexto 1M / razonamiento profundo | `kimi` | ~Opus (caro — solo si Claude/Codex no alcanzan el contexto) |
 | Segunda opinión / generalista frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
