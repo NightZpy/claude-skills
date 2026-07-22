@@ -15,7 +15,7 @@ Bootstrap procedure in ONE single bash block + one question to the user if appli
 2. **Decide mode**: if there's a strong signal, harness warnings, or the user mentioned their `/usage` → ask via AskUserQuestion: **economy mode** (recommended with strong signal) / **normal mode** / **postpone**. No signal → normal mode without asking. The chosen mode governs the entire run (see "Economy mode" below).
 3. **Verify fleets ONCE** (not per step), in the same bash block:
    - Codex: `CODEX=$(ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs | tail -1); node "$CODEX" setup --json` → `ready` + `auth.loggedIn`.
-   - cc-delegate: `cc-delegate setup --json` (fallback: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`) → `ready` and active providers: the actual shape is `providers.<name>.keyPresent` / `.active` / `.quota` (there is NO field called `configured` nor a list `keys`). Active fleet = some provider with `active:true`. None active → suggest `! cc-delegate-keys` ONCE and continue without it.
+- cc-delegate: `cc-delegate setup --json` (fallback: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`) → `ready` and active providers: the actual shape is `providers.<name>.keyPresent` / `.active` / `.quota` (there is NO field called `configured` nor a list `keys`). Active fleet = some provider with `active:true`. Also read the additive `agentic:{installed,version,serverRunning}` block: `installed:true` = agentic mode (`task --agentic`) is available for tool-requiring bounded steps this run; absent or `installed:false` = text mode only. None active → suggest `! cc-delegate-keys` ONCE and continue without it.
 4. **Announce the resulting routing** in 1-2 lines (which fleet covers judgment/execution/mechanical/review in this run) and only then write the PLAN.
 
 Dispatch gotchas learned (don't repeat):
@@ -54,13 +54,15 @@ Mixing rules:
 - The brief to Codex must be as self-contained as a Claude subagent's, and also explicitly state what evidence to return (Codex doesn't see your plan).
 - The final review step follows your hard global rule: Codex first; Claude only if Codex can't run.
 
-### Third fleet: Frontier (cheap external models)
+### Third fleet: Frontier (cheap external models) — text mode + agentic mode
 
-When: steps of **pure generation** (boilerplate, tests, mechanical text refactor, diff review, very long context analysis) where the executor doesn't need tools — the model returns text/code and you (or a subagent) apply/verify it.
+Two modes:
+- **Text mode** (default): the model returns text/code only — no tools. For steps of **pure generation** (boilerplate, tests, mechanical text refactor, diff review, very long context analysis). You (or a subagent) apply/verify the output.
+- **Agentic mode**: `cc-delegate task --agentic [--write] --model <alias>` gives the delegate real tools (read repo, run commands, edit files) via a local OpenCode server. Overhead ~13-14k input tokens per call (~100x a text call — still 10-100x cheaper than Claude subagents). `--write` gates edits (default read-only). `--resume` reuses native sessions.
 
-Check availability once at the start of EXECUTE: `cc-delegate setup --json` → `ready: true` (the PATH shim resolves the latest installed version; fallback if not on PATH: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`). `ready: false` with missing keys = fleet configurable but inactive — suggest to the user `! cc-delegate-keys` ONCE and continue without it. If the plugin is not installed or there are no keys, this fleet doesn't exist — continue with Claude/Codex, don't stop.
+Check availability once at the start of EXECUTE: `cc-delegate setup --json` → `ready: true` (the PATH shim resolves the latest installed version; fallback if not on PATH: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`). The response includes an additive `agentic:{installed,version,serverRunning}` block — read it during bootstrap: `agentic.installed: true` = agentic mode available. `ready: false` with missing keys = fleet configurable but inactive — suggest to the user `! cc-delegate-keys` ONCE and continue without it. If the plugin is not installed or there are no keys, this fleet doesn't exist — continue with Claude/Codex, don't stop.
 
-Routing table:
+Routing table (text mode):
 
 | Step type | Frontier model | Equivalent |
 |---|---|---|
@@ -71,9 +73,15 @@ Routing table:
 | 1M context audit / deep reasoning | `kimi` | ~Opus (expensive — only if Claude/Codex can't handle the context) |
 | Second opinion / generalist frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
 
-Dispatch: `cc-delegate task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → collect with `status`/`result`. Iterative direction: `task --resume last "<correction>"` resends the full thread to the same model — correct without re-packaging context. The brief must be self-contained and specify the expected output format (full code or unified diff). The output is NOT applied: applying it and verifying it is a separate step (yours or a cheap subagent's).
+Dispatch (text): `cc-delegate task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → collect with `status`/`result`. Iterative direction: `task --resume last "<correction>"` resends the full thread to the same model — correct without re-packaging context. The brief must be self-contained and specify the expected output format (full code or unified diff). The output is NOT applied: applying it and verifying it is a separate step (yours or a cheap subagent's).
 
-Rule: frontier NEVER for steps requiring command execution, repo exploration, or decision-making — that's Claude/Codex.
+Dispatch (agentic): `cc-delegate task --agentic [--write] --model <alias> "<brief>"` → the delegate explores/runs/edits itself and reports evidence. Requires opencode CLI installed (per the `agentic` block). `--resume` continues the same native session for follow-ups.
+
+Routing rules:
+- Text mode remains the default for pure generation; the brief must be self-contained.
+- Tool-requiring bounded steps (explore repo, run tests, edit in tree) CAN go to `task --agentic` when the `agentic` block shows it available — add `--write` only if the step edits.
+- Agentic NEVER for trivial generation: the ~13-14k harness overhead outweighs the savings.
+- Decisions stay with the orchestrator: agentic delegates execute bounded steps and report back — they never make design/architecture calls.
 
 ### Economy mode (Claude plan limit near)
 
@@ -87,13 +95,13 @@ Substitution rule while active (goal: the plan Claude lasts until reset):
 | Normal role | In economy mode |
 |---|---|
 | Fable/Opus orchestrates | Continues, but as **minimal supervisor**: plans once, reviews distilled evidence, short verdicts. NEVER reads raw material nor executes steps. |
-| Deep judgment that Fable would do inline (design analysis, diagnosis on provided material, audits, resolving ambiguous specs) | Codex `gpt-5.6-terra` (closest available to Fable; Sol gives 400 with ChatGPT auth) → without Codex: `kimi` (full thinking, slow) or `kimi-fast` (low reasoning effort, seconds — for quick judgment calls) via cc-delegate (AA 57 ≥ Opus 4.8, the closest substitute; expensive and slow — only for judgment steps, not volume) with ALL the material in `--file`. Fable only issues the final verdict on the response. |
+| Deep judgment that Fable would do inline (design analysis, diagnosis on provided material, audits, resolving ambiguous specs) | Codex `gpt-5.6-terra` (closest available to Fable; Sol gives 400 with ChatGPT auth) → without Codex: `kimi` (full thinking — EXPENSIVE, reserve for what only Fable/Opus could do) or `deepseek-pro`/`kimi-fast` (Sonnet-tier, much cheaper) (low reasoning effort, seconds — for quick judgment calls) via cc-delegate (AA 57 ≥ Opus 4.8, the closest substitute; expensive and slow — only for judgment steps, not volume) with ALL the material in `--file`. Fable only issues the final verdict on the response. |
 | Sonnet standard execution | Codex `gpt-5.6-terra` (if quota available) → if the step is pure generation, `glm`/`qwen` via cc-delegate |
 | Haiku mechanical | Codex `luna`; if pure text transformation, `deepseek` via cc-delegate |
 | Review | Codex first (global rule); without Codex → `glm` + second opinion `grok` via cc-delegate; Claude review ONLY for security-critical paths |
 | Scouts/research reads | If reading/summarizing textual material: `kimi`/`glm` with `--file`. Claude subagent only when repo tools are needed. |
 
-- Steps that require tools (explore repo, run tests, edit in tree) cannot go to cc-delegate (text-only): they go to Codex; Sonnet remains the last option.
+- Steps that require tools (explore repo, run tests, edit in tree): Codex first; without Codex → `cc-delegate task --agentic [--write]` if the `agentic` block shows it available; Sonnet remains the last option. (Text-mode cc-delegate stays generation-only.)
 - Deactivate when the reset passes or when the user indicates; note in the final report what ran in economy mode.
 
 ## Flow
