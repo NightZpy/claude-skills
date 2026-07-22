@@ -87,7 +87,7 @@ Substitution rule while active (goal: the plan Claude lasts until reset):
 | Normal role | In economy mode |
 |---|---|
 | Fable/Opus orchestrates | Continues, but as **minimal supervisor**: plans once, reviews distilled evidence, short verdicts. NEVER reads raw material nor executes steps. |
-| Deep judgment that Fable would do inline (design analysis, diagnosis on provided material, audits, resolving ambiguous specs) | Codex `gpt-5.6-terra` (closest available to Fable; Sol gives 400 with ChatGPT auth) → without Codex: `kimi` via cc-delegate (AA 57 ≥ Opus 4.8, the closest substitute; expensive and slow — only for judgment steps, not volume) with ALL the material in `--file`. Fable only issues the final verdict on the response. |
+| Deep judgment that Fable would do inline (design analysis, diagnosis on provided material, audits, resolving ambiguous specs) | Codex `gpt-5.6-terra` (closest available to Fable; Sol gives 400 with ChatGPT auth) → without Codex: `kimi` (full thinking, slow) or `kimi-fast` (low reasoning effort, seconds — for quick judgment calls) via cc-delegate (AA 57 ≥ Opus 4.8, the closest substitute; expensive and slow — only for judgment steps, not volume) with ALL the material in `--file`. Fable only issues the final verdict on the response. |
 | Sonnet standard execution | Codex `gpt-5.6-terra` (if quota available) → if the step is pure generation, `glm`/`qwen` via cc-delegate |
 | Haiku mechanical | Codex `luna`; if pure text transformation, `deepseek` via cc-delegate |
 | Review | Codex first (global rule); without Codex → `glm` + second opinion `grok` via cc-delegate; Claude review ONLY for security-critical paths |
