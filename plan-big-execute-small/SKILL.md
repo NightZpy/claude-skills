@@ -3,120 +3,136 @@ name: plan-big-execute-small
 description: Orchestration mode - run the current task with the "plan big, execute small" pattern inside this session. The session model (Fable/Opus) acts as planner+advisor and dispatches bounded execution steps to cheap subagents (Sonnet default, Haiku for mechanical work), reviewing each result against the plan before proceeding. Use when the user invokes /plan-big-execute-small, says "plan big execute small", "patron planner/executor", or asks to run a big task with cheap executors under big-model supervision. NOT for trivial tasks (one file, one step) - just do those directly.
 ---
 
-# Plan Big, Execute Small — orquestación en sesión
+# Plan Big, Execute Small — in-session orchestration
 
-Tú (el modelo de la sesión: Fable/Opus) eres el **planner y advisor**. Los subagentes baratos son los **executors**. La inteligencia cara se gasta en planear, revisar y corregir rumbo — nunca en teclear pasos mecánicos.
+You (the session model: Fable/Opus) are the **planner and advisor**. The cheap subagents are the **executors**. The expensive intelligence goes to planning, reviewing, and course-correcting — never to typing mechanical steps.
+
+## Step 0 — Bootstrap (ALWAYS, before planning)
+
+Bootstrap procedure in ONE single bash block + one question to the user if applicable:
+
+1. **Usage signal** (proxy, doesn't know the plan's real limit): `npx -y ccusage blocks --json` → from the active block extract `totalTokens`, `burnRate.tokensPerMinute`, `projection.totalTokens`. Indicative threshold: >150M tokens in the active block or burn >800k/min = strong signal.
+2. **Decide mode**: if there's a strong signal, harness warnings, or the user mentioned their `/usage` → ask via AskUserQuestion: **economy mode** (recommended with strong signal) / **normal mode** / **postpone**. No signal → normal mode without asking. The chosen mode governs the entire run (see "Economy mode" below).
+3. **Verify fleets ONCE** (not per step), in the same bash block:
+   - Codex: `CODEX=$(ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs | tail -1); node "$CODEX" setup --json` → `ready` + `auth.loggedIn`.
+   - cc-delegate: `cc-delegate setup --json` (fallback: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`) → `ready` and active providers: the actual shape is `providers.<name>.keyPresent` / `.active` / `.quota` (there is NO field called `configured` nor a list `keys`). Active fleet = some provider with `active:true`. None active → suggest `! cc-delegate-keys` ONCE and continue without it.
+4. **Announce the resulting routing** in 1-2 lines (which fleet covers judgment/execution/mechanical/review in this run) and only then write the PLAN.
+
+Dispatch gotchas learned (don't repeat):
+- `codex-companion.mjs task --background ...` responds in **plain text** ("Codex Task started ... as task-XXXX"), NOT JSON — extract the id with grep/sed on that text, never with json.load. `setup`/`status` do accept `--json`.
+- `setup --json` with `ready:true` does NOT guarantee quota: the first task may fail with "You've hit your usage limit... try again at <date>". That error marks the Codex fleet as DOWN for the entire run (the date is usually weeks away) — don't retry; move to the next in the chain (cc-delegate if it has keys; if not, Claude or ask the user).
+- Cheap real-quota check: dispatch a trivial task ("reply OK") and check `status` before sending long briefs, or read the first `status` of the first real step before dispatching the rest.
 
 ## Roles
 
-| Rol | Quién | Hace |
+| Role | Who | What they do |
 |---|---|---|
-| Planner | Tú (modelo de sesión) | Especifica la tarea completa, la descompone en pasos acotados y verificables |
-| Executor | Subagente Claude (`sonnet`/`haiku`) o **Codex** (ver tabla abajo) | Ejecuta UN paso acotado y reporta evidencia |
-| Advisor/Verifier | Tú | Revisa cada resultado contra el plan, corrige rumbo, sintetiza |
+| Planner | You (session model) | Specifies the complete task, decomposes it into bounded, verifiable steps |
+| Executor | Subagent Claude (`sonnet`/`haiku`) or **Codex** (see table below) | Executes ONE bounded step and reports evidence |
+| Advisor/Verifier | You | Reviews each result against the plan, corrects course, synthesizes |
 
-Consistente con la regla de tiering global: Sonnet es el workhorse; Haiku solo mecánico; lo genuinamente difícil (decisión de arquitectura, bug sutil, seguridad) NO se delega — lo haces tú inline o con subagente sin tag (hereda el modelo de sesión).
+Consistent with the global tiering rule: Sonnet is the workhorse; Haiku only for mechanical; genuinely hard tasks (architecture decision, subtle bug, security) are NOT delegated — you do them inline or with an untagged subagent (inherits the session model).
 
-## Executors disponibles: Claude y Codex
+## Available executors: Claude and Codex
 
-Dos flotas de executors; elige por paso. **Verifica Codex una sola vez al inicio del EXECUTE** (no por paso): `node ~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs setup --json` → `ready: true` y `auth.loggedIn: true`. Si no está listo, o una tarea falla por cuota/límite/`model not supported`, **cae al equivalente Claude de la tabla y sigue** — anótalo en el reporte final, no te detengas ni reintentes en bucle.
+Two executor fleets; choose per step. **Verify Codex once at the start of EXECUTE** (not per step): `node ~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs setup --json` → `ready: true` and `auth.loggedIn: true`. If it's not ready, or a task fails due to quota/limit/`model not supported`, **fall through to the Claude equivalent in the table and continue** — note it in the final report, don't stop or retry in a loop.
 
-| Tipo de paso | Codex (si disponible) | Claude (default/fallback) |
+| Step type | Codex (if available) | Claude (default/fallback) |
 |---|---|---|
-| Mecánico (renames, moves, reformat, lookups) | `gpt-5.6-luna` effort `low` (alternativa: `spark` = `gpt-5.3-codex-spark`) | `model: 'haiku'` |
-| Ejecución estándar (implementar paso acotado) | `gpt-5.6-terra` effort `medium`/`high` (alternativa: `gpt-5.4`) | `model: 'sonnet'` |
-| Review/verificación de lo ejecutado | `gpt-5.6-terra` (regla global: review SIEMPRE Codex si está disponible; fallback `gpt-5.5`) | subagente fresco Opus/Sonnet solo como fallback |
+| Mechanical (renames, moves, reformat, lookups) | `gpt-5.6-luna` effort `low` (alternative: `spark` = `gpt-5.3-codex-spark`) | `model: 'haiku'` |
+| Standard execution (implement bounded step) | `gpt-5.6-terra` effort `medium`/`high` (alternative: `gpt-5.4`) | `model: 'sonnet'` |
+| Review/verification of what was executed | `gpt-5.6-terra` (global rule: review ALWAYS with Codex if available; fallback `gpt-5.5`) | fresh subagent Opus/Sonnet only as fallback |
 
-Familia GPT-5.6 en Codex (verificado jul-2026 con auth ChatGPT): `gpt-5.6-terra` (balanceado) y `gpt-5.6-luna` (rápido/barato) **funcionan**; `gpt-5.6` a secas y `gpt-5.6-sol` (flagship) devuelven 400 con cuentas ChatGPT — Sol es solo para cuentas API. Ctx 272K.
+GPT-5.6 family in Codex (verified jul-2026 with ChatGPT auth): `gpt-5.6-terra` (balanced) and `gpt-5.6-luna` (fast/cheap) **work**; plain `gpt-5.6` and `gpt-5.6-sol` (flagship) return 400 with ChatGPT accounts — Sol is for API accounts only. Ctx 272K.
 
-Cómo despachar un executor Codex — dos vías:
-- **Vía subagente** (simple): `Agent` con `subagent_type: 'codex:codex-rescue'` y el brief como prompt; el forwarder hace UNA llamada `task`. Pide `--write` para pasos que editan; añade `--model X --effort Y` en el brief si quieres fijarlos (sin flags usa el default de `~/.codex/config.toml`).
-- **Vía runtime directo** (para paralelizar N pasos Codex): `codex-companion.mjs task --background --write [--model X] [--effort Y] "<brief>"` por paso → guarda cada job-id → sigue despachando Claude en paralelo → recoge con `status <job-id>` / `result <job-id>`. Si `status` = `failed`, lee el error: causa de cuota/modelo → redespacha ese paso con el fallback Claude; causa del brief → corrige el brief y reintenta UNA vez.
+How to dispatch a Codex executor — two ways:
+- **Via subagent** (simple): `Agent` with `subagent_type: 'codex:codex-rescue'` and the brief as prompt; the forwarder makes ONE `task` call. Use `--write` for steps that edit; add `--model X --effort Y` in the brief if you want to pin them (without flags it uses the default from `~/.codex/config.toml`).
+- **Via direct runtime** (to parallelize N Codex steps): `codex-companion.mjs task --background --write [--model X] [--effort Y] "<brief>"` per step → save each job-id → continue dispatching Claude in parallel → collect with `status <job-id>` / `result <job-id>`. If `status` = `failed`, read the error: quota/model cause → redispatch that step with the Claude fallback; brief cause → fix the brief and retry ONCE.
 
-Reglas de mezcla:
-- Codex ejecuta en el working tree real (no en contexto aislado): **nunca dos writers (Codex o Claude) sobre los mismos archivos a la vez** — pasos que escriben en zonas distintas sí pueden correr en paralelo; si comparten archivos, secuéncialos o usa worktrees.
-- El brief a Codex debe ser tan autocontenido como el de un subagente Claude, y además decir explícitamente qué evidencia devolver (Codex no ve tu plan).
-- El paso de review final sigue tu regla dura global: Codex primero; Claude solo si Codex no puede correr.
+Mixing rules:
+- Codex executes in the real working tree (not in isolated context): **never two writers (Codex or Claude) on the same files at the same time** — steps that write to different areas can run in parallel; if they share files, sequence them or use worktrees.
+- The brief to Codex must be as self-contained as a Claude subagent's, and also explicitly state what evidence to return (Codex doesn't see your plan).
+- The final review step follows your hard global rule: Codex first; Claude only if Codex can't run.
 
-### Tercera flota: Frontier (modelos externos baratos)
+### Third fleet: Frontier (cheap external models)
 
-Cuándo: pasos de **generación pura** (boilerplate, tests, refactor mecánico de texto, review de diff, análisis de contexto muy largo) donde el executor no necesita tools — el modelo devuelve texto/código y tú (o un subagente) lo aplicas/verificas.
+When: steps of **pure generation** (boilerplate, tests, mechanical text refactor, diff review, very long context analysis) where the executor doesn't need tools — the model returns text/code and you (or a subagent) apply/verify it.
 
-Verifica disponibilidad una sola vez al inicio del EXECUTE: `cc-delegate setup --json` → `ready: true` (el shim del PATH resuelve la última versión instalada; fallback si no está en PATH: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`). `ready: false` con keys faltantes = flota configurable pero inactiva — sugiere al usuario `! cc-delegate-keys` UNA vez y sigue sin ella. Si el plugin no está instalado o no hay keys, esta flota no existe — sigue con Claude/Codex, no te detengas.
+Check availability once at the start of EXECUTE: `cc-delegate setup --json` → `ready: true` (the PATH shim resolves the latest installed version; fallback if not on PATH: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`). `ready: false` with missing keys = fleet configurable but inactive — suggest to the user `! cc-delegate-keys` ONCE and continue without it. If the plugin is not installed or there are no keys, this fleet doesn't exist — continue with Claude/Codex, don't stop.
 
-Tabla de ruteo:
+Routing table:
 
-| Tipo de paso | Modelo frontier | Equivalente |
+| Step type | Frontier model | Equivalent |
 |---|---|---|
-| Boilerplate / bulk barato | `deepseek` | ~Haiku |
-| Codegen / refactor / tests en volumen | `qwen` | ~Sonnet (gama baja) |
-| Codegen exigente al mejor precio | `deepseek-pro` | ~Sonnet (flagship DeepSeek, más barato que glm) |
-| Refactor agéntico complejo en texto | `glm` | ~Sonnet 5 |
-| Auditoría contexto 1M / razonamiento profundo | `kimi` | ~Opus (caro — solo si Claude/Codex no alcanzan el contexto) |
-| Segunda opinión / generalista frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
+| Boilerplate / cheap bulk | `deepseek` | ~Haiku |
+| Codegen / refactor / tests in volume | `qwen` | ~Sonnet (low range) |
+| Demanding codegen at best price | `deepseek-pro` | ~Sonnet (flagship DeepSeek, cheaper than glm) |
+| Complex agentic refactor in text | `glm` | ~Sonnet 5 |
+| 1M context audit / deep reasoning | `kimi` | ~Opus (expensive — only if Claude/Codex can't handle the context) |
+| Second opinion / generalist frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
 
-Despacho: `cc-delegate task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → recoger con `status`/`result`. Dirección iterativa: `task --resume last "<corrección>"` reenvía el hilo completo al mismo modelo — corrige sin re-empaquetar contexto. El brief debe ser autocontenido e indicar el formato de salida esperado (código completo o diff unificado). El output NO está aplicado: aplicarlo y verificarlo es un paso aparte (tuyo o de un subagente barato).
+Dispatch: `cc-delegate task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → collect with `status`/`result`. Iterative direction: `task --resume last "<correction>"` resends the full thread to the same model — correct without re-packaging context. The brief must be self-contained and specify the expected output format (full code or unified diff). The output is NOT applied: applying it and verifying it is a separate step (yours or a cheap subagent's).
 
-Regla: frontier NUNCA para pasos que requieren ejecutar comandos, explorar el repo o tomar decisiones — eso es Claude/Codex.
+Rule: frontier NEVER for steps requiring command execution, repo exploration, or decision-making — that's Claude/Codex.
 
-### Modo economía (límite de plan Claude cerca)
+### Economy mode (Claude plan limit near)
 
-Cuándo se activa (cualquiera de estas señales):
-1. El harness muestra warnings de límite de uso en la conversación (señal más fiable).
-2. El usuario lo pide o comparte su `/usage` ("modo economía", "vamos al 80% y el reset es en 3 días").
-3. Al inicio de un run largo, chequeo barato: `npx -y ccusage blocks --json` (bloque activo: burnRate/projection) — estima consumo desde transcripts locales; NO conoce el límite real del plan, úsalo como proxy junto con lo que diga el usuario. Claude no puede leer los números exactos de `/usage` por sí mismo.
+When it activates (any of these signals):
+1. The harness shows usage limit warnings in the conversation (most reliable signal).
+2. The user requests it or shares their `/usage` ("economy mode", "we're at 80% and reset is in 3 days").
+3. At the start of a long run, cheap check: `npx -y ccusage blocks --json` (active block: burnRate/projection) — estimates consumption from local transcripts; does NOT know the plan's real limit, use it as a proxy together with what the user says. Claude cannot read the exact `/usage` numbers by itself.
 
-Regla de sustitución mientras esté activo (el objetivo: que el plan Claude aguante hasta el reset):
+Substitution rule while active (goal: the plan Claude lasts until reset):
 
-| Rol normal | En modo economía |
+| Normal role | In economy mode |
 |---|---|
-| Fable/Opus orquesta | Sigue, pero como **supervisor mínimo**: planea una vez, revisa evidencia destilada, veredictos cortos. NUNCA lee material crudo ni ejecuta pasos. |
-| Juicio profundo que Fable haría inline (análisis de diseño, diagnóstico sobre material dado, auditorías, resolver specs ambiguas) | Codex `gpt-5.6-terra` (lo más cercano a Fable disponible; Sol da 400 con auth ChatGPT) → sin Codex: `kimi` vía cc-delegate (AA 57 ≥ Opus 4.8, el sustituto más cercano; caro y lento — solo para pasos de juicio, no volumen) con TODO el material en `--file`. Fable solo emite el veredicto final sobre la respuesta. |
-| Sonnet ejecución estándar | Codex `gpt-5.6-terra` (si hay cuota) → si el paso es generación pura, `glm`/`qwen` vía cc-delegate |
-| Haiku mecánico | Codex `luna`; si es transformación de texto pura, `deepseek` vía cc-delegate |
-| Review | Codex primero (regla global); sin Codex → `glm` + segunda opinión `grok` vía cc-delegate; review Claude SOLO para paths de seguridad críticos |
-| Scouts/lecturas de investigación | Si es leer/resumir material textual: `kimi`/`glm` con `--file`. Subagente Claude solo cuando hacen falta tools del repo. |
+| Fable/Opus orchestrates | Continues, but as **minimal supervisor**: plans once, reviews distilled evidence, short verdicts. NEVER reads raw material nor executes steps. |
+| Deep judgment that Fable would do inline (design analysis, diagnosis on provided material, audits, resolving ambiguous specs) | Codex `gpt-5.6-terra` (closest available to Fable; Sol gives 400 with ChatGPT auth) → without Codex: `kimi` via cc-delegate (AA 57 ≥ Opus 4.8, the closest substitute; expensive and slow — only for judgment steps, not volume) with ALL the material in `--file`. Fable only issues the final verdict on the response. |
+| Sonnet standard execution | Codex `gpt-5.6-terra` (if quota available) → if the step is pure generation, `glm`/`qwen` via cc-delegate |
+| Haiku mechanical | Codex `luna`; if pure text transformation, `deepseek` via cc-delegate |
+| Review | Codex first (global rule); without Codex → `glm` + second opinion `grok` via cc-delegate; Claude review ONLY for security-critical paths |
+| Scouts/research reads | If reading/summarizing textual material: `kimi`/`glm` with `--file`. Claude subagent only when repo tools are needed. |
 
-- Los pasos que requieren tools (explorar repo, correr tests, editar en el árbol) no pueden ir a cc-delegate (texto puro): van a Codex; Sonnet queda como última opción.
-- Desactivar al pasar el reset o cuando el usuario lo indique; anota en el reporte final qué corrió en modo economía.
+- Steps that require tools (explore repo, run tests, edit in tree) cannot go to cc-delegate (text-only): they go to Codex; Sonnet remains the last option.
+- Deactivate when the reset passes or when the user indicates; note in the final report what ran in economy mode.
 
-## Flujo
+## Flow
 
-### 1. PLAN (tú, sin delegar)
-- Lee lo mínimo necesario para especificar bien (o despacha 1-2 scouts Sonnet de solo-lectura si el mapa es grande).
-- Escribe el plan: pasos **acotados** (un entregable por paso), cada uno con: objetivo, archivos/alcance, output esperado, y **cómo se verifica** (comando, test, criterio observable).
-- Marca dependencias: pasos independientes se despachan en paralelo; dependientes, en secuencia.
-- Preséntalo al usuario en 3-6 líneas antes de ejecutar (salvo que ya haya aprobado un plan).
+### 1. PLAN (you, without delegating)
+- Read the minimum necessary to specify well (or dispatch 1-2 read-only Sonnet scouts if the map is large).
+- Write the plan: **bounded** steps (one deliverable per step), each with: objective, files/scope, expected output, and **how to verify** (command, test, observable criterion).
+- Mark dependencies: independent steps are dispatched in parallel; dependent ones, in sequence.
+- Present it to the user in 3-6 lines before executing (unless a plan has already been approved).
 
-### 2. EXECUTE (subagentes)
-- Un Agent por paso, `model: 'sonnet'` (o `'haiku'` si es mecánico). Pasos independientes → despacha en paralelo en un solo mensaje.
-- **El prompt del executor debe ser autocontenido**: los subagentes no ven tu contexto. Incluye rutas exactas, convenciones del repo relevantes, el output esperado y el criterio de verificación. Pídeles evidencia (output de comando, diff, test verde), no afirmaciones.
-- Prohibido al executor: decisiones de diseño/arquitectura, tocar fuera de su alcance, "mejorar" código adyacente. Si un paso requiere una decisión, debe reportarla de vuelta, no tomarla.
+### 2. EXECUTE (subagents)
+- One Agent per step, `model: 'sonnet'` (or `'haiku'` if mechanical). Independent steps → dispatch in parallel in a single message.
+- **The executor prompt must be self-contained**: subagents don't see your context. Include exact paths, relevant repo conventions, the expected output, and the verification criterion. Ask for evidence (command output, diff, green test), not assertions.
+- Forbidden for the executor: design/architecture decisions, touching outside their scope, "improving" adjacent code. If a step requires a decision, they must report it back, not make it.
 
-### 3. ADVISE (tú, en cada resultado)
-- Revisa el reporte contra el criterio del paso. ¿Evidencia real o afirmación?
-- Falla o se desvía → UN reintento con feedback correctivo concreto (qué estuvo mal, qué esperabas).
-- Segunda falla, o el paso resultó ser judgment-heavy → escálalo: hazlo tú inline o redespacha sin tag de modelo.
-- Un resultado puede invalidar pasos posteriores del plan — ajusta el plan antes de seguir despachando, no después.
+### 3. ADVISE (you, on each result)
+- Review the report against the step's criterion. Real evidence or assertion?
+- Fails or deviates → ONE retry with concrete corrective feedback (what was wrong, what you expected).
+- Second failure, or the step turned out to be judgment-heavy → escalate: do it yourself inline or redispatch without a model tag.
+- One result may invalidate later steps in the plan — adjust the plan before continuing to dispatch, not after.
 
-### 4. VERIFY & SYNTHESIZE (tú)
-- Corre la verificación global (tests, build, el flujo de punta a punta — skill `verify` si aplica).
-- Resumen final para el usuario: qué se hizo, evidencia, qué quedó fuera.
+### 4. VERIFY & SYNTHESIZE (you)
+- Run global verification (tests, build, end-to-end flow — skill `verify` if applicable).
+- Final summary for the user: what was done, evidence, what was left out.
 
-## Reglas duras
+## Hard rules
 
-- Nunca despaches sin plan escrito: pasos sin criterio de verificación producen "listo ✅" falsos.
-- Nunca aceptes un reporte sin evidencia verificable.
-- Escalar es barato, re-trabajar es caro: a la segunda falla de un executor, sube el modelo o hazlo tú.
-- Tareas triviales (un archivo, un paso) NO usan este patrón — hazlas directo; el overhead de orquestar supera el ahorro.
+- Never dispatch without a written plan: steps without verification criteria produce false "done ✅" reports.
+- Never accept a report without verifiable evidence.
+- Escalating is cheap, reworking is expensive: on the second failure of an executor, upgrade the model or do it yourself.
+- Trivial tasks (one file, one step) do NOT use this pattern — do them directly; the orchestration overhead outweighs the savings.
 
-## Economía del patrón (del cookbook, medido)
+## Pattern economics (from the cookbook, measured)
 
-- **El ahorro está en mantener el material crudo fuera de TU contexto.** Los tokens pesados (páginas web, logs, archivos grandes, sweeps de codebase) deben leerse en el contexto del subagente, que devuelve hallazgos destilados. Si el material crudo termina en el contexto del coordinador, pagaste orquestación para nada. En los runs del cookbook: ~2.5x más barato y ~3x más rápido, con 84-98% del input facturado a tarifa de worker.
-- **Delegar tiene costo fijo por subagente** — la granularidad de los briefs tiene un óptimo. Partir el mismo trabajo en más briefs más estrechos SUBE el costo. Prefiere pocos pasos sustanciosos a muchos micro-pasos.
-- **No delegues juicio sobre material crudo sutil**: un lector barato puede resumir y perder exactamente lo que importaba (análisis fino de documentos, decisiones sobre matices). Eso lo lees tú.
-- **Verifica también la premisa, no solo los pasos**: si la descomposición del plan parte de tu memoria (una lista, un supuesto), gasta un paso barato en verificarla — el cookbook auditó 20 hechos perfectamente sobre una lista que traía un ítem equivocado de memoria.
+- **The savings come from keeping raw material out of YOUR context.** Heavy tokens (web pages, logs, large files, codebase sweeps) should be read in the subagent's context, which returns distilled findings. If raw material ends up in the coordinator's context, you paid for orchestration for nothing. In cookbook runs: ~2.5x cheaper and ~3x faster, with 84-98% of input billed at worker rate.
+- **Delegation has a fixed cost per subagent** — brief granularity has an optimum. Splitting the same work into more, narrower briefs INCREASES cost. Prefer few substantial steps to many micro-steps.
+- **Don't delegate judgment on subtle raw material**: a cheap reader can summarize and miss exactly what mattered (fine document analysis, nuance decisions). You read that yourself.
+- **Verify the premise too, not just the steps**: if the plan decomposition starts from your memory (a list, an assumption), spend a cheap step verifying it — the cookbook audited 20 facts perfectly against a list that had one wrong item from memory.
 
-## Origen
+## Origin
 
-Adaptación al harness de Claude Code del cookbook CMA "Plan Big, Execute Small" (coordinador frontier sin tools + workers baratos con las tools, leyendo en threads paralelos y reportando destilado) y del advisor tool de la API. Cookbook: https://github.com/anthropics/claude-cookbooks/blob/main/managed_agents/CMA_plan_big_execute_small.ipynb
+Adaptation to the Claude Code harness of the CMA cookbook "Plan Big, Execute Small" (tool-less frontier coordinator + cheap workers with tools, reading in parallel threads and reporting distilled findings) and the API advisor tool. Cookbook: https://github.com/anthropics/claude-cookbooks/blob/main/managed_agents/CMA_plan_big_execute_small.ipynb
