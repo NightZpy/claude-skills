@@ -54,34 +54,16 @@ Mixing rules:
 - The brief to Codex must be as self-contained as a Claude subagent's, and also explicitly state what evidence to return (Codex doesn't see your plan).
 - The final review step follows your hard global rule: Codex first; Claude only if Codex can't run.
 
-### Third fleet: Frontier (cheap external models) — text mode + agentic mode
+### Third fleet: cc-delegate (cheap external models, text + agentic)
 
-Two modes:
-- **Text mode** (default): the model returns text/code only — no tools. For steps of **pure generation** (boilerplate, tests, mechanical text refactor, diff review, very long context analysis). You (or a subagent) apply/verify the output.
-- **Agentic mode**: `cc-delegate task --agentic [--write] --model <alias>` gives the delegate real tools (read repo, run commands, edit files) via a local OpenCode server. Overhead ~13-14k input tokens per call (~100x a text call — still 10-100x cheaper than Claude subagents). `--write` gates edits (default read-only). `--resume` reuses native sessions.
+cc-delegate is the third executor fleet. **For all its specifics — text vs agentic, which model by capability/price (grounded in the Anthropic-equivalence table), how to write the brief, dispatch, and reading usage/health/advisory signals — invoke the `cc-delegate:using-cc-delegate` skill.** Don't duplicate that logic here; this section only covers how it slots into the orchestration.
 
-Check availability once at the start of EXECUTE: `cc-delegate setup --json` → `ready: true` (the PATH shim resolves the latest installed version; fallback if not on PATH: `node ~/.claude/plugins/cache/claude-code-delegate/cc-delegate/*/scripts/companion.mjs setup --json`). The response includes an additive `agentic:{installed,version,serverRunning}` block — read it during bootstrap: `agentic.installed: true` = agentic mode available. `ready: false` with missing keys = fleet configurable but inactive — suggest to the user `! cc-delegate-keys` ONCE and continue without it. If the plugin is not installed or there are no keys, this fleet doesn't exist — continue with Claude/Codex, don't stop.
+Availability (check once at bootstrap, Step 0 already does): `cc-delegate setup --json` → `ready:true` and the additive `agentic:{installed,...}` block. Not installed / no keys → this fleet doesn't exist for the run; suggest `! cc-delegate-keys` ONCE and continue with Claude/Codex, don't stop.
 
-Routing table (text mode):
-
-| Step type | Frontier model | Equivalent |
-|---|---|---|
-| Boilerplate / cheap bulk | `deepseek` | ~Haiku |
-| Codegen / refactor / tests in volume | `qwen` | ~Sonnet (low range) |
-| Demanding codegen at best price | `deepseek-pro` | ~Sonnet (flagship DeepSeek, cheaper than glm) |
-| Complex agentic refactor in text | `glm` | ~Sonnet 5 |
-| 1M context audit / deep reasoning | `kimi` | ~Opus (expensive — only if Claude/Codex can't handle the context) |
-| Second opinion / generalist frontier | `grok` | ~Opus/GPT-5.5 (Grok 4.5, 500K ctx) |
-
-Dispatch (text): `cc-delegate task --background --model <alias> --file <ctx>... "<brief>"` → `jobId` → collect with `status`/`result`. Iterative direction: `task --resume last "<correction>"` resends the full thread to the same model — correct without re-packaging context. The brief must be self-contained and specify the expected output format (full code or unified diff). The output is NOT applied: applying it and verifying it is a separate step (yours or a cheap subagent's).
-
-Dispatch (agentic): `cc-delegate task --agentic [--write] --model <alias> "<brief>"` → the delegate explores/runs/edits itself and reports evidence. Requires opencode CLI installed (per the `agentic` block). `--resume` continues the same native session for follow-ups.
-
-Routing rules:
-- Text mode remains the default for pure generation; the brief must be self-contained.
-- Tool-requiring bounded steps (explore repo, run tests, edit in tree) CAN go to `task --agentic` when the `agentic` block shows it available — add `--write` only if the step edits.
-- Agentic NEVER for trivial generation: the ~13-14k harness overhead outweighs the savings.
-- Decisions stay with the orchestrator: agentic delegates execute bounded steps and report back — they never make design/architecture calls.
+Where it sits vs the other fleets:
+- **Text mode** = pure generation with no tools (boilerplate, tests, mechanical refactor of provided code, diff review, long-context reads). Cheapest. Output is NOT applied — you or a cheap subagent apply + verify.
+- **Agentic mode** (`task --agentic [--write]`) = the delegate needs to explore the repo, run commands, or edit in place. ~100× a text call but still cheaper than a Claude subagent; use it for tool-requiring bounded steps when Codex is unavailable/out of quota.
+- Decisions (design, architecture, security) stay with the orchestrator regardless of fleet.
 
 ### Delegation intensity (three tiers, driven by the Claude-usage signal)
 
@@ -95,7 +77,7 @@ The whole point: **Claude Code is always the orchestrator and the thinker for th
 
 Substitution chain when delegating (any tier — deeper tiers just push MORE work down it): Codex `gpt-5.6-terra`/`luna` (if quota) → cc-delegate (`task` text for pure generation; `task --agentic [--write]` for steps needing repo/commands/edits when the `agentic` block shows it available) → Claude subagent (`sonnet`/`haiku`) only as the last resort. Review always Codex first, else `glm` + second-opinion `grok` via cc-delegate, Claude review only for security-critical paths.
 
-Model tiering inside cc-delegate: mechanical/bulk → `deepseek`/`qwen`; standard execution → `deepseek-pro`/`glm`; deep judgment (economy substitute for Fable) → `kimi-fast` (fast) or `kimi` (hardest, expensive — reserve it); second opinion → `grok`.
+Which cc-delegate model for a given step (by Anthropic-equivalence and price): defer to the `cc-delegate:using-cc-delegate` skill — it's the single source of truth. In economy mode, the Fable/Opus-substitute for deep judgment is `kimi`/`kimi-fast` with all material in `--file`.
 
 Announce the active tier at Step 0; drop back toward high-power once the reset passes or the user says so; note in the final report what ran delegated vs in-session.
 
