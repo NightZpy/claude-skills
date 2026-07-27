@@ -1,0 +1,614 @@
+<title>Employee OS — guía completa (cómo funciona todo)</title>
+<style>
+  :root{
+    --primary:#8b5cf6; --fg:#242428; --muted-fg:#77777f; --bg:#ffffff; --surface:#f6f6f8; --surface2:#eeeef2;
+    --border:#e3e3ea; --green:#16a34a; --green-bg:#f0fdf4; --amber:#b45309; --amber-bg:#fffbeb;
+    --red:#b91c1c; --red-bg:#fef2f2; --code-bg:#1e1e26; --code-fg:#e6e6ee;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Monaco,Consolas,monospace;
+  }
+  :root[data-theme="dark"]{
+    --fg:#e7e7ee; --muted-fg:#9d9da8; --bg:#121216; --surface:#1b1b21; --surface2:#232329; --border:#33333c;
+    --green:#4ade80; --green-bg:#0f2318; --amber:#fbbf24; --amber-bg:#2a2010; --red:#f87171; --red-bg:#2a1414;
+    --code-bg:#0d0d12; --code-fg:#dcdce6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --fg:#e7e7ee; --muted-fg:#9d9da8; --bg:#121216; --surface:#1b1b21; --surface2:#232329; --border:#33333c;
+      --green:#4ade80; --green-bg:#0f2318; --amber:#fbbf24; --amber-bg:#2a2010; --red:#f87171; --red-bg:#2a1414;
+      --code-bg:#0d0d12; --code-fg:#dcdce6;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{font-family:var(--sans); color:var(--fg); background:var(--bg); margin:0; line-height:1.6; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:920px; margin:0 auto; padding:40px 20px 100px;}
+  h1{font-size:26px; font-weight:800; letter-spacing:-.01em; margin:0 0 6px; line-height:1.2;}
+  .lede{font-size:15px; color:var(--muted-fg); margin:0 0 28px; max-width:72ch;}
+  h2{font-size:19px; font-weight:800; margin:44px 0 12px; padding-top:14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; scroll-margin-top:16px;}
+  h2 .num{font-family:var(--mono); font-size:12px; font-weight:700; color:var(--primary); border:1.5px solid var(--primary); border-radius:999px; width:26px; height:26px; flex:none; display:grid; place-items:center;}
+  h3{font-size:15.5px; font-weight:700; margin:22px 0 8px;}
+  h4{font-size:13.5px; font-weight:700; margin:16px 0 6px; color:var(--fg);}
+  p{font-size:14.5px; color:var(--fg); margin:0 0 12px;}
+  ul,ol{margin:6px 0 14px; padding-left:22px;}
+  li{font-size:14.5px; margin-bottom:5px;}
+  a{color:var(--primary);}
+  code{font-family:var(--mono); font-size:12.5px; background:var(--surface2); padding:1px 6px; border-radius:5px;}
+  strong{font-weight:700;}
+
+  /* TOC */
+  .toc{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; margin:0 0 30px;}
+  .toc .t{font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-fg); margin-bottom:10px;}
+  .toc ol{margin:0; padding-left:20px; columns:2; column-gap:24px;}
+  .toc li{font-size:13.5px; margin-bottom:7px; break-inside:avoid;}
+  .toc a{color:var(--fg); text-decoration:none;}
+  .toc a:hover{color:var(--primary); text-decoration:underline;}
+  @media(max-width:600px){.toc ol{columns:1;}}
+
+  /* pre/code blocks */
+  pre{background:var(--code-bg); color:var(--code-fg); border-radius:12px; padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:12px; line-height:1.65; margin:10px 0 16px;}
+  pre code{background:none; padding:0; color:inherit; font-size:inherit;}
+  .ascii{background:var(--code-bg); color:var(--code-fg); border-radius:12px; padding:16px 18px; overflow-x:auto; font-family:var(--mono); font-size:11.5px; line-height:1.55; margin:10px 0 16px; white-space:pre;}
+
+  /* callouts */
+  .callout{border-left:3.5px solid var(--primary); background:var(--surface); border-radius:0 12px 12px 0; padding:12px 16px; margin:14px 0; font-size:14px;}
+  .callout b{color:var(--primary);}
+  .callout.rule{border-left-color:var(--red); }
+  .callout.rule b{color:var(--red);}
+  .callout.tip{border-left-color:var(--green);}
+  .callout.tip b{color:var(--green);}
+
+  /* tables */
+  table{width:100%; border-collapse:collapse; margin:10px 0 18px; font-size:13.5px;}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted-fg); font-weight:700;}
+  tr:last-child td{border-bottom:none;}
+  .twrap{overflow-x:auto;}
+
+  /* cards */
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0 18px;}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr;}}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 15px;}
+  .card b{display:block; font-size:12px; color:var(--primary); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em;}
+  .card p,.card li{font-size:13px; margin-bottom:4px;}
+
+  /* badges/pills */
+  .pill{display:inline-block; font-family:var(--mono); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--surface2); color:var(--fg); border:1px solid var(--border); margin:2px 3px 2px 0;}
+  .pill.gold{background:#3d2f06; color:#f5cf47; border-color:#5c4a10;}
+  :root:not([data-theme="dark"]) .pill.gold{background:#fff8e1; color:#8a6d00; border-color:#f0dc9a;}
+
+  .backTop{display:inline-block; font-size:11.5px; color:var(--muted-fg); text-decoration:none; margin-top:6px;}
+  .backTop:hover{color:var(--primary);}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--border); font-size:12.5px; color:var(--muted-fg);}
+  footer a{color:var(--muted-fg);}
+  footer a:hover{color:var(--primary);}
+
+  .faq dt{font-weight:700; font-size:14px; margin-top:14px;}
+  .faq dd{margin:4px 0 0; font-size:13.5px; color:var(--fg);}
+
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:13.5px; margin:8px 0 16px;}
+  .kv b{color:var(--muted-fg); font-weight:600; white-space:nowrap;}
+</style>
+
+<div class="wrap">
+
+<h1>Employee OS — guía completa</h1>
+<p class="lede">Todo lo que hay que saber para entender, usar, mantener y replicar el sistema: qué es, cómo se ve, cómo está construido por dentro, y cómo se opera día a día. Escrito para que cualquiera (incluido un yo del futuro, o un compañero) lo entienda sin contexto previo.</p>
+
+<div class="toc">
+  <div class="t">Índice</div>
+  <ol>
+    <li><a href="#s1">Qué es</a></li>
+    <li><a href="#s2">Tour visual del artifact</a></li>
+    <li><a href="#s3">Arquitectura (5 archivos)</a></li>
+    <li><a href="#s4">La base de datos, clave por clave</a></li>
+    <li><a href="#s5">El CLI (economía de tokens)</a></li>
+    <li><a href="#s6">Second brain</a></li>
+    <li><a href="#s7">Pipeline de actualización (3 capas)</a></li>
+    <li><a href="#s8">Comunicación en autopiloto</a></li>
+    <li><a href="#s9">Register-once, surface everywhere</a></li>
+    <li><a href="#s10">Micro-updates</a></li>
+    <li><a href="#s11">Los 8 meta-principios</a></li>
+    <li><a href="#s12">Backups (3 niveles)</a></li>
+    <li><a href="#s13">El skill (employee-os)</a></li>
+    <li><a href="#s14">Métricas de desempeño</a></li>
+    <li><a href="#s15">Mini-FAQ — cómo hago X</a></li>
+    <li><a href="#s16">Footer / enlaces</a></li>
+  </ol>
+</div>
+
+<h2 id="s1"><span class="num">1</span>Qué es</h2>
+<p>Employee OS es un sistema de control de la vida laboral de <strong>un</strong> empleado. Es, a la vez, dos cosas:</p>
+<ul>
+  <li>Un <strong>registro / base de datos</strong> de todo lo que le pasa en el trabajo: temas en curso, apuestas estratégicas, tickets, decisiones, incidentes, entregas, aliados, lecciones.</li>
+  <li>Un <strong>panel interactivo offline</strong> — un único archivo HTML autocontenido, sin backend, sin conexión requerida — que presenta ese registro como un grafo navegable, una matriz de prioridades y un cockpit diario.</li>
+</ul>
+<p>Nació como el mapa de Q3 de Alex en Acme y se generalizó en un sistema reusable para cualquier empleado en cualquier empresa. Un detalle clave que evita confusión: <strong>los periodos (Q3, H1…) son filtros dentro del sistema, no su alcance</strong>. El sistema cubre toda la vida laboral de la persona; el trabajo ya entregado no se borra, pasa a <code>group: "shipped"</code> — atenuado visualmente pero presente, porque alimenta el trabajo actual y sirve de evidencia en revisiones de desempeño (CPM).</p>
+<p>El motor de mantenimiento tiene una división de trabajo explícita: <strong>los LLM (sesiones de Claude Code) actualizan el sistema a diario</strong> aportando juicio — qué cambió, qué significa, qué consejo dar — mientras que <strong>los scripts hacen todo lo mecánico gratis</strong> (fechas, historial, reconstrucción del HTML, sincronización con el issue tracker). Esa separación es la regla de oro de todo el sistema y reaparece en cada sección de esta guía.</p>
+
+<h2 id="s2"><span class="num">2</span>Tour visual del artifact</h2>
+
+<h3>El grafo radial</h3>
+<p>El grafo central organiza los nodos por <strong>sector</strong> (cada grupo/área ocupa una porción angular) y por <strong>anillo</strong> (la prioridad determina qué tan cerca del centro vive un nodo — <code>prioScore</code> 5 = anillo central). Cada nodo se lee con <strong>4 canales visuales ortogonales</strong>, así que un mismo color puede significar cosas distintas según la forma que lo acompaña:</p>
+
+<div class="grid2">
+  <div class="card"><b>Forma = tipo de nodo</b>
+    <ul>
+      <li>● círculo = tema de trabajo</li>
+      <li>⬢ hexágono = apuesta estratégica (bet)</li>
+      <li>▢ rectángulo redondeado = issue de Linear</li>
+      <li>◆ diamante = tema nuevo (sin ticket aún)</li>
+      <li>👤 persona = aliado</li>
+      <li>◎ doble contorno = actor externo (cliente/competidor)</li>
+      <li>★ estrella con glow = item personal</li>
+    </ul>
+  </div>
+  <div class="card"><b>Color, anillo, opacidad</b>
+    <ul>
+      <li><strong>Color</strong> = área (paleta por grupo)</li>
+      <li><strong>Anillo</strong> = de quién es → <span class="pill gold">dorado</span> = mío · gris punteado = de otro (teammate)</li>
+      <li><strong>Opacidad</strong> = vivo / hecho → completa = vivo, atenuado = <code>done</code></li>
+    </ul>
+  </div>
+</div>
+<p>Los issues de Linear y los temas nuevos son <strong>satélites</strong>: orbitan a ~46px alrededor de su nodo tema padre (el <code>parent</code> en su registro), conectados por un trazo tenue. No tienen slot propio en el sector/anillo global ni entran en la matriz — son detalle del tema al que pertenecen.</p>
+
+<h3>La matriz valor × complejidad</h3>
+<p>Vista alternativa de primera clase (no un adorno): eje X = <strong>complejidad</strong> (1-5), eje Y = <strong>valor para mí</strong> (1-5), color = área — mismos filtros, misma lente activa, mismo buscador y misma selección que el grafo (comparten el pipeline <code>styleMatrix</code>). Cuatro cuadrantes con la misma lógica de lectura que el resto del sistema:</p>
+<div class="ascii">                     alto valor
+        ↖ QUICK WINS         │        APUESTAS GRANDES ↗
+        (bajo esfuerzo,      │        (alto esfuerzo,
+         alto valor)         │         alto valor — vale invertir)
+  ───────────────────────────┼───────────────────────────────
+        ↙ RELLENO            │        CUIDADO ↘
+        (bajo esfuerzo,      │        (alto esfuerzo,
+         bajo valor)         │         bajo valor — ojo aquí)
+                     baja complejidad → alta complejidad</div>
+<p>Desde el detalle de cualquier nodo con <code>matrix:true</code> hay un chip <code>Val X/5</code> y un botón "▦ ver en matriz" que salta a la vista y hace pulsar el punto correspondiente.</p>
+
+<h3>Vistas y controles</h3>
+<table>
+<tr><th>Vista</th><th>Qué muestra</th></tr>
+<tr><td>🪐 Órbita</td><td>el grafo radial (vista por defecto)</td></tr>
+<tr><td>▦ Matriz</td><td>valor × complejidad, cuadrantes</td></tr>
+<tr><td>▤ Panel</td><td>solo el panel lateral, a ancho completo (grafo/matriz ocultos)</td></tr>
+</table>
+<p>Toolbar inferior-derecha (esquina del stage, se rutea a la vista activa): <code>−</code>/<code>+</code> zoom, <code>⤢</code> fit (ajustar a lo visible), reset, maximizar (pantalla completa dentro del artifact) y <code>▧</code> marquee (arrastrar con Shift o el botón para hacer zoom a una región — Esc cancela; funciona igual en Órbita y en Matriz).</p>
+<p>Encima del stage: buscador global (<code>🔍</code>, atajo <code>/</code> o <code>⌘K</code>) que resalta nodos/personas/temas; una <strong>leyenda</strong> colapsable con los 4 canales explicados arriba; y un panel de <strong>filtros</strong> colapsable con controles por grupo — <code>solo</code> (aislar ese grupo), <code>invertir</code>, <code>todos</code> — combinados en AND con la lente activa. Semántica clave: <strong>lo marcado es lo que se muestra</strong> (no al revés), y siempre hay un botón «↺ Restablecer filtros» para volver al estado por defecto.</p>
+
+<h3>El tab Hoy — el día como centro</h3>
+<p>Hoy dejó de ser un simple cockpit del día actual: ahora organiza toda la semana alrededor de un <strong>selector de día</strong> — en pantallas angostas se colapsa a una galería de flechas (◂ día ▸) para no romper el ancho. Elegir un día renderiza su <strong>timeline</strong> en un rail con 3 modos de visualización, controlados por el usuario y persistidos entre sesiones:</p>
+<div class="grid2">
+  <div class="card"><b>⊟ Compacto (default)</b><p>Lista tipo agenda: solo lo que existe ese día (reuniones, rituales, deadlines) — sin grilla horaria fija, sin huecos vacíos.</p></div>
+  <div class="card"><b>⊞ Completo</b><p>Rail con grilla de horas (08:00-18:00) y bloques posicionados por hora real, más la línea "ahora" cuando el día mostrado es hoy.</p></div>
+  <div class="card"><b>▸ Colapsado</b><p>El rail se pliega a un resumen de una línea ("N reuniones · N rituales · expandir") — un chevron lo reabre.</p></div>
+  <div class="card"><b>🏆 Top de la semana</b><p>Debajo del rail: deadlines de la semana + hasta 3 "pills" de compromiso + el top-2 de foco — cada uno navega a SU ritual/nodo, no a un nodo genérico de metas.</p></div>
+</div>
+<p>Por debajo, el resto de secciones (pendientes, inbox, memoria, historial reciente, plantillas) quedan como <strong>collapsibles</strong> — abiertas por defecto pero plegables, para que el rail del día siga siendo el protagonista visual.</p>
+<div class="callout"><b>"ver día →" abre un nodo VIRTUAL.</b> Al hacer click en el encabezado del día (o en el CTA "ver día →" de cualquier fila que lo referencie) se abre ESE día como un nodo virtual dentro del panel Detalle — nada se guarda, todo se computa al vuelo desde la fecha: una sección <b>💡 Sugerencias</b> (calculada para ese día específico) seguida de secciones con "eyebrow" de fecha para reuniones, rituales, deadlines, entregas y journal de ese día. Es la misma doctrina de "nodo virtual" que gobierna las secciones 📜 (sección 9): si es derivable, se computa — nunca se guarda.</div>
+<p>Deadlines y "esta semana" siguen anclados a <code>meta.updated</code> (la fecha de build, no el reloj real), así cada versión publicada refleja su propio día y el historial no se mueve entre versiones.</p>
+
+<h3>Los tabs, uno por uno</h3>
+<div class="grid2">
+  <div class="card"><b>Hoy</b>
+    <p>El cockpit de la semana con el día como centro (ver subsección arriba): selector de semana/día, timeline en 3 modos, 🏆 Top de la semana, pendientes/inbox/memoria como collapsibles, y "ver día →" para abrir cualquier día como nodo virtual.</p>
+  </div>
+  <div class="card"><b>Detalle</b>
+    <p>Panel contextual: al hacer click en un nodo del grafo/matriz aparece aquí su ficha completa — personas asociadas, links a threads/docs, insights, chip de valor con salto a la matriz.</p>
+  </div>
+  <div class="card"><b>Insights</b>
+    <p>Observaciones de nivel más alto, HTML libre curado por juicio del LLM.</p>
+  </div>
+  <div class="card"><b>Ritmo</b>
+    <p>Rituales recurrentes (daily, weekly, health-note…) cada uno con una guía de cómo ejecutarlo y "jugadas de excelencia" (tips de cómo hacerlo memorable, no solo correcto).</p>
+  </div>
+  <div class="card"><b>Proyectos</b>
+    <p>El "porqué" de cada workstream — contexto narrativo que no cabe en la ficha corta de un nodo.</p>
+  </div>
+  <div class="card"><b>Aliados</b>
+    <p>El playbook por persona: cómo trabajar con cada stakeholder (qué valora, cómo convencerla, errores a evitar).</p>
+  </div>
+  <div class="card"><b>KPIs (+ 📏 Mi desempeño)</b>
+    <p>Evidencia y métricas. "Mi desempeño" son 3 métricas COMPUTADAS en build time desde la base de datos, más el auto-score de competencias (ver sección 10).</p>
+  </div>
+  <div class="card"><b>🧠 Memoria</b>
+    <p>Las 5 categorías del second brain (personas, lecciones, decisiones, gotchas, preferencias) — ver sección 6.</p>
+  </div>
+  <div class="card"><b>🗄️ Historial</b>
+    <p>Timeline completo de <code>done_log</code> (semana → día) con chips de filtro, distinto de "esta semana" en Hoy que solo muestra los últimos 7 días.</p>
+  </div>
+  <div class="card"><b>Prompt</b>
+    <p>El bootstrap completo (<code>q3-prompt.txt</code>) embebido y copiable — para arrancar cualquier sesión de agente con contexto total.</p>
+  </div>
+  <div class="card"><b>Fuentes</b>
+    <p>Categorías colapsables (<code>&lt;details&gt;</code> nativo) con los enlaces a Slack, Docs, Linear, calendario, artifacts y el propio repo del sistema.</p>
+  </div>
+</div>
+
+<h2 id="s3"><span class="num">3</span>Arquitectura</h2>
+<p>Todo vive en una sola carpeta ("hub folder"). Cinco archivos fuente producen un HTML generado, que a su vez se publica como artifact:</p>
+<div class="ascii">  q3-data.json  ──┐
+  (LA base de      │
+   datos)          │
+                    ├──►  build_q3.py  ──►  q3-map-2026.html  ──►  artifact publicado
+  q3-prompt.txt ────┤     (el builder)      (GENERADO —          (misma URL en cada
+  (bootstrap,       │                        nunca se edita        republish = nueva
+   2 partes)        │                        a mano)                versión)
+                    │
+  _q3-shell.tpl ────┘
+  (la UI: CSS+JS)
+
+  update_q3.py  ──► lee/escribe q3-data.json, invoca build_q3.py tras cada mutación
+  (el CLI mecánico)</div>
+<p><code>build_q3.py</code> hace un trabajo puramente mecánico: lee <code>q3-data.json</code> + <code>q3-prompt.txt</code>, escapa el prompt a HTML, vuelca cada colección de la base de datos como una constante JS (<code>const NODES=…</code>, etc.) en el marcador <code>/*@DATA*/</code> dentro de <code>_q3-shell.tpl</code>, y reemplaza cada placeholder <code>&lt;!--@TAB_…--&gt;</code>/<code>&lt;!--@TPL_…--&gt;</code>/<code>&lt;!--@PROMPT--&gt;</code> por el HTML correspondiente de <code>tabs</code>/<code>templates</code>. Antes de escribir, hace un <code>assert</code> de que no quede ningún placeholder sin reemplazar. El resultado es <code>q3-map-2026.html</code>, que nunca se toca a mano — se regenera siempre desde las fuentes.</p>
+<div class="callout rule"><b>Propiedad RECOVERY.</b> Todo es re-extraíble desde el HTML publicado: las constantes JS contienen los datos verbatim, cada tab mapea de vuelta a su <code>tabs.*</code>, y <code>&lt;pre id="promptText"&gt;</code> guarda el prompt (solo hay que des-escapar las entidades). <code>update_q3.py recover --from &lt;html&gt;</code> reconstruye <code>q3-data.json</code> + <code>q3-prompt.txt</code> con código puro, sin LLM — verificado byte-exacto en round-trip (salvo <code>evidence</code>, que queda plegada dentro del HTML renderizado del tab KPIs).</div>
+
+<h2 id="s4"><span class="num">4</span>La base de datos, clave por clave</h2>
+<p><code>q3-data.json</code> es un único objeto JSON. Estas son todas sus claves de primer nivel, con un mini-ejemplo real de cada una.</p>
+
+<h4>nodes — dos tipos de nodo</h4>
+<p><strong>(a) Nodo tema</strong> (el trabajo en sí — temas, apuestas, procesos, código, gente, externos, cosas personales, trabajo ya entregado):</p>
+<pre><code>{
+  "id": "builder-v1", "group": "bets", "slot": 0, "icon": "🧱",
+  "label": "Builder v1", "sub": "18/32 · P0",
+  "prio": "P0", "prioScore": 5, "cx": 4, "val": 4,
+  "owner": "[Ally] (PM) + eng", "status": "en curso",
+  "period": "q3", "matrix": true, "p0c": true, "date": true,
+  "people": [{"n": "[Ally]", "r": "PM lead del Builder"}],
+  "links": [{"t": "Builder Q3 Milestones", "u": "https://docs.google.com/…", "i": "📄"}],
+  "ins": [3, 7], "detail": "HTML…", "entry": "HTML — mi ángulo…"
+}</code></pre>
+<p><strong>(b) Nodo satélite</strong> (issue de Linear o tema nuevo colgando de un tema padre — sin ninguno de los campos exclusivos de tema):</p>
+<pre><code>{
+  "id": "iss-EX-42", "kind": "issue", "group": "issues",
+  "parent": "code-evals-ui", "owner": "mine", "state": "live",
+  "icon": "📋", "label": "EX-42", "sub": "Allow code evals",
+  "url": "https://tracker.example.com/issue/EX-42"
+}</code></pre>
+<p><code>group: "shipped"</code> marca workstreams ya entregados — paleta atenuada, <code>state: "done"</code>, conectados por edges <code>feeds</code> hacia el trabajo actual que habilitaron; doblan como evidencia de desempeño. <code>period</code> ("h1" | "q3", default "q3") es el filtro de periodo — los satélites heredan el de su padre.</p>
+
+<h4>edges, lenses, rituals</h4>
+<pre><code>// edges: {from,to,type: dep|feeds|risk|val|own, label}
+{"from": "builder-v1", "to": "m1-99", "type": "feeds", "label": "milestone 1"}
+
+// lenses: subconjuntos con nota — filtran nodos + explican el porqué
+{"id": "nplus1", "label": "⚡ Ruta N+1 → gate",
+ "nodes": ["tema-central", "tema-calidad", "tema-metricas", "tema-proceso", "tema-entrega"],
+ "note": "La ruta crítica técnica… el pitch: '3 minutos → 20 segundos'."}
+
+// rituals: recurrentes con guía + tips de excelencia (tab Ritmo)
+{"id": "r-daily", "icon": "🌅", "label": "Daily ligero", "cad": "diario · 15 min",
+ "nodes": ["oncall-alerts", "verdicts", "bug-process"],
+ "guide": "Update en #tu-canal con formato fijo…",
+ "excel": "&lt;ul&gt;&lt;li&gt;Cierra el update con…&lt;/li&gt;&lt;/ul&gt;"}</code></pre>
+
+<h4>deadlines, week_pendings, focus, evidence</h4>
+<pre><code>// deadlines: [isoDate, label, navNodeId]
+["2026-07-20", "🏗️ M1: 99 en Builder", "m1-99"]
+
+// week_pendings: [storageKey, icon, label, targetNodeOrRitualId]
+["low", "🚨", "Triage de cierre del Low 89.5% (8/7 17:43)", "oncall-alerts"]
+
+// focus: [nodeId, dotColor, icon, label, subLabel]
+["mcp-coupling", "#16a34a", "🔌", "MCP coupling (line 30)", "quick win"]
+
+// evidence: array de líneas HTML unidas con <br> en el token @EVIDENCE@
+"Alertas: 11 reglas live, watchdog 47 ticks / 0 fallas"</code></pre>
+
+<h4>calendar_events, drafts, meeting_prep — el subsistema de comunicación</h4>
+<pre><code>// calendar_events: reuniones externas jaladas de Google Calendar (7 días, sin ruido de almuerzo)
+{"date": "2026-07-14", "time": "11:00", "t": "Eng PM leads weekly ([CTO])", "i": "📅"}
+
+// drafts: mensajes listos-para-pegar por RITUAL (no por día) — {ritualId: {date, text}}
+{"r-sync": {"date": "2026-07-14",
+  "text": "Last week: alerts week 1 closed well… This week, in order: … Need from you: Santi — timing check…"}}
+
+// meeting_prep: talking points por REUNIÓN del día
+{"date": "2026-07-14", "time": "11:00", "title": "Eng PM leads weekly ([CTO])",
+ "text": "1) TU TEMA (compromiso CPM)… 2) Announce: Alerts training session Friday…"}</code></pre>
+<p><code>calendar_events</code> alimenta el "🗓️ Próximos 7 días" de Hoy junto con deadlines y ocurrencias de rituales; se refresca en cada loop diario (Capa 1, un pull rápido de Calendar) y <code>meta.cal_synced</code> guarda la fecha del último pull. <code>drafts</code> y <code>meeting_prep</code> son el subsistema de <strong>Comunicación en autopiloto</strong> — ver la sección 8 para el detalle completo de cuándo se generan y con qué reglas.</p>
+
+<h4>done_log — historial de entregas</h4>
+<pre><code>{
+  "date": "2026-07-12", "i": "🧠",
+  "t": "Design doc: Second Brain para Employee OS",
+  "u": "[YOUR-ARTIFACT-URL]…",
+  "g": "Análisis de 2 escuelas… veredicto SÍ, opción A…",
+  "nav": "artifacts-blogs"
+}</code></pre>
+<p>Es la historia DURABLE de entregas con evidencia (doc/artifact). Se renderiza completa en el tab 🗄️ Historial (agrupado semana→día, con chips de filtro) y recortada a los últimos 7 días en Hoy ("Esta semana"). Cada fila tiene "ver" (expande <code>g</code>, cuyo texto suele terminar en "ver más →" hacia el <code>nav</code>: un ritual si empieza con <code>r-*</code>, un nodo en cualquier otro caso). Se añade solo vía <code>update_q3.py done</code>.</p>
+
+<h4>journal — bitácora append-only por nodo</h4>
+<pre><code>{
+  "date": "2026-07-12", "node": "cpm-checkin", "i": "📝",
+  "t": "Template CPM H1 recibido y entendido: 4 bloques…"
+}</code></pre>
+<p>A diferencia de los campos <code>status</code>/<code>detail</code> de un nodo (que se SOBREESCRIBEN), el journal es donde la historia se acumula: cambios de estado, decisiones, reuniones, incidentes. Se añade vía <code>update_q3.py journal</code>.</p>
+<div class="callout rule"><b>DATE ANCHOR RULE.</b> Rellenar historia pasada (<code>done --date ..</code> / <code>journal --date ..</code> para backfills) NUNCA mueve <code>meta.updated</code> — el ancla siempre es el hoy real; solo <code>touch</code> la mueve. El backfill es una operación de primera clase (registrar algo que pasó antes, con su fecha real, sigue siendo append-only), pero es una escritura DISTINTA de "avanzar el reloj del cockpit". Bug real corregido el 14/7: los backfills estaban rebobinando el cockpit al pasado.</div>
+
+<h4>inbox — captura cruda (second brain, capa 1)</h4>
+<pre><code>{"date": "2026-07-12", "t": "¿Vale la pena proponer el formato de la nota de salud como estándar del equipo esta semana?"}</code></pre>
+<p>Los ítems más nuevos van primero; nada se decide ni categoriza al capturar. Se añade con <code>update_q3.py note --text ".."</code>.</p>
+
+<h4>memory — 5 categorías destiladas (second brain, capa 2)</h4>
+<pre><code>{"cats": [
+  {"id": "personas", "icon": "👥", "label": "Personas", "notes": [
+    {"id": "m-1", "date": "2026-07-12", "date_upd": "2026-07-12",
+     "t": "[Ally] prefiere scope pequeño (V0 = solo lo esencial): llevarle opciones ya recortadas, no planes maximalistas.",
+     "refs": ["ally-hz", "m2-loop"], "pinned": true}
+  ]},
+  {"id": "lecciones", "icon": "🎓", "label": "Lecciones", "notes": [ … ]},
+  {"id": "decisiones", "icon": "⚖️", "label": "Decisiones", "notes": [ … ]},
+  {"id": "gotchas", "icon": "⚠️", "label": "Gotchas", "notes": [ … ]},
+  {"id": "preferencias", "icon": "🎛️", "label": "Preferencias", "notes": [ … ]}
+]}</code></pre>
+<p>Categorías fijas: <strong>personas</strong> (cómo trabajar con cada quien) · <strong>lecciones</strong> (qué funcionó/falló) · <strong>decisiones</strong> (por qué se eligió X, con fecha) · <strong>gotchas</strong> (trampas de sistemas/procesos) · <strong>preferencias</strong> (cómo le gusta trabajar al empleado). Se añade con <code>update_q3.py memory-add</code>; editar/fusionar notas existentes es trabajo de juicio del LLM.</p>
+
+<h4>competencias, templates, narrativa, tabs, meta</h4>
+<pre><code>// competencias: auto-score CPM (rúbrica oficial), revisado por trimestre
+{"updated": "2026-07-12", "note": "Auto-score tentativo (borrador CPM H1)…",
+ "items": [{"id": "ownership", "label": "Ownership", "score": 4,
+            "note": "Alertas end-to-end, versioning, gate: dueño de sistemas completos en prod."}]}
+
+// meta: fecha de build (ancla las fechas de Hoy) + de dónde salió el barrido
+{"updated": "2026-07-12", "fuentes": "sheet + milestones + leads 7/7 + Slack + …"}
+
+// tabs: HTML crudo de cada panel — {ritmo, proyectos, aliados, insights, kpis, fuentes, prompt_head}
+// templates: {tpl-daily, tpl-weekly, tpl-health} — texto plano copiable
+// narrativa: HTML libre (contexto general mostrado en el grafo)</code></pre>
+
+<h2 id="s5"><span class="num">5</span>El CLI (economía de tokens)</h2>
+<div class="callout rule"><b>La regla.</b> Los tokens de LLM se gastan SOLO en juicio (textos de detalle, consejos, insights, narrativa, focus, jugadas de stakeholder). TODO lo mecánico pasa por <code>update_q3.py</code> — nunca se edita el JSON a mano para estas cosas.</div>
+<p>Cada subcomando mutante hace automáticamente: backup → carga → mutación → escritura (<code>json.dump ensure_ascii=False indent=1</code>) → bump de <code>meta.updated</code> → rebuild (invoca <code>build_q3.py</code>) → commit+push a git. <code>validate</code>, <code>build</code>, <code>status</code>, <code>recover</code> y los <code>--dry-run</code> no mutan ni hacen backup.</p>
+<div class="twrap"><table>
+<tr><th>Comando</th><th>Qué hace</th></tr>
+<tr><td><code>update_q3.py status</code></td><td>resumen compacto, sin rebuild</td></tr>
+<tr><td><code>update_q3.py validate</code></td><td>chequeo de integridad del esquema, sin mutar</td></tr>
+<tr><td><code>update_q3.py build</code></td><td>solo reconstruye, sin mutar</td></tr>
+<tr><td><code>update_q3.py touch [--date YYYY-MM-DD]</code></td><td>bump de <code>meta.updated</code> + rebuild (correr a diario)</td></tr>
+<tr><td><code>update_q3.py done --label .. --url .. [--date --icon --guide --nav]</code></td><td>añade una entrega a <code>done_log</code> (historial deduplicado)</td></tr>
+<tr><td><code>update_q3.py journal --node .. --text .. [--date --icon]</code></td><td>añade un evento a la bitácora</td></tr>
+<tr><td><code>update_q3.py note --text .. [--date]</code></td><td>captura de una línea al <code>inbox</code> (second brain, cero fricción)</td></tr>
+<tr><td><code>update_q3.py memory-add --cat &lt;personas|lecciones|decisiones|gotchas|preferencias&gt; --text .. [--refs n1,n2] [--pin] [--date]</code></td><td>nota destilada a <code>memory</code></td></tr>
+<tr><td><code>update_q3.py issue-state --id AG-#### --state live|done</code></td><td>voltea el estado de un satélite issue/topic</td></tr>
+<tr><td><code>update_q3.py add-issue --id AG-#### --parent &lt;theme&gt; --sub .. [--owner mine|other] [--state] [--icon]</code></td><td>nuevo satélite issue</td></tr>
+<tr><td><code>update_q3.py sync-linear [--dry-run] [--mock-file states.json]</code></td><td>sincroniza estados de issues desde Linear, cero tokens</td></tr>
+<tr><td><code>update_q3.py recover --from &lt;map.html&gt; [--out DIR]</code></td><td>regenera <code>q3-data.recovered.json</code> + <code>q3-prompt.recovered.txt</code> desde un HTML publicado (parsing puro, nunca sobreescribe los archivos vivos)</td></tr>
+</table></div>
+<p><strong>Backups automáticos:</strong> antes de cada mutación se copia <code>q3-data.json</code> a <code>.backups/</code> con timestamp; se conservan las últimas 20 (las más viejas se borran). <strong>Git:</strong> cada build exitoso hace auto-commit + push al repo privado del sistema.</p>
+<p><strong>Sync con Linear sin API key propia</strong> (restricción del workspace de la empresa): un subagente barato con el MCP de Linear escribe un JSON de estados <code>{"EX-42": {"type": "completed", "name": "Done"}, …}</code>, y <code>sync-linear --mock-file states.json</code> lo aplica de forma determinista — mismo diffing y mismo journaling que con la API real.</p>
+
+<h2 id="s6"><span class="num">6</span>Second brain</h2>
+<p>Se investigaron dos escuelas de pensamiento sobre memoria de agentes antes de diseñar esta capa (ver el design-doc completo enlazado en el footer):</p>
+<div class="grid2">
+  <div class="card"><b>Anthropic — memory tool / Claude Code</b>
+    <p>El memory tool oficial (<code>memory_20250818</code>) es file-based bajo <code>/memories</code>: el modelo siempre lee al inicio y escribe bajo el framing "asume que te van a interrumpir" — lo no escrito se pierde. Claude Code separa <code>CLAUDE.md</code> (versionado, índice pequeño siempre cargado) de la auto-memoria (índice + archivos por tema, lazy). Lección clave: <strong>la higiene (poda, expiración) no viene incluida — hay que programarla</strong>, o la memoria se pudre.</p>
+  </div>
+  <div class="card"><b>Karpathy — append-and-review / LLM Wiki</b>
+    <p>Una sola nota: capturar es pegar arriba, sin decidir carpeta ni categoría (decidir el archivado en el momento de captura es el impuesto que mata todo sistema PKM). Gravedad, no borrado: lo nuevo sube, lo viejo se hunde; el review lo rescata si aún importa. LLM Wiki: en vez de RAG que re-deriva conocimiento cada vez, el LLM mantiene un wiki persistente y compuesto — el humano cura fuentes y pregunta bien, el LLM hace TODO el mantenimiento.</p>
+  </div>
+</div>
+<p><strong>Diseño elegido: Opción A — todo en el JSON.</strong> Nuevas claves (<code>inbox</code>, <code>memory</code>) en la misma base de datos que ya gobierna el resto del sistema, en vez de un directorio <code>/memories</code> aparte (eso rompería el principio de "el artifact es el registro completo" y <code>recover</code> no podría reconstruirlo). Del patrón de Anthropic se toma "índice pequeño + cuerpo aparte" (el índice de memoria pinneado vive en 5-10 líneas dentro del prompt PART 2; el cuerpo completo en la DB); de Karpathy, el espíritu de captura de una línea y gravedad en vez de borrado.</p>
+
+<h4>El flujo completo</h4>
+<div class="ascii">  1. captura de 1 línea               update_q3.py note --text ".."
+        │
+        ▼
+  2. visible en inbox (tab Hoy)       chip "📥 Inbox (N)"
+        │
+        ▼
+  3. TRIAGE DIARIO (por ítem)         ¿qué es esto?
+        ├─► evento           → journal
+        ├─► lección durable  → memory-add
+        ├─► acción pendiente → week_pendings
+        └─► nada de lo anterior → se hunde (gravedad, nunca se borra)
+        │
+        ▼
+  4. CONSOLIDACIÓN SEMANAL            junto con la nota de salud del viernes:
+     (anti-rot)                       dedupe (merge + bump date_upd), marcar
+                                      stale (&gt;30d sin tocar), cross-ref a nodos,
+                                      refrescar el índice pinned del prompt
+        │
+        ▼
+  5. MEMORY-FIRST                     ANTES de escribir cualquier consejo/insight/
+                                      focus/jugada/prep de reunión: LEER memory.cats
+                                      y aplicar las notas relevantes
+        │
+        ▼
+  6. CROSS-SURFACING                  🧠 Recuerda (en Hoy/foco y en rituales) ·
+                                      refs en el detalle de nodos · buscador global</div>
+<div class="callout tip"><b>Regla MEMORY-FIRST.</b> Memoria que no se consulta es peso muerto — el punto entero es que alimente cada recomendación. La UI lo refleja: los ítems de foco en Hoy y el detalle de cada ritual muestran una línea "🧠 Recuerda" tirada de las notas que referencian esos nodos.</div>
+
+<h2 id="s7"><span class="num">7</span>Pipeline de actualización (3 capas)</h2>
+<p>Del más barato al más caro — cada capa hace exactamente lo que solo ella puede hacer:</p>
+<div class="grid2">
+  <div class="card"><b>Capa 0 — scripts, 0 tokens</b>
+    <p><code>touch</code> (bump diario de fecha) y <code>sync-linear</code> (voltea estados de satélites, cron-able). Ninguna necesita LLM.</p>
+  </div>
+  <div class="card"><b>Capa 1 — subagentes baratos</b>
+    <p>Barren Slack (canales <strong>Y DMs — obligatorio, nunca solo canales</strong>: las conversaciones directas con aliados son donde vive la charla del proyecto principal), Gmail, Google Docs/Sheets/Drive, Calendar y comentarios de Linear (necesitan juicio + auth de MCP, no son scripteables). Solo devuelven hallazgos destilados mapeados a IDs de nodo — el material crudo nunca entra al contexto principal — y los PERSISTEN como hechos en el journal vía el CLI.</p>
+  </div>
+  <div class="card"><b>Capa 2 — el modelo de sesión</b>
+    <p>Aplica juicio desde la base de datos: decide qué entra a journal/done_log (vía CLI), edita estados/consejo en <code>q3-data.json</code> (solo lo que cambió de verdad), refresca el prompt (Part 2), republica.</p>
+  </div>
+</div>
+
+<h4>El loop diario, 8 pasos (con sub-pasos nuevos)</h4>
+<ol>
+  <li><code>update_q3.py status</code> (+ <code>validate</code> si algo se ve raro).</li>
+  <li>Capa 0: <code>update_q3.py sync-linear</code> — los estados de Linear se sincronizan solos.</li>
+  <li>Capa 1: reunir contexto fresco (Slack canales+DMs, Google Docs, Calendar…) vía subagentes baratos. También se refresca <code>calendar_events</code> (pull rápido de Calendar, próximos 7 días).</li>
+  <li>Capa 2 mecánico: entradas de <code>done_log</code>, eventos de journal, nuevos issues vía el CLI.</li>
+  <li>Capa 2 juicio: editar campos de <code>q3-data.json</code> (estados, consejo, insights, focus) — solo lo que cambió de verdad.
+    <ul>
+      <li><strong>5b — promoción de edges</strong> (higiene del grafo, cada loop): ver sección 9.</li>
+      <li><strong>5c — generación de drafts</strong> por ritual DUE ese día: ver sección 8.</li>
+      <li><strong>5d — meeting prep + meeting debrief</strong>: ver sección 8.</li>
+    </ul>
+  </li>
+  <li>Mantener el prompt sincronizado (contexto nuevo adentro, lo viejo afuera; fecha de refresh al día).</li>
+  <li>Republicar el artifact desde <code>q3-map-2026.html</code> a la MISMA url.</li>
+  <li>Si se añadió/renombró algún doc bajo el árbol de docs: regenerar el índice.</li>
+</ol>
+<h4>Integridad del registro</h4>
+<div class="grid2">
+  <div class="card"><b>DATE ANCHOR RULE</b><p>Backfills (<code>done</code>/<code>journal</code> con <code>--date</code>) nunca mueven <code>meta.updated</code> — solo <code>touch</code> avanza el ancla. Ver el detalle y el bug real que lo motivó en la sección 4 (journal).</p></div>
+  <div class="card"><b>Backfill de primera clase</b><p>Registrar algo que pasó antes con su fecha real NO es una excepción ni un hack — es una operación soportada y append-only como cualquier otra escritura al journal/done_log.</p></div>
+  <div class="card"><b>DMs obligatorios en los barridos</b><p>El barrido de Slack de Capa 1 SIEMPRE incluye DMs, no solo canales — las conversaciones 1:1 con aliados son donde vive la charla real del proyecto principal.</p></div>
+  <div class="card"><b>Cultura root-cause</b><p>"Falta algo" nunca se resuelve parchando la instancia — se investiga POR QUÉ el sistema lo perdió (¿fuente no cubierta? ¿un filtro lo tapó? ¿nunca se registró? ¿bug de ancla?), se arregla la CLASE del problema, y recién después se hace el backfill de la instancia puntual.</p></div>
+</div>
+
+<h2 id="s8"><span class="num">8</span>Comunicación en autopiloto</h2>
+<p>El sistema no solo registra lo que pasó — también <strong>redacta</strong> lo que el empleado necesita decir, listo para copiar y pegar. Dos subsistemas, ambos generados en el loop diario (paso 5c/5d de la sección 7) y ambos MEMORY-FIRST (se leen las notas de <code>memory</code> antes de escribir una sola línea):</p>
+
+<h3>drafts — mensajes rituales, listos para pegar</h3>
+<p>Claves de <code>drafts</code> por <code>ritualId</code>, no por día — un ritual recurrente "se escribe solo". Reglas de cuándo generarlos ("due-ness"):</p>
+<div class="grid2">
+  <div class="card"><b>Daily — nivel titular</b><p>Todos los días laborables. Formato Shipped / In progress / Blocked, UNA línea por ítem, CERO detalle técnico o de diseño (la profundidad vive en los artifacts/nodos enlazados; el daily es solo el titular).</p></div>
+  <div class="card"><b>Weekly sync — narrativo con asks</b><p>La narrativa de la semana: qué se entregó y POR QUÉ importa, qué está en curso, objetivos, y qué necesita el dueño del equipo/aliados (los "asks" van explícitos, no implícitos).</p></div>
+  <div class="card"><b>Due-ness guiada por calendario</b><p>El daily sale todo día laborable; un ritual atado a una reunión (el sync) sale el día que ESA reunión real aparece en <code>calendar_events</code> — no un día fijo de la semana, porque los feriados la mueven; la nota de salud sale los viernes.</p></div>
+  <div class="card"><b>📝 listo + botón copiar</b><p>Un draft fresco pone el chip "📝 listo" en la fila del ritual de hoy (tab Ritmo/Hoy); adentro, un <code>&lt;pre&gt;</code> con el texto y un botón "📋 Copiar". Una fecha vieja muestra un hint de "regenerar" en vez del texto stale.</p></div>
+</div>
+<div class="callout rule"><b>Links en el formato NATIVO del destino.</b> Todo nombre propio lleva su link — pero en el formato que su destino entiende: los drafts para Slack usan <code>nombre (URL cruda)</code> porque Slack auto-linkea URLs crudas y el markdown <code>[texto](url)</code> se renderiza LITERAL ahí (nunca usarlo en Slack); en docs/markdown sí vale <code>[texto](url)</code>. Nunca IDs o nombres pelados.</div>
+
+<h3>meeting_prep — puntos de conversación por reunión</h3>
+<p>Para CADA reunión del calendario de hoy (recurrente o no) se generan 3-5 puntos máximo, memory-first: notas de personas de los asistentes (la jugada), ítems abiertos de journal/pendientes que tocan a esas personas/nodos, compromisos con fecha vencida. El objetivo: que el empleado entre a cualquier sala pudiendo aportar valor. Se renderiza como un expandible discreto bajo la fila de la reunión en el panel del día: <code>🗒️ puntos (N)</code> despliega el texto con el mismo patrón de botón "📋 Copiar" que los drafts. Un tema que merece profundidad se documenta aparte (patrón design-doc) y se enlaza desde el prep + el nodo relevante.</p>
+
+<h3>MEETING DEBRIEF — procesar una reunión que acaba de terminar</h3>
+<p>Disparado por un micro-update tipo "procesa la meet que acaba de terminar [doc]" (ver sección 10). Es un fan-out de TODO el contenido de la reunión contra TODA la base de datos, en <strong>dos pasadas centradas en el dueño</strong>:</p>
+<div class="grid2">
+  <div class="card"><b>Pasada 1 — anclar en EL DUEÑO</b><p>Todo lo directamente suyo: qué dijo/propuso, compromisos asignados a él, preguntas dirigidas a él, menciones de él o de SUS sistemas/nodos/issues — la base de datos es el matcher (sus nodos, satélites, rituales, aliados).</p></div>
+  <div class="card"><b>Pasada 2 — relacionar el resto A TRAVÉS de esos anclajes</b><p>Contexto que afecta su trabajo → journal en sus nodos; ítems de compañeros solo si tocan su mapa (aliados, dependencias, feeds); contenido no relacionado → se salta (no es un acopio de las minutas de otros — es SU mapa).</p></div>
+</div>
+<p>Para cada ítem: primero se busca la entidad existente (nodo/issue/pendiente/memoria) y se ACTUALIZA — nunca se duplica. Tabla de ruteo:</p>
+<div class="twrap"><table>
+<tr><th>Qué es</th><th>A dónde va</th></tr>
+<tr><td>Nueva tarea/compromiso propio</td><td><code>week_pendings</code> (o <code>deadline</code> si tiene fecha, o <code>add-issue</code> si se va a trackear)</td></tr>
+<tr><td>Proyecto/iniciativa nueva</td><td>nodo tema nuevo o satélite ✨ topic bajo su tema</td></tr>
+<tr><td>Detalle/decisión sobre un nodo Q3 existente</td><td>hecho de journal en ese nodo (+ edit de estado/detail si cambió de verdad)</td></tr>
+<tr><td>Insight de cómo trabaja alguien</td><td><code>memory</code> → personas</td></tr>
+<tr><td>Decisión con su razonamiento</td><td><code>memory</code> → decisiones (+ journal)</td></tr>
+<tr><td>Tema de OTRA reunión próxima</td><td>enriquecer vía second brain → APPEND al <code>meeting_prep</code> de esa reunión</td></tr>
+<tr><td>Entregable prometido</td><td>pendiente con fecha; relación revelada → promoción de edge</td></tr>
+<tr><td>Ambiguo</td><td><code>inbox</code> (el triage diario lo resuelve después)</td></tr>
+</table></div>
+<p><strong>Reglas de ejecución</strong> (aprendidas de corridas reales):</p>
+<ul>
+  <li><strong>Time-sensitive primero:</strong> si una reunión afectada es inminente o está en curso, se entrega su contenido EN CHAT (listo para pegar) ANTES de registrar nada — el registro espera, la reunión no.</li>
+  <li><strong>Ritual≡meeting, unificación:</strong> cuando una reunión mapea a un ritual (ej. el weekly), sus puntos se escriben UNA vez y aparecen en AMBAS superficies — <code>drafts[ritualId]</code> (detalle del ritual) Y <code>meeting_prep</code> (agenda del día). Poblar solo una es un bug que el dueño va a encontrar.</li>
+  <li><strong>Checklist de salida (obligatorio):</strong> recorrer la tabla de ruteo fila por fila y confirmar que cada una se consideró — en especial "temas para OTRAS reuniones de HOY". Después decir exactamente DÓNDE renderiza cada ítem registrado.</li>
+  <li><strong>Fuente denegada (modo de permisos):</strong> pedir el link del doc o las notas pegadas en UN solo mensaje con ambas opciones — nunca reintentar una herramienta denegada.</li>
+  <li><strong>Calidad de la transcripción:</strong> marcar explícitamente las interpretaciones tentativas (como defecto de las notas, no como hecho) y preguntar; nunca adivinar un mapeo en silencio.</li>
+</ul>
+<p>Al terminar: refrescar drafts/preps afectados, rebuild, republicar. Una reunión es una ráfaga de hechos para todo el mapa, no una sola salida.</p>
+
+<h2 id="s9"><span class="num">9</span>Register-once, surface everywhere</h2>
+<p>Doctrina de higiene del grafo y del registro: cada hecho se escribe UNA vez en su fuente de verdad y aparece automáticamente en todos lados donde esa entidad se muestra — nunca a mano, nunca dos veces.</p>
+<div class="grid2">
+  <div class="card"><b>📜 Secciones computadas — en nodos Y en rituales</b><p>Cualquier <code>done --nav &lt;target&gt;</code> aparece automáticamente en el historial, en la sección 📜 del nodo objetivo ("Entregas") o del ritual objetivo ("Publicadas") — filtrando <code>done_log</code> por <code>nav</code>, cero linking manual. Si un tipo de entidad no tiene su sección computada, eso es un bug del shell, nunca se compensa con un link a mano.</p></div>
+  <div class="card"><b>Buscador universal — 6 categorías, cuota con nodos primero</b><p>El buscador global indexa TODO tipo de entidad — nodos, rituales, entregas, memoria, journal, agenda+inbox — con una cuota que garantiza que los nodos dominen (mínimo 4 de 9 filas) pero cada categoría con resultados recibe al menos una fila. Cada resultado rutea a la casa de esa entidad (una entrega → su nodo/ritual, un journal → la bitácora del nodo, una agenda → el panel virtual del día).</p></div>
+  <div class="card"><b>Promoción de edges en el loop</b><p>Cada loop (paso 5b de la sección 7): si un aliado aparece en el <code>people[]</code> de un nodo o acumula ≥2 hechos de journal sobre él SIN edge al grafo — o dos temas se mencionan mutuamente en el journal — se propone/agrega el edge faltante (<code>own</code> para aliados, <code>dep</code>/<code>feeds</code> para temas) y se journalea la promoción con su justificación. La gente/journal es la señal temprana; los edges son la verdad promovida.</p></div>
+  <div class="card"><b>Doctrina de nodo virtual</b><p>Lo DERIVABLE se computa al render, nunca se guarda: vistas de día, listas de entrega por entidad, agendas, rachas, métricas. Solo los hechos primarios se guardan. Ante cualquier idea de "X como nodo": ¿X es una entidad o una consulta?</p></div>
+</div>
+
+<h2 id="s10"><span class="num">10</span>Micro-updates</h2>
+<p>El loop completo (8 pasos, sección 7) corre UNA vez al día, típicamente en la mañana. Para todo lo demás, el dueño nombra un ALCANCE puntual y el agente procesa SOLO esa porción — nunca un barrido completo para un pedido puntual:</p>
+<div class="twrap"><table>
+<tr><th>Frase con alcance</th><th>Qué procesa</th></tr>
+<tr><td>"Actualiza mi Employee OS con la reunión que acaba de terminar [nombre]"</td><td>busca sus notas (Drive/Gemini/email), destila: hechos → journal, compromisos → pendientes, insights de personas → memory; refresca drafts afectados</td></tr>
+<tr><td>"…: revisa mis menciones de Slack [desde X]"</td><td>búsqueda de menciones dirigida únicamente → hechos de journal + pendientes si necesitan respuesta</td></tr>
+<tr><td>"…: procesa este doc/correo [link]"</td><td>lee esa única fuente → journal + lo que implique</td></tr>
+<tr><td>"Anota: …"</td><td>captura a <code>inbox</code>, cero juicio (o <code>update_q3.py note</code>, cero tokens)</td></tr>
+<tr><td>"Ya hice X" / "registra que entregué X [URL]"</td><td>flip de estado/deadline/focus, o <code>update_q3.py done</code></td></tr>
+</table></div>
+<div class="callout tip"><b>La escalera de costos.</b> Captura ≈ 0 tokens · update puntual ≈ un subagente barato · loop completo = solo por las mañanas. La regla nunca cambia: cada frase con alcance procesa ESA porción, jamás un barrido completo de todas las fuentes. (A futuro: canales push como un bot de Telegram convertirían varios de estos de pull a push.)</div>
+
+<h2 id="s11"><span class="num">11</span>Los 8 meta-principios</h2>
+<p>Cuando ninguna regla anticipó la situación, esto es lo que gobierna la decisión del agente — en orden de aplicación:</p>
+<ol>
+  <li><strong>Time-sensitivity primero:</strong> ¿hay un deadline medido en minutos (una reunión en curso, un mensaje que se espera)? Si sí: entregar al humano PRIMERO, persistir después.</li>
+  <li><strong>Una escritura, todas las superficies — y luego verificar la del usuario:</strong> lo que pertenece a una entidad se escribe en su fuente de verdad y debe aparecer en todo lugar donde esa entidad renderiza; después de escribir, verificar específicamente la superficie que el usuario está mirando (ahí es donde pasa el "no lo veo").</li>
+  <li><strong>Nunca "listo" sin "dónde":</strong> todo registro termina diciendo dónde vive y dónde renderiza cada ítem.</li>
+  <li><strong>Bloqueado ≠ atascado:</strong> un camino denegado/faltante recibe TODOS los fallbacks en UN solo mensaje (¿link? ¿pegar texto? ¿otra fuente?), y ahí se detiene — nunca reintentar el camino bloqueado.</li>
+  <li><strong>La incertidumbre se marca, nunca se lava:</strong> fuentes de baja calidad (transcripciones toscas, nombres ambiguos) producen registros explícitamente tentativos más una pregunta — un guess nunca debe ser indistinguible de un hecho.</li>
+  <li><strong>Los checklists le ganan a la memoria:</strong> los protocolos multi-paso (ruteo de debrief, pasos del loop) se recorren fila por fila AL FINAL — olvidar una fila es el modo de falla por defecto, así que el último paso siempre es "¿qué fila NO consideré?".</li>
+  <li><strong>"Falta" → root-cause del pipeline, no del síntoma:</strong> cuando el dueño reporta algo ausente, encontrar POR QUÉ el sistema lo perdió (¿fuente no cubierta? ¿un filtro lo tapó? ¿nunca se registró? ¿bug de ancla?) y arreglar la CLASE, después rellenar la instancia puntual.</li>
+  <li><strong>Una escritura sin verificación es solo una esperanza:</strong> después de cada mutación (datos, archivos, docs), verificar con un chequeo independiente (grep/build/render). Las ediciones silenciosas que no hacen nada son un modo de falla real y recurrente.</li>
+</ol>
+
+<h2 id="s12"><span class="num">12</span>Backups (3 niveles)</h2>
+<ol>
+  <li><strong>.backups/ local</strong> — copia de <code>q3-data.json</code> antes de cada mutación, últimas 20 conservadas. Protege contra una mala mutación.</li>
+  <li><strong>Repo git privado</strong> <a href="[YOUR-PRIVATE-BACKUP-REPO]" target="_blank">[YOUR-PRIVATE-BACKUP-REPO]</a> — auto-commit + push en cada build; historial completo y diffable.</li>
+  <li><strong>El propio artifact publicado</strong> — cada publicación es una versión. <code>update_q3.py recover --from &lt;html&gt;</code> regenera <code>q3-data.json</code> + <code>q3-prompt.txt</code> byte-exacto, con código puro, sin LLM.</li>
+</ol>
+
+<h2 id="s13"><span class="num">13</span>El skill (employee-os)</h2>
+<p>Instalado en <code>~/.claude/skills/employee-os/</code>. Dos modos:</p>
+<h4>Modo CREATE — instanciar para cualquier empleado/empresa</h4>
+<ol>
+  <li>Reunir contexto: quién es, rol y meta de trayectoria, equipo, fechas duras, fuentes de planificación, aliados/stakeholders, KPIs.</li>
+  <li>Copiar <code>_q3-shell.tpl</code>, <code>build_q3.py</code>, <code>update_q3.py</code> desde la instancia de referencia a una carpeta hub NUEVA (árbol de docs, nunca dentro de un repo de código). No modificarlos.</li>
+  <li>Resembrar <code>q3-data.json</code> siguiendo los esquemas de esta guía: nodos-tema desde sus fuentes de planificación, edges, satélites desde su tracker, aliados como nodos de personas, lentes, rituales con consejo orientado a su rol, deadlines, plantillas. <code>done_log</code> y <code>journal</code> vacíos.</li>
+  <li>Escribir su <code>q3-prompt.txt</code>: PART 1 copiada verbatim (el sistema es idéntico para cualquiera), PART 2 reescrita (su perfil, fuentes, KPIs, reglas de la casa).</li>
+  <li><code>python3 build_q3.py</code> → publicar como artifact NUEVO.</li>
+</ol>
+<h4>Modo UPDATE — el loop diario</h4>
+<p>El mismo loop de 8 pasos de la sección 7.</p>
+<div class="callout rule"><b>Reglas duras.</b>
+<ul style="margin-bottom:0">
+  <li>Nunca editar el HTML generado a mano; nunca saltarse el CLI para escrituras mecánicas.</li>
+  <li>La historia es append-only (journal, done_log, inbox) — nunca se borra, se fusiona o se marca stale.</li>
+  <li>Las ideas privadas (ej. una idea propia aún no anunciada) nunca pasan a versiones compartidas — una variante shareable de la empresa elimina la capa personal.</li>
+  <li>Las tareas complejas se documentan como design-doc separado (problema + hasta 3 opciones), enlazado desde su nodo — nunca inline dentro del mapa.</li>
+</ul>
+</div>
+
+<h2 id="s14"><span class="num">14</span>Métricas de desempeño</h2>
+<p>El tab KPIs es ahora <strong>stat-tile-first</strong>: 12 tiles arriba (número protagonista + etiqueta), las barras de competencias debajo, y toda la prosa explicativa plegada en un <code>&lt;details&gt;</code> al final — se lee de un vistazo, se profundiza solo si hace falta.</p>
+<div class="grid2">
+  <div class="card"><b>📏 6 tiles COMPUTADAS (build_q3.py)</b><p>Entregas · mes, Racha nota de salud, Presentar pieza · mes, Competencia media, Eventos · semana, Incidentes — calculadas de la base de datos en cada build, cero edición a mano.</p></div>
+  <div class="card"><b>🎛️ 6 tiles de CALIDAD ("los que te miden")</b><p>Reliability pass (~99+), no_loop, Suites TPR/TNR (4/6), Personas con config_dependencies (0%), Latencia de testing (~3m→20s objetivo), Verdicts/semana — HTML curado a mano en <code>tabs.kpis</code>, no computado.</p></div>
+</div>
+<p>Debajo de los tiles: 🎯 <strong>Competencias CPM</strong> como barras (<code>█░</code>) por rúbrica, y luego el <code>&lt;details&gt;</code> "📖 Qué significa cada capa" con la prosa completa (los que te miden / los que tú publicas / de rol / targets en negociación) y el registro de evidencia CPM — todo colapsado por defecto.</p>
+<div class="callout"><b>Dos tipos de métrica, nunca mezclados.</b>
+<ul style="margin-bottom:0">
+  <li><strong>ELEMENTAL</strong> (universal, automática, sin LLM): computada por <code>build_q3.py</code> desde la base de datos en cada build — entregas por semana/mes, rachas (semanas ISO consecutivas), eventos de journal, incidentes. Idéntica para cualquier instancia, cero configuración.</li>
+  <li><strong>CUSTOM</strong> (depende de las metas, derivada por LLM): hoy son el auto-score de competencias (8 ítems de la rúbrica CPM, trimestral) y los pills de compromiso H2. Un LLM las propone a partir de las metas del empleado y él las aprueba; cuando las metas cambian, se re-derivan.</li>
+</ul>
+</div>
+<div class="callout rule"><b>Regla anti-vanity.</b> Pocas métricas y fundamentales, en ambos tipos — no se agregan métricas de vanidad. Si algo no cambia una decisión o no sirve como evidencia real de desempeño, no entra al tab KPIs.</div>
+
+<h2 id="s15"><span class="num">15</span>Mini-FAQ — cómo hago X</h2>
+<dl class="faq">
+  <dt>¿Cómo capturo una idea rápida sin pensar dónde va?</dt>
+  <dd><code>python3 update_q3.py note --text "la idea, en una línea"</code> — cae al <code>inbox</code>, arriba de todo, sin decidir categoría. El triage diario decide después.</dd>
+
+  <dt>¿Cómo registro una entrega/deliverable?</dt>
+  <dd><code>python3 update_q3.py done --label "Nombre de lo entregado" --url "https://…" [--guide "mini-guía"] [--nav nodeId|r-ritual]</code> — queda en <code>done_log</code>, visible en Hoy ("esta semana") y en el tab Historial.</dd>
+
+  <dt>¿Cómo volteo un issue de Linear a hecho o en curso?</dt>
+  <dd>Manual: <code>python3 update_q3.py issue-state --id EX-42 --state done</code>. Automático/masivo: <code>python3 update_q3.py sync-linear</code> (con <code>LINEAR_API_KEY</code> en el entorno o un states-file generado por un subagente con el MCP de Linear, vía <code>--mock-file</code>).</dd>
+
+  <dt>¿Cómo agrego un issue nuevo que aún no está en el grafo?</dt>
+  <dd><code>python3 update_q3.py add-issue --id EX-42 --parent &lt;theme-id&gt; --sub "de qué trata" [--owner mine|other]</code> — crea el satélite orbitando el tema padre.</dd>
+
+  <dt>¿Cómo recupero todo si perdí las fuentes pero tengo un HTML publicado?</dt>
+  <dd><code>python3 update_q3.py recover --from q3-map-2026.html --out ./recuperado</code> — regenera <code>q3-data.recovered.json</code> + <code>q3-prompt.recovered.txt</code> con parsing puro (sin LLM), sin sobreescribir nada vivo.</dd>
+
+  <dt>¿Cómo lo adapto para otra persona/empresa?</dt>
+  <dd>Modo CREATE del skill <code>employee-os</code> (sección 9): mismo motor (<code>_q3-shell.tpl</code>, <code>build_q3.py</code>, <code>update_q3.py</code> sin tocar), datos y perfil reseedeados desde cero.</dd>
+
+  <dt>¿Dónde vive cada cosa?</dt>
+  <dd>Todo en una carpeta hub bajo el árbol de docs (nunca dentro de un repo de código): <code>q3-data.json</code>, <code>q3-prompt.txt</code>, <code>_q3-shell.tpl</code>, <code>build_q3.py</code>, <code>update_q3.py</code>, <code>SKILL.md</code>, <code>README.md</code>, <code>BACKLOG.md</code>, <code>design-docs/</code> (un artifact por tarea compleja), <code>.backups/</code> (backups automáticos) — y todo respaldado además en el repo git privado.</dd>
+</dl>
+
+<h2 id="s16"><span class="num">16</span>Enlaces</h2>
+<footer>
+  <p><strong>Repo del sistema:</strong> <a href="[YOUR-PRIVATE-BACKUP-REPO]" target="_blank">github.com/[YOUR-PRIVATE-BACKUP-REPO]</a><br>
+  <strong>Mapa vivo (instancia de referencia):</strong> <a href="[YOUR-ARTIFACT-URL]" target="_blank">claude.ai/code/artifact/33464a59…</a><br>
+  <strong>Design doc — Second Brain:</strong> <a href="[YOUR-ARTIFACT-URL]" target="_blank">claude.ai/code/artifact/2ffc292b…</a></p>
+  <p style="margin-top:14px">Guía generada a partir de las fuentes canónicas del sistema: <code>q3-prompt.txt</code>, <code>SKILL.md</code>, <code>README.md</code>, <code>BACKLOG.md</code>, <code>update_q3.py</code>, <code>build_q3.py</code> y el design-doc de second brain.</p>
+</footer>
+
+</div>

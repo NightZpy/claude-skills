@@ -1,0 +1,48 @@
+{
+  "name": "claude-skills",
+  "owner": {
+    "name": "NightZpy"
+  },
+  "metadata": {
+    "description": "Hand-authored Claude Code skills, split into four installable plugins so you only load what you use.",
+    "version": "1.1.0"
+  },
+  "plugins": [
+    {
+      "name": "orchestration",
+      "description": "How work gets routed: plan-big-execute-small (advisor/executor orchestration), ask (Q&A delegated to a clean cheap subagent), advisor-tool (the Claude API advisor tool).",
+      "version": "1.0.0",
+      "author": {
+        "name": "NightZpy"
+      },
+      "source": "./plugins/orchestration"
+    },
+    {
+      "name": "personal-ops",
+      "description": "Personal operations: life-os (life registry as one interactive artifact), mac-doctor (diagnose a slow Mac), npm-supply-chain (supply-chain hardening recipe).",
+      "version": "1.0.0",
+      "author": {
+        "name": "NightZpy"
+      },
+      "source": "./plugins/personal-ops"
+    },
+    {
+      "name": "design",
+      "description": "Diagrams and UI craft: excalidraw, diagram-conventions, proposal-artifact, redesign-existing-projects, web-design-guidelines and the two Vercel React/Next.js guides.",
+      "version": "1.0.0",
+      "author": {
+        "name": "NightZpy"
+      },
+      "source": "./plugins/design"
+    },
+    {
+      "name": "review-tools",
+      "description": "Reviewing real behavior: replicate-behavior-report (install the behavior-report pipeline), video-frame-review (diagnose a screen recording frame by frame), docx-comments.",
+      "version": "1.0.0",
+      "author": {
+        "name": "NightZpy"
+      },
+      "source": "./plugins/review-tools"
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+ "_README": "FAKE reference data for Life OS (persona: Alex @ Acme — entirely fictional). NOT wired to the build: the current engine GROUPS only has work groups; the product must EXTEND the groups map with the domain ids below (one color+sector per domain). Use these as the guide for what each life domain's nodes look like. Zero real data.",
+ "proposed_groups": {
+  "carrera": "work/career (Employee OS content lives here)",
+  "finanzas": "money: goals, debts, investments",
+  "salud": "health logistics & habits (never medical advice)",
+  "familia": "family & relationships",
+  "aprendizaje": "skills & learning",
+  "hogar": "home & admin paperwork",
+  "proyectos": "personal projects",
+  "proposito": "purpose & long-term direction"
+ },
+ "nodes": [
+  {
+   "id": "car-promo",
+   "group": "carrera",
+   "slot": 1,
+   "icon": "📈",
+   "label": "Promotion case H2",
+   "sub": "evidence-based, review in Dec",
+   "prio": "P1",
+   "prioScore": 4,
+   "cx": 3,
+   "val": 5,
+   "owner": "Alex",
+   "status": "en curso",
+   "matrix": true,
+   "people": [
+    {
+     "n": "Sam",
+     "r": "manager — reviews the case"
+    }
+   ],
+   "links": [
+    {
+     "t": "Review rubric",
+     "u": "https://example.com/rubric",
+     "i": "📄"
+    }
+   ],
+   "ins": [],
+   "detail": "Build the promotion case from the done_log evidence: ship visibly, present monthly, keep the health-note streak."
+  },
+  {
+   "id": "fin-fund",
+   "group": "finanzas",
+   "slot": 1,
+   "icon": "🛟",
+   "label": "Emergency fund 6m",
+   "sub": "4.2/6 months saved",
+   "prio": "P1",
+   "prioScore": 4,
+   "cx": 2,
+   "val": 5,
+   "owner": "Alex",
+   "status": "en curso",
+   "matrix": true,
+   "people": [],
+   "links": [
+    {
+     "t": "Budget sheet",
+     "u": "https://example.com/budget",
+     "i": "📊"
+    }
+   ],
+   "ins": [],
+   "detail": "Target: 6 months of expenses. Monthly close ritual feeds the number; auto-transfer on payday."
+  },
+  {
+   "id": "sal-5k",
+   "group": "salud",
+   "slot": 1,
+   "icon": "🏃",
+   "label": "Run 5K under 30min",
+   "sub": "current: 33:40",
+   "prio": "P2",
+   "prioScore": 3,
+   "cx": 2,
+   "val": 4,
+   "owner": "Alex",
+   "status": "en curso",
+   "matrix": true,
+   "people": [],
+   "links": [],
+   "ins": [],
+   "detail": "3 trainings/week (ritual). Logistics only: plan, streak, race date — no medical advice."
+  },
+  {
+   "id": "fam-visits",
+   "group": "familia",
+   "slot": 1,
+   "icon": "🏡",
+   "label": "Visit parents monthly",
+   "sub": "last: 3 weeks ago",
+   "prio": "P1",
+   "prioScore": 4,
+   "cx": 1,
+   "val": 5,
+   "owner": "Alex",
+   "status": "en curso",
+   "matrix": true,
+   "people": [
+    {
+     "n": "Mom",
+     "r": "loves orchids — gift memory lives in memory.personas"
+    }
+   ],
+   "links": [],
+   "ins": [],
+   "detail": "One visit/month minimum. The relationship IS the metric; memory holds dates and gift ideas."
+  },
+  {
+   "id": "apr-english",
+   "group": "aprendizaje",
+   "slot": 1,
+   "icon": "🗣️",
+   "label": "English B2→C1",
+   "sub": "2 lessons/week",
+   "prio": "P1",
+   "prioScore": 4,
+   "cx": 3,
+   "val": 5,
+   "owner": "Alex",
+   "status": "en curso",
+   "matrix": true,
+   "people": [],
+   "links": [
+    {
+     "t": "Tutor platform",
+     "u": "https://example.com/lessons",
+     "i": "🎓"
+    }
+   ],
+   "ins": [],
+   "detail": "Goal: lead a meeting in English by Q4. Lessons ritual + 1 presentation/month at work (double count with car-promo)."
+  },
+  {
+   "id": "hog-passport",
+   "group": "hogar",
+   "slot": 1,
+   "icon": "🛂",
+   "label": "Passport renewal",
+   "sub": "expires in 5 months",
+   "prio": "P2",
+   "prioScore": 3,
+   "cx": 1,
+   "val": 3,
+   "owner": "Alex",
+   "status": "no existe",
+   "matrix": true,
+   "date": true,
+   "people": [],
+   "links": [
+    {
+     "t": "Gov appointment site",
+     "u": "https://example.com/gov",
+     "i": "🏛️"
+    }
+   ],
+   "ins": [],
+   "detail": "Deadline-driven admin: book appointment, gather docs. Typical 'hogar' node: low glory, high regret if missed."
+  },
+  {
+   "id": "pro-sideapp",
+   "group": "proyectos",
+   "slot": 1,
+   "icon": "🛠️",
+   "label": "Side project: recipe app",
+   "sub": "weekend scope",
+   "prio": "P3",
+   "prioScore": 2,
+   "cx": 4,
+   "val": 3,
+   "owner": "Alex",
+   "status": "idea",
+   "matrix": true,
+   "people": [],
+   "links": [
+    {
+     "t": "Repo",
+     "u": "https://example.com/repo",
+     "i": "💻"
+    }
+   ],
+   "ins": [],
+   "detail": "Matrix says: high complexity, medium value — stays 'idea' until fin-fund hits 6m. The matrix exists to say NO."
+  },
+  {
+   "id": "prp-north",
+   "group": "proposito",
+   "slot": 1,
+   "icon": "🧭",
+   "label": "Annual north: independence",
+   "sub": "reviewed quarterly",
+   "prio": "P1",
+   "prioScore": 5,
+   "cx": 1,
+   "val": 5,
+   "owner": "Alex",
+   "status": "en curso",
+   "matrix": false,
+   "people": [],
+   "links": [],
+   "ins": [],
+   "detail": "The narrative everything hangs from. Quarterly review ritual re-scores every domain against it."
+  },
+  {
+   "id": "iss-EX-12",
+   "kind": "issue",
+   "group": "issues",
+   "parent": "car-promo",
+   "owner": "mine",
+   "state": "live",
+   "icon": "📋",
+   "label": "EX-12",
+   "sub": "Tracker task: draft the promo doc",
+   "url": "https://example.com/issue/EX-12"
+  },
+  {
+   "id": "t-newgym",
+   "kind": "topic",
+   "group": "issues",
+   "parent": "sal-5k",
+   "owner": "mine",
+   "state": "live",
+   "icon": "✨",
+   "label": "New gym opened",
+   "sub": "closer to home — evaluate switching"
+  },
+  {
+   "id": "ally-sam",
+   "group": "people",
+   "slot": 1,
+   "icon": "👤",
+   "label": "Sam",
+   "sub": "manager · reviews the promo case",
+   "prio": "—",
+   "prioScore": 2,
+   "cx": 1,
+   "owner": "Sam",
+   "status": "aliado",
+   "matrix": false,
+   "people": [],
+   "links": [],
+   "ins": [],
+   "detail": "Cares about: predictability, written evidence. Bring: monthly one-pager. Play: no surprises."
+  }
+ ],
+ "edges": [
+  {
+   "from": "apr-english",
+   "to": "car-promo",
+   "type": "feeds",
+   "label": "english unlocks presenting"
+  },
+  {
+   "from": "fin-fund",
+   "to": "pro-sideapp",
+   "type": "risk",
+   "label": "fund first, then play"
+  },
+  {
+   "from": "ally-sam",
+   "to": "car-promo",
+   "type": "own",
+   "label": "le importa / impulsa"
+  },
+  {
+   "from": "prp-north",
+   "to": "fin-fund",
+   "type": "val",
+   "label": "independence needs runway"
+  }
+ ],
+ "journal_examples": [
+  {
+   "date": "2026-01-10",
+   "node": "sal-5k",
+   "i": "🏃",
+   "t": "First 5K test: 33:40. Baseline set."
+  }
+ ],
+ "inbox_examples": [
+  {
+   "date": "2026-01-12",
+   "t": "Mom mentioned she wants to repaint the kitchen — birthday gift idea?"
+  }
+ ],
+ "memory_examples": [
+  {
+   "cat": "personas",
+   "note": {
+    "id": "m-1",
+    "date": "2026-01-12",
+    "date_upd": "2026-01-12",
+    "t": "Mom loves orchids; hates surprises — announce visits ahead.",
+    "refs": [
+     "fam-visits"
+    ],
+    "pinned": true
+   }
+  }
+ ],
+ "done_log_examples": [
+  {
+   "date": "2026-01-15",
+   "i": "📊",
+   "t": "January financial close — fund at 4.2 months",
+   "u": "https://example.com/budget",
+   "g": "Monthly close: income/expenses reviewed, auto-transfer confirmed.",
+   "nav": "fin-fund"
+  }
+ ],
+ "rituals_examples": [
+  {
+   "id": "r-close",
+   "icon": "💰",
+   "label": "Monthly financial close",
+   "cad": "mensual · día 1",
+   "nodes": [
+    "fin-fund"
+   ],
+   "guide": "Review the month, update the fund number, confirm auto-transfers.",
+   "excel": "<ul><li>One trend + one decision, not just numbers.</li></ul>"
+  }
+ ]
+}

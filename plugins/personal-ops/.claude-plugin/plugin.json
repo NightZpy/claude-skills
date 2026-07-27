@@ -1,0 +1,10 @@
+{
+  "name": "personal-ops",
+  "version": "1.0.0",
+  "description": "Personal operations: life-os (life registry as one interactive artifact), mac-doctor (diagnose a slow Mac), npm-supply-chain (supply-chain hardening recipe).",
+  "author": {
+    "name": "NightZpy"
+  },
+  "homepage": "https://github.com/NightZpy/claude-skills",
+  "license": "MIT"
+}

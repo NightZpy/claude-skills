@@ -1,0 +1,10 @@
+{
+  "name": "review-tools",
+  "version": "1.0.0",
+  "description": "Reviewing real behavior: replicate-behavior-report (install the behavior-report pipeline), video-frame-review (diagnose a screen recording frame by frame), docx-comments.",
+  "author": {
+    "name": "NightZpy"
+  },
+  "homepage": "https://github.com/NightZpy/claude-skills",
+  "license": "MIT"
+}

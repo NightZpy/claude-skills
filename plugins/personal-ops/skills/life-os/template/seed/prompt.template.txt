@@ -1,0 +1,109 @@
+# EMPLOYEE-OS BOOTSTRAP (auto-maintained · last refresh: 2026-07-12)
+Purpose: give any agent full working context fast AND the exact recipe to reproduce, update and organize this living work-control guide. It has TWO parts: PART 1 = the SYSTEM (generic — works for ANY employee at ANY company); PART 2 = the PROFILE (this instance: [OWNER] @ [ORG]). To adapt it for someone else, keep Part 1 and rewrite Part 2 + reseed the data.
+
+=====================================================================
+## PART 1 — THE SYSTEM (generic core)
+=====================================================================
+
+### What this is
+A personal work-control system for one employee — their WHOLE work life at the company, not a single quarter (quarters/periods are FILTERS, not the scope) — rendered as a single offline-capable HTML artifact: an interactive node GRAPH (everything they do/care about is a node: current themes, strategic bets, SHIPPED past workstreams [group "shipped", state done, dimmed], Linear issues, new topics, allies, external actors, personal items) + a value/complexity MATRIX + tabs (Hoy daily cockpit · Detalle · Insights · Ritmo rituals · Proyectos · Aliados · KPIs · Memoria · Historial · Prompt · Fuentes). Above all it is a REGISTRY/DATABASE: everything that happens gets recorded (dated history, journal, statuses); LLM sessions update states and advice daily so the employee keeps improving at the company. Past shipped work stays in the graph as foundation nodes feeding current work — it is also the evidence base for performance reviews (CPM).
+
+### Architecture & files (all in one hub folder)
+- q3-data.json — THE DATABASE. Single JSON object; all state lives here (nodes, edges, lenses, rituals, deadlines, week pendings, focus, evidence, done_log history, journal, tabs HTML, meta).
+- q3-prompt.txt — THIS file; injected into the artifact's Prompt tab at build.
+- _q3-shell.tpl — the UI (CSS + runtime JS; graph layout, satellites, shapes, lenses, filters, toolbar, tabs, Hoy cockpit). Rarely touched.
+- build_q3.py — the builder: JSON + prompt + shell → q3-map-2026.html (GENERATED, never hand-edit).
+- update_q3.py — the MECHANICAL CLI (see token economy). Subcommands: touch · done · journal · issue-state · add-issue · build · status.
+- design-docs/ — one standalone HTML + own artifact per complex task, linked from nodes.
+
+### Token economy (THE core rule)
+LLM tokens are ONLY for judgment: node detail/entry texts, advice ("excel" tips in rituals), insights, narrativa, focus picks, lens notes, stakeholder plays. EVERYTHING mechanical goes through update_q3.py — never hand-edit the JSON for these:
+- `python3 update_q3.py touch [--date]` — bump meta.updated (+rebuild). Run daily.
+- `python3 update_q3.py done --label .. --url .. [--date --icon --guide]` — append a shipped deliverable to done_log (dated history, deduped).
+- `python3 update_q3.py journal --node .. --text .. [--date --icon]` — append an event to the journal (append-only bitácora).
+- `python3 update_q3.py issue-state --id AG-#### --state live|done` — flip an issue satellite.
+- `python3 update_q3.py add-issue --id AG-#### --parent <theme> --sub .. [--owner]` — new issue satellite.
+- `python3 update_q3.py build` / `status` — rebuild / compact summary.
+Every mutating command bumps meta.updated and rebuilds. Scripts are stdlib-only; a cron or any Claude session can run them.
+
+### Update pipeline (3 layers — cheapest first)
+- LAYER 0 — pure scripts, ZERO tokens (cron-able): `update_q3.py touch` (daily date bump) and `update_q3.py sync-linear` (flips issue satellites live/done and journals each change; --dry-run to preview). Auth: LINEAR_API_KEY env or ~/.linear_api_key IF available; WITHOUT an API key (company workspace restriction) the flow is: a cheap subagent with the Linear MCP writes a states JSON {"ABC-123":{"type":"completed","name":"Done"},...} → `sync-linear --mock-file states.json` applies it deterministically (same diffing/journaling). Also `validate` (schema check), automatic local backups (.backups/, last 20, before every mutation), and git auto-commit+push after every build (the hub folder is a PRIVATE git repo: [YOUR-PRIVATE-BACKUP-REPO] — the versioned off-machine backup).
+- LAYER 1 — cheap subagents (Sonnet/Haiku): the relevance sweep of Slack channels, email (Gmail), Google Docs/Sheets/Drive, Calendar (meetings) and Linear comments/discussions (needs judgment + MCP auth, not scriptable). They return distilled findings mapped to node ids; raw material never enters the main context. Findings are PERSISTED as journal facts (via the CLI) so Layer 2 — and any future session — works from the DB, not from re-sweeping sources.
+- LAYER 2 — the session model (judgment): decides what enters the journal/done_log (via CLI), edits states/advice/insights/focus in q3-data.json (only what genuinely changed), refreshes THIS prompt (Part 2), republishes.
+
+### Daily loop (what an agent session does each day)
+1) `update_q3.py status` (+ `validate` if anything looks off).
+2) Layer 0: `update_q3.py sync-linear` — Linear states sync themselves.
+3) Layer 1: gather fresh context (Slack channels, Google docs — see Part 2 for exact sources) via cheap subagents.
+4) Layer 2 mechanical: done_log entries, journal events, new issues via update_q3.py.
+5) Layer 2 judgment: edit q3-data.json fields (states, advice, insights, focus) — only what genuinely changed.
+6) Keep THIS prompt in sync (new context in, stale out; bump the refresh date).
+7) Republish the artifact FROM q3-map-2026.html to the SAME url.
+8) If any doc was added/renamed under the docs tree: regenerate the docs index.
+
+### DB decision (settled 2026-07-12): JSON, not SQLite
+The build embeds JSON into the HTML anyway; LLM judgment edits are plain-text edits (SQLite would cost MORE tokens); the JSON is diffable and re-extractable from the generated HTML (RECOVERY); writes are serialized. The two real risks are covered: `validate` (schema) and growth (quarterly rollover: archive the quarter's data file, seed the next). Revisit only if the DB outgrows ~1MB or gains concurrent writers.
+### Backup (3 tiers)
+1) .backups/ local (against a bad mutation) · 2) the PRIVATE git repo [YOUR-PRIVATE-BACKUP-REPO] (auto-commit+push on every build; full diffable history) · 3) the published artifact itself (every publish = a version; `update_q3.py recover --from <html>` regenerates q3-data.json + q3-prompt.txt from any version with pure code, no LLM — round-trip verified byte-exact except `evidence`, which is folded into the rendered KPIs tab).
+
+### Exact file formats (so you can RECONSTRUCT them if missing)
+q3-data.json — single JSON object:
+- nodes: [{id, group: bets|builder|cluster|process|code|external|mine|people|shipped, slot:int (order in its ring), icon, label, sub, prio:"P0×5"|"P1"|"—"|..., prioScore:1-5 (5=center ring), cx:1-5, val:1-5 (value TO ME, matrix Y axis), owner, status:"existe"|"parcial"|"no existe"|"decisión"|"en curso"|"idea"|"aliado", state?:"done" (shipped/closed theme → dimmed + hideDone applies), period?:"h1"|"q3" (default q3; satellites inherit their parent's; the Filters panel has a Periodo row to filter by it), matrix:bool, p0c?:true (★), date?:true (⏰), people:[{n,r}], links:[{t,u,i}], ins:[insightNums], detail:"HTML", entry?:"HTML (my angle)"}]
+  · group "shipped" = PAST workstreams already delivered (e.g. H1: versioning, deploy-gate build, custom integrations, IKEA, decoupling, migration safety, pref dashboard) — muted palette, feeds-edges into the current work they enabled; they double as performance-review evidence.
+  · TWO NODE KINDS. (a) THEME nodes = the work items above, full fields. (b) SATELLITE nodes = Linear issues + brand-new topics, shaped {id, kind:"issue"|"topic", group:"issues", parent:<themeNodeId>, owner:"mine"|"other", state:"live"|"done", icon, label, sub, url}. Satellites have NONE of the theme-only fields; the shell places each on a ~46px ring around its parent theme node and excludes them from the matrix and the sector/priority layout. issue = a Linear ticket mapped to the theme it belongs to; topic = a new thing seen this week with no ticket yet.
+- VISUAL ENCODING — 4 orthogonal channels, "everything is a node but each type reads distinct": SHAPE = node type (circle = work theme · hexagon = strategic bet [bets] · ticket/rounded-rect = Linear issue · diamond = new topic · person-circle = ally [people] · double-outline = external client/competitor [external] · star-outline/glow = my personal item [mine]) · COLOR = area (group palette) · RING = ownership (gold = mine, dashed grey = teammate's) · OPACITY = state (dimmed = done, full = live).
+- edges: [{from,to,type: dep|feeds|risk|val|own, label}] (own = ally→topic)
+- lenses: [{id,label,nodes:"*"|[ids],note}] · rituals: [{id:"r-*",icon,label,cad,nodes:[ids],guide:"HTML",excel:"HTML"}]
+- deadlines: [[isoDate,label,navNodeId]] · week_pendings: [[storageKey,icon,label,target nodeId|ritualId,createdDate]] (createdDate YYYY-MM-DD, always set on insert — UI shows age, amber >3d; retire with EVIDENCE via `update_q3.py pending-done` — the UI checkbox is viewer-local, never the source of truth) · focus: [[nodeId,dotColor,icon,label,subLabel]]
+- done_log: [{date:"YYYY-MM-DD",i:icon,t:label,u:url,g:"mini-guide text",nav?:"nodeId|ritualId"}] — DURABLE history of shipped deliverables with a doc/artifact. Rendered in the Historial tab (full timeline, week→day, filter chips) and in Hoy as "Esta semana" (current week only); each row has "ver" (expands g, whose text ends with "ver más →" to the nav target's full detail — ritual if "r-*", node otherwise) + artifact link. Append via `update_q3.py done`.
+- journal: [{date:"YYYY-MM-DD",node:nodeId,i:icon,t:"what happened"}] — append-only BITÁCORA of events (status changes, decisions, meetings, incidents) tied to nodes. States/advice in nodes get OVERWRITTEN; the journal is where history accumulates. Append via `update_q3.py journal`.
+- DATE ANCHOR: the Hoy tab's weekday banner and relative "Nd" countdowns are computed from META.updated (stored build date), NOT the live clock — every published version reflects its own build day; history stays stable across versions (database model, not a moving clock).
+- inbox: [{date:"YYYY-MM-DD",t:"raw thought"}] — SECOND BRAIN capture layer (Karpathy append-and-review): zero-friction, newest FIRST, no node/category decision at capture time. Add via `update_q3.py note --text ".."`. Nothing is ever deleted — untriaged items just sink (gravity).
+- memory: {cats:[{id: personas|lecciones|decisiones|gotchas|preferencias, icon, label, notes:[{id:"m-N",date,date_upd,t,refs:[nodeIds],pinned}]}]} — SECOND BRAIN distilled layer (LLM-wiki): durable, compounding notes. personas = how to work with each person · lecciones = what worked/failed · decisiones = why we chose X (with date) · gotchas = traps in systems/processes · preferencias = how [Owner] likes to work. Add via `update_q3.py memory-add --cat .. --text .. [--refs] [--pin]`; edits/merges are LLM judgment work.
+- MEMORY PROTOCOL (the second-brain loop; design doc: [YOUR-ARTIFACT-URL]):
+  · DAILY TRIAGE: read inbox top-down; each item → journal (if it's an event), memory-add (if it's a durable lesson/insight), week_pendings (if it's an action), or leave to sink. Layer-1 sweep findings that reveal durable insights (a person's working style, a recurring trap) also land in memory, not just journal.
+  · WEEKLY CONSOLIDATION (with the Friday health note): dedupe near-identical notes (merge, bump date_upd), flag stale (>30d untouched and superseded → append "(stale)" or merge), cross-ref notes to nodes they mention, refresh the PINNED INDEX in Part 2. Never delete — merge or mark.
+  · ANTI-ROT RULE (Anthropic's lesson): hygiene is scheduled work, not an emergent property. If the weekly consolidation hasn't run, say so in the health-note session.
+  · MEMORY-FIRST OUTPUTS (cross-cutting rule): BEFORE writing any judgment output — advice/consejos, insights, focus picks, ritual "excel" tips, stakeholder plays, meeting prep, Slack drafts — READ memory.cats and APPLY the relevant notes (e.g. "tu manager valora números" shapes any review material; "X prefiere scope pequeño" shapes any proposal). The UI mirrors this: Hoy's focus items and ritual details surface a "🧠 Recuerda" line pulled from notes ref'ing their nodes. Memory that isn't consulted is dead weight — the whole point is that it feeds every recommendation.
+- evidence: ["HTML line",...] (joined with <br> at the @EVIDENCE@ token inside tabs.kpis)
+- templates: {tpl-daily,tpl-weekly,tpl-health}: plain text · narrativa: "HTML" · meta: {updated,fuentes}
+- competencias: {updated, note, items:[{id,label,score:1-5,note}]} — quarterly SELF-SCORE against the official CPM rubric (Ownership, Decision Making, Technical Depth, Values, Business Strategy, Technical Strategy, XFN Partnership, Communication). Rendered in the KPIs tab. Review each quarter (judgment edit) and before every CPM.
+- PERFORMANCE METRICS (KPIs tab "📏 Mi desempeño"): 3 are COMPUTED by build_q3.py from the DB at build time — deliveries-with-evidence per month (done_log), Friday health-note streak (done_log entries with nav r-health, consecutive ISO weeks), incidents logged (journal 🚨) — plus the competencias self-score. Rule: few and fundamental; don't add vanity metrics. tabs.kpis carries the @PERF@ and @COMPETENCIAS@ tokens the build replaces (in addition to @EVIDENCE@).
+- tabs: {ritmo,proyectos,aliados,insights,kpis,fuentes,prompt_head}: raw inner HTML of each panel tab
+
+build_q3.py — rewrite it from this if lost:
+1) read q3-data.json + q3-prompt.txt; HTML-escape the prompt (& then < then >).
+2) emit `const X=<json>;` for RITUALS,NODES,EDGES,LENSES,DEADLINES,WEEK_PENDINGS,FOCUS,DONE_LOG,JOURNAL + `const META={narrativa,updated};` replacing the `/*@DATA*/` marker in _q3-shell.tpl (JOURNAL via data.get('journal',[])).
+3) replace placeholders: <!--@TAB_RITMO/PROYECTOS/ALIADOS/INSIGHTS/KPIS/FUENTES--> (kpis after swapping @EVIDENCE@), <!--@TAB_PROMPT_HEAD-->, <!--@PROMPT-->, <!--@TPL_DAILY/WEEKLY/HEALTH-->, <!--@TBS--> = "<nNodes> nodos · <nEdges> relaciones · fuentes: <meta.fuentes> · <meta.updated>".
+4) assert no placeholder remains; write q3-map-2026.html (never hand-edit it).
+
+_q3-shell.tpl = the UI (CSS + runtime JS: radial layout by group sector/priority ring, lenses, search, tabs, Hoy cockpit with localStorage, SATELLITE rendering with shape-by-type/colour-by-area/ring-by-owner/opacity-by-state and faint connectors, graph controls = bottom-right toolbar zoom±/fit/reset/maximize/marquee ▧ + collapsed Legend chip + collapsed Filters panel with per-group solo/invertir/todos AND-combined with the active lens; MATRIX val×cx is a first-class view: same filters/lens/search/selection pipeline (styleMatrix), own pan/zoom (mview/mvp), marquee, quadrant captions (quick wins/apuestas grandes/relleno/cuidado), Val chip + "ver en matriz" pulse from node detail; views = 🪐 Órbita · ▦ Matriz · ▤ Panel (solo panel, stage hidden); tabs include 🗄️ Historial and 🧠 Memoria) containing those markers.
+RECOVERY: everything is re-extractable from the generated HTML — the consts hold the data verbatim, each tab's inner HTML maps back to tabs.*, and <pre id="promptText"> holds this prompt (unescape entities). Shell = HTML minus data/tabs with markers restored.
+
+### Adapting to another employee/company
+1) Keep _q3-shell.tpl, build_q3.py, update_q3.py unchanged. 2) Rewrite PART 2 below (who they are, sources, KPIs, rules). 3) Reseed q3-data.json: nodes from their planning sources (roadmap docs, Linear/Jira, Slack threads), edges for dependencies, allies as people nodes, their rituals/deadlines/templates; empty done_log/journal. 4) Build + publish as a new artifact. The generation logic and daily loop are identical. (A packaged skill exists for this — see SKILL.md next to these files.)
+
+=====================================================================
+## PART 2 — PROFILE: [NAME] @ [COMPANY] (this instance)
+Source of truth: the living map artifact [ARTIFACT_URL]
+
+### Who I am
+[NAME] ([EMAIL]) — [role, team, trajectory goal, who is around you].
+
+### Hard dates
+- [date — what].
+
+### Current priorities (in order)
+1) [priority + concrete evidence/next step].
+
+### Where to look for fresh context (in this order)
+- Chat: [channels]. Tracker: [team/project]. Docs: [links]. Email & calendar. Code: [repos/paths].
+
+### My KPIs (what to optimize for)
+- [few, fundamental].
+
+### Pinned memory index (top durable lessons — full body in the DB's memory key)
+- [empty at start; the weekly consolidation fills this].
+
+### House rules when helping me
+- [the rules your agent must never break].

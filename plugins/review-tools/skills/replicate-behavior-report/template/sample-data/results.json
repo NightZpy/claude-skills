@@ -1,0 +1,65 @@
+{
+	"config": {},
+	"suites": [
+		{
+			"title": "sample.spec.ts",
+			"file": "sample.spec.ts",
+			"line": 0,
+			"column": 0,
+			"specs": [],
+			"suites": [
+				{
+					"title": "Bienvenida",
+					"file": "sample.spec.ts",
+					"line": 10,
+					"column": 6,
+					"specs": [
+						{
+							"title": "la persona ve un mensaje de bienvenida al abrir la app",
+							"ok": true,
+							"tags": [],
+							"tests": [
+								{
+									"timeout": 120000,
+									"annotations": [
+										{
+											"type": "seed",
+											"description": "cuenta de prueba \"demo@example.com\" preparada fuera de cámara"
+										}
+									],
+									"expectedStatus": "passed",
+									"projectId": "",
+									"projectName": "",
+									"results": [
+										{
+											"workerIndex": 0,
+											"parallelIndex": 0,
+											"status": "passed",
+											"duration": 842,
+											"errors": [],
+											"attachments": [
+												{
+													"name": "snap:Paso 1 — pantalla de bienvenida recién abierta",
+													"contentType": "image/png",
+													"path": "media/snap1.png"
+												},
+												{
+													"name": "snap:Paso 2 — el botón continuar queda habilitado",
+													"contentType": "image/png",
+													"path": "media/snap2.png"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					],
+					"suites": []
+				}
+			]
+		}
+	],
+	"errors": [],
+	"stats": {}
+}

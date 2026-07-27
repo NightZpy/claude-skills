@@ -1,0 +1,656 @@
+<title>Behavior Review Service — is it worth building?</title>
+<style>
+  :root {
+    --paper: #F6F8F9;
+    --surface: #FFFFFF;
+    --surface-2: #EDF1F3;
+    --ink: #1A2732;
+    --ink-soft: #4A5B68;
+    --ink-faint: #7A8A95;
+    --line: #D5DDE2;
+    --accent: #0E5A6B;
+    --accent-soft: #E1EDF0;
+    --good: #1F7A4D;
+    --good-soft: #E3F0E8;
+    --fail: #B3403A;
+    --fail-soft: #F5E6E4;
+    --notes: #9A6A0B;
+    --notes-soft: #F4ECDA;
+    --mock-bg: #10181E;
+    --mock-ink: #E4EBEF;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0D1519;
+      --surface: #131E25;
+      --surface-2: #1A2831;
+      --ink: #DEE9EC;
+      --ink-soft: #9FB2BB;
+      --ink-faint: #6E828C;
+      --line: #27363F;
+      --accent: #4FAEBF;
+      --accent-soft: #12303A;
+      --good: #5BBA8A;
+      --good-soft: #12301F;
+      --fail: #E08880;
+      --fail-soft: #3A1B18;
+      --notes: #D8A94A;
+      --notes-soft: #33270D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0D1519;
+    --surface: #131E25;
+    --surface-2: #1A2831;
+    --ink: #DEE9EC;
+    --ink-soft: #9FB2BB;
+    --ink-faint: #6E828C;
+    --line: #27363F;
+    --accent: #4FAEBF;
+    --accent-soft: #12303A;
+    --good: #5BBA8A;
+    --good-soft: #12301F;
+    --fail: #E08880;
+    --fail-soft: #3A1B18;
+    --notes: #D8A94A;
+    --notes-soft: #33270D;
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F8F9;
+    --surface: #FFFFFF;
+    --surface-2: #EDF1F3;
+    --ink: #1A2732;
+    --ink-soft: #4A5B68;
+    --ink-faint: #7A8A95;
+    --line: #D5DDE2;
+    --accent: #0E5A6B;
+    --accent-soft: #E1EDF0;
+    --good: #1F7A4D;
+    --good-soft: #E3F0E8;
+    --fail: #B3403A;
+    --fail-soft: #F5E6E4;
+    --notes: #9A6A0B;
+    --notes-soft: #F4ECDA;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+  header, section { display: grid; grid-template-columns: 1fr minmax(0, 70ch) 1fr; }
+  header > *, section > * { grid-column: 2; min-width: 0; }
+  section > .tablewrap, section > .diagwrap, section > .mockrow, section > .desktop, section > .split, section > pre {
+    grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 1080px;
+  }
+
+  h1, h2, h3 { font-family: var(--serif); line-height: 1.2; text-wrap: balance; color: var(--ink); }
+  h1 { font-size: clamp(1.7rem, 4.5vw, 2.4rem); font-weight: 600; margin: .4rem 0 .6rem; }
+  h2 { font-size: 1.45rem; font-weight: 600; margin: 0 0 1rem; }
+  h3 { font-size: 1.08rem; font-weight: 600; margin: 1.6rem 0 .5rem; }
+  p { margin: 0 0 1rem; max-width: 70ch; }
+  a { color: var(--accent); }
+  strong { color: var(--ink); }
+  section { margin-top: 3.2rem; padding-top: 2rem; border-top: 1px solid var(--line); }
+
+  .eyebrow {
+    font-family: var(--sans); font-size: .72rem; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+    margin-bottom: .5rem;
+  }
+  .meta { color: var(--ink-faint); font-size: .85rem; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 0; }
+  .chip {
+    font-size: .74rem; font-weight: 600; letter-spacing: .04em;
+    padding: .22rem .6rem; border-radius: 999px; border: 1px solid var(--line);
+    color: var(--ink-soft); background: var(--surface);
+  }
+  .chip.accent { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .verdict-chip { font-family: var(--mono); font-size: .72rem; font-weight: 700; padding: .18rem .55rem; border-radius: 4px; white-space: nowrap; }
+  .v-good { background: var(--good-soft); color: var(--good); }
+  .v-fail { background: var(--fail-soft); color: var(--fail); }
+  .v-notes { background: var(--notes-soft); color: var(--notes); }
+
+  .answer {
+    margin-top: 2rem; padding: 1.4rem 1.5rem;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent); border-radius: 6px;
+  }
+  .answer p:last-child { margin-bottom: 0; }
+
+  ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+  li { margin-bottom: .5rem; max-width: 68ch; }
+  li::marker { color: var(--accent); font-weight: 600; }
+
+  .tablewrap { overflow-x: auto; margin: 1.2rem 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .86rem; min-width: 560px; }
+  th {
+    text-align: left; font-family: var(--sans); font-size: .7rem; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint);
+    padding: .7rem .8rem; border-bottom: 1.5px solid var(--line); white-space: nowrap;
+  }
+  td { padding: .65rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: .8rem; white-space: nowrap; }
+  .yes { color: var(--good); font-weight: 700; }
+  .no { color: var(--ink-faint); }
+  .part { color: var(--notes); font-weight: 600; }
+
+  pre {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono);
+    font-size: .8rem; line-height: 1.55; margin: 1.2rem 0; color: var(--ink);
+  }
+  code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: .1em .35em; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+  @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.1rem; }
+  .panel h4 { margin: 0 0 .6rem; font-family: var(--sans); font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .panel ul { margin: 0; padding-left: 1.1rem; font-size: .9rem; }
+  .panel li { margin-bottom: .35rem; }
+  .flow-note {
+    grid-column: 1 / -1; text-align: center; font-family: var(--mono);
+    font-size: .78rem; color: var(--ink-soft); padding: .3rem 0;
+  }
+  @media (max-width: 640px) { .flow-note { grid-column: auto; } }
+
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 1.2rem 0; }
+  .steps > li {
+    counter-increment: step; position: relative; padding: 0 0 1.1rem 2.6rem;
+    border-left: 1px solid var(--line); margin: 0 0 0 .9rem; max-width: 66ch;
+  }
+  .steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .steps > li::before {
+    content: counter(step); position: absolute; left: -.95rem; top: -.1rem;
+    width: 1.85rem; height: 1.85rem; border-radius: 50%;
+    background: var(--surface); border: 1.5px solid var(--accent); color: var(--accent);
+    font-family: var(--mono); font-size: .8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps b { display: block; margin-bottom: .15rem; }
+  .steps .who { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+
+  /* ---- Mockups ---- */
+  .mockrow { display: flex; gap: 1.4rem; overflow-x: auto; padding: 1.4rem .2rem; align-items: flex-start; }
+  @media (min-width: 900px) { .mockrow { justify-content: center; } }
+  .phone {
+    flex: 0 0 250px; width: 250px; background: var(--mock-bg); color: var(--mock-ink);
+    border-radius: 26px; padding: 12px 10px; box-shadow: 0 12px 30px rgba(10, 25, 32, .28);
+    border: 1px solid #2A3A44; font-size: 11.5px; line-height: 1.45;
+  }
+  .phone .screen { background: #16222B; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; min-height: 430px; }
+  .phone .bar { padding: 9px 12px 7px; border-bottom: 1px solid #24333D; }
+  .phone .bar .t { font-weight: 700; font-size: 12px; }
+  .phone .bar .s { color: #8FA3AE; font-size: 10px; font-variant-numeric: tabular-nums; }
+  .phone .body { padding: 8px 9px; flex: 1; display: flex; flex-direction: column; gap: 7px; }
+  .mcard { background: #1D2B35; border: 1px solid #2A3A44; border-radius: 9px; padding: 8px 9px; }
+  .mcard .badges { display: flex; gap: 4px; margin-bottom: 5px; flex-wrap: wrap; }
+  .mbadge { font-family: var(--mono); font-size: 8px; font-weight: 700; padding: 1.5px 5px; border-radius: 3px; letter-spacing: .03em; }
+  .b-pass { background: #143526; color: #6ECD9C; }
+  .b-fail { background: #3C1A17; color: #EE9A92; }
+  .b-new { background: #11333C; color: #63C3D6; }
+  .b-edge { background: #33270D; color: #E0B45C; }
+  .mcard .txt { color: #C9D6DD; }
+  .mcard .done { color: #6ECD9C; font-family: var(--mono); font-size: 9px; margin-top: 4px; }
+  .evid { background: #0C1319; border: 1px solid #24333D; border-radius: 8px; padding: 7px 8px; }
+  .evid .vidbox { background: #060B0F; border-radius: 6px; height: 96px; display: flex; align-items: center; justify-content: center; color: #4E6470; font-size: 9px; position: relative; }
+  .evid .playbtn { width: 26px; height: 26px; border-radius: 50%; background: rgba(79,174,191,.25); border: 1.5px solid #4FAEBF; display: flex; align-items: center; justify-content: center; color: #4FAEBF; font-size: 10px; }
+  .evid .vtime { position: absolute; bottom: 5px; left: 7px; font-family: var(--mono); font-size: 8px; color: #8FA3AE; }
+  .evid .cap { color: #93A7B1; font-size: 9.5px; margin-top: 5px; }
+  .tl { font-family: var(--mono); font-size: 8.6px; color: #A8BBc4; color: #A8BBC4; }
+  .tl div { padding: 2.5px 0; border-bottom: 1px dashed #24333D; }
+  .tl div:last-child { border-bottom: none; }
+  .tl .tt { color: #63C3D6; }
+  .attach { display: flex; align-items: center; gap: 6px; background: #14202A; border: 1px solid #2A3A44; border-radius: 6px; padding: 5px 7px; font-size: 9px; color: #C9D6DD; }
+  .attach .ic { font-family: var(--mono); font-size: 8px; font-weight: 700; color: #63C3D6; border: 1px solid #2E4650; border-radius: 3px; padding: 1px 4px; }
+  .attach .dl { margin-left: auto; color: #4FAEBF; font-weight: 700; }
+  .verdictbar { display: flex; gap: 6px; padding: 8px 9px; border-top: 1px solid #24333D; background: #121D26; }
+  .vbtn { flex: 1; text-align: center; font-weight: 700; font-size: 10px; padding: 8px 0; border-radius: 8px; letter-spacing: .03em; }
+  .vbtn.g { background: #16472E; color: #7EDDA8; }
+  .vbtn.f { background: #4A201C; color: #F0A49C; }
+  .vbtn.n { background: #3D2F10; color: #E5BE69; }
+  .vbtn.sel { outline: 2px solid #7EDDA8; }
+  .phone-label { text-align: center; font-size: .78rem; color: var(--ink-soft); margin-top: .6rem; font-family: var(--sans); }
+  .phone-label b { color: var(--ink); }
+  .prog { height: 3px; background: #24333D; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 58%; background: #4FAEBF; }
+
+  .desktop {
+    background: var(--mock-bg); color: var(--mock-ink); border-radius: 12px; border: 1px solid #2A3A44;
+    margin: 1.4rem 0; overflow: hidden; font-size: 11px; box-shadow: 0 12px 30px rgba(10,25,32,.28);
+  }
+  .desktop .dbar { padding: 8px 14px; border-bottom: 1px solid #24333D; display: flex; gap: 10px; align-items: center; }
+  .desktop .dot { width: 8px; height: 8px; border-radius: 50%; background: #2E4650; }
+  .desktop .durl { font-family: var(--mono); font-size: 9.5px; color: #8FA3AE; background: #16222B; border-radius: 5px; padding: 3px 10px; }
+  .desktop .cols { display: grid; grid-template-columns: 220px 1fr; min-height: 260px; }
+  .desktop .list { border-right: 1px solid #24333D; padding: 8px; display: flex; flex-direction: column; gap: 5px; background: #121D26; }
+  .desktop .li { padding: 6px 8px; border-radius: 6px; display: flex; justify-content: space-between; gap: 6px; align-items: center; color: #C9D6DD; font-size: 10px; }
+  .desktop .li.on { background: #1D2B35; outline: 1px solid #2E4650; }
+  .desktop .detail { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  @media (max-width: 640px) { .desktop .cols { grid-template-columns: 1fr; } .desktop .list { flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid #24333D; } }
+
+  .diagwrap {
+    overflow-x: auto; margin: 1.2rem 0; border-radius: 12px;
+    background: var(--mock-bg); border: 1px solid #2A3A44;
+    box-shadow: 0 12px 30px rgba(10,25,32,.28);
+  }
+  .diagwrap svg { display: block; min-width: 980px; width: 100%; height: auto; }
+  .diaglegend { font-size: .86rem; columns: 2; column-gap: 2.2rem; margin: 1rem 0 0; padding-left: 1.3rem; }
+  @media (max-width: 640px) { .diaglegend { columns: 1; } }
+  .diaglegend li { break-inside: avoid; margin-bottom: .4rem; }
+  .lg-ev { color: var(--accent); font-weight: 700; }
+  .lg-ve { color: var(--good); font-weight: 700; }
+  .lg-pr { color: #8E7CC3; font-weight: 700; }
+  .lg-fw { color: var(--notes); font-weight: 700; }
+
+  .risk { border-left: 3px solid var(--notes); padding: .1rem 0 .1rem 1rem; margin: 1.2rem 0; color: var(--ink-soft); }
+  .risk b { color: var(--ink); }
+
+  .phase { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: baseline; }
+  .phase .tag { flex: 0 0 auto; font-family: var(--mono); font-size: .72rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: .15rem .5rem; white-space: nowrap; }
+  .phase p { margin: 0; font-size: .93rem; }
+
+  .toc { margin: 1.6rem 0 0; padding: 1rem 1.2rem; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font-size: .88rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; columns: 2; column-gap: 2rem; }
+  @media (max-width: 560px) { .toc ol { columns: 1; } }
+  .toc li { margin-bottom: .25rem; break-inside: avoid; }
+  .toc a { text-decoration: none; color: var(--ink-soft); }
+  .toc a:hover, .toc a:focus { color: var(--accent); text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  .footnote { font-size: .8rem; color: var(--ink-faint); border-top: 1px solid var(--line); margin: 3rem auto 0; padding-top: 1rem; max-width: 70ch; width: 100%; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">behavior-report-kit · decision analysis</div>
+    <h1>Turning the kit into an MCP service: is it worth it?</h1>
+    <p class="meta">July 6, 2026 · analysis + full proposal · market research verified the same day</p>
+    <div class="chips">
+      <span class="chip accent">PROPOSAL — nothing built</span>
+      <span class="chip">current kit: still operational</span>
+      <span class="chip">LLM layer: deferred to the end</span>
+    </div>
+
+    <div class="answer">
+      <div class="eyebrow" style="margin-bottom:.6rem">Executive verdict</div>
+      <p><strong>The market gap is real and verified: today no product combines evidence review for a non-technical owner with a verdict the coding agent reads back.</strong> And no one — literally no product found — treats files, database rows, emails, or payloads as first-class reviewable evidence.</p>
+      <p>But that doesn't mean "build it now." <strong>As currently framed, the service is only worth it if the intent is a multi-team product.</strong> For 1–3 of your own repos with one agent at a time, the current kit wins on total cost: zero infrastructure, zero operations, and per-run token spend barely changes with the service. The exception isn't about the number of repos but the number of agents: <strong>a single large repo where several engineers work on features in parallel with several AI agents already justifies the service</strong> — the kit isn't built for that concurrency (colliding baselines, accepts overwriting each other, scattered reports), and it is, in fact, the ideal pilot for phase 0. The recommendation is a three-rung ladder: <strong>① port to the kit what doesn't need a server</strong> (background evidence), <strong>② a cheap validation phase 0</strong> (minimal, single-tenant, no-billing service) that tests the verdict loop on your own repos, and <strong>③ decide on the SaaS only with that signal in hand</strong> — because the window exists but is closing: Ranger has already closed the human→agent loop in its developer version.</p>
+    </div>
+
+    <nav class="toc" aria-label="Contents">
+      <ol>
+        <li><a href="#que-es">What it is (and what goes where)</a></li>
+        <li><a href="#economia">The real economics</a></li>
+        <li><a href="#mercado">What already exists</a></li>
+        <li><a href="#falta">What's missing for it to be worth it</a></li>
+        <li><a href="#api">API and MCP surface</a></li>
+        <li><a href="#agente">A day in the life of the client agent</a></li>
+        <li><a href="#ui">UI proposal</a></li>
+        <li><a href="#riesgos">Risks and open decisions</a></li>
+        <li><a href="#roadmap">Roadmap with phase 0</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <section id="que-es">
+    <div class="eyebrow">1</div>
+    <h2>What it is, in one picture</h2>
+    <p>Today the kit gets <em>replicated</em>: each repo installs and adapts ~2,000 lines of generator, ffmpeg encoding, and doctrine. The service inverts that: the agent — Claude or any LLM — only captures evidence and sends it; the service generates, hosts, and returns the owner's verdict via MCP.</p>
+    <div class="split">
+      <div class="panel">
+        <h4>Client — the user's machine</h4>
+        <ul>
+          <li>The app under test on any platform — web, mobile (Android/iOS emulator/simulator), desktop, daemon — + deterministic fixtures</li>
+          <li><code>features.json</code> versioned in git — the source of the "what"</li>
+          <li>E2E stories that run against the local app</li>
+          <li><strong>Evidence capture</strong>: paced actions, decode/paint gates, raw video; for background: the row, the file, the <code>.eml</code>, captured <em>in the moment</em></li>
+          <li>Local metrics (coverage, mutation) — the code never leaves</li>
+          <li>Thin client: local MCP that packages manifest + paths and uploads</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Service — once, for everyone</h4>
+        <ul>
+          <li>Ingest + evidence contract validation</li>
+          <li><strong>Media encoding</strong> (H.264/GIF ladders) — ffmpeg disappears from the client</li>
+          <li>Report generation + hosting with per-project auth</li>
+          <li><strong>Owner's verdict persisted</strong>, readable by the agent via MCP</li>
+          <li>Content-hash baselines, history, metrics ratchet</li>
+          <li>LLM layer — <em>deferred, final phase</em></li>
+        </ul>
+      </div>
+      <div class="flow-note">client&ensp;──&ensp;manifest + media&ensp;──▶&ensp;service&ensp;──&ensp;review URL&ensp;──▶&ensp;owner&ensp;──&ensp;verdict&ensp;──▶&ensp;agent (MCP)</div>
+    </div>
+  </section>
+
+  <section id="economia">
+    <div class="eyebrow">2</div>
+    <h2>The real economics: where you save and where you don't</h2>
+    <p>The question was "do we spend fewer tokens?" The honest answer has three parts, and the first is a <em>no</em>:</p>
+    <ul>
+      <li><strong>Per run: practically the same.</strong> What consumes agent work on each run — writing stories, debugging failures, capturing — stays on the agent's side in both models. The local generator is already deterministic node: it runs for free.</li>
+      <li><strong>Per install: large savings.</strong> Replicating the kit in a new repo is an agent job worth hundreds of thousands of tokens (adapting the generator to the stack, verifying with Playwright, iterating). With the service: an API key + writing stories.</li>
+      <li><strong>Per maintenance: the compounded savings.</strong> Today every kit improvement gets re-synced repo by repo — tokens × N repos, every time (this repo and its audits exist because of that problem). With the service, it's updated once and every project receives it at zero cost.</li>
+    </ul>
+    <p>Against that, two new costs the kit doesn't have: <strong>building it</strong> (it's an entire product: API, storage, encoding, frontend, MCP, auth — weeks of agent work, meaning a lot of tokens <em>today</em>) and <strong>running it</strong> (hosting, media storage, domains, backups: tens of dollars a month that grow with usage, plus maintaining something that can go down on a Sunday).</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Scenario</th><th>Installs</th><th>The current kit</th><th>The service</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A · 1–3 of your own repos</strong></td>
+            <td class="num">1–3 × ~500k tok</td>
+            <td>Already amortized; zero infra; total privacy</td>
+            <td>Build cost never pays off; fixed infra for 3 uses</td>
+            <td><span class="verdict-chip v-fail">DON'T BUILD</span></td>
+          </tr>
+          <tr>
+            <td><strong>B · team/agency, 5–20 repos</strong></td>
+            <td class="num">5–20 × ~500k tok</td>
+            <td>Painful re-sync ×N; consistency degrades</td>
+            <td>Amortizes install and maintenance; a single standard</td>
+            <td><span class="verdict-chip v-notes">PHASE 0 FIRST</span></td>
+          </tr>
+          <tr>
+            <td><strong>B′ · one large repo: several engineers × several AI agents</strong></td>
+            <td class="num">1 install · N agents</td>
+            <td>Not built for concurrency: git baselines collide across branches, one accept overwrites another, the owner gets N scattered reports</td>
+            <td>Runs per feature/branch, unified review queue, verdict routed to the agent waiting for it</td>
+            <td><span class="verdict-chip v-good">YES — IDEAL PILOT</span></td>
+          </tr>
+          <tr>
+            <td><strong>C · SaaS product for third parties</strong></td>
+            <td class="num">N open-ended</td>
+            <td>Doesn't scale: no one replicates 2,000 lines just to try you out</td>
+            <td>Only viable path; the market gap is real</td>
+            <td><span class="verdict-chip v-good">YES, WITH CONDITIONS</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="meta">The token figures are field estimates (the install in the reference repo cost roughly that much), not exact measurements. The structural point doesn't depend on the figure: the savings are in install and maintenance, never in the run.</p>
+    <p><strong>Scenario B′ deserves emphasis because its argument isn't tokens: it's capability the kit doesn't have.</strong> The kit assumes one agent and a linear flow — one <code>review-state.json</code>, one history, one report. With several engineers and several AI agents working on features in parallel on the same repo, that breaks down on its own: the versioned baselines collide on every merge, one branch's <code>--accept</code> overwrites another's, and the owner ends up with one artifact link per agent, with no overview and no review order. The service turns that concurrency into its natural use case: every run arrives tagged by feature/branch/agent, the owner sees <em>one</em> queue ("5 stories from 3 features await your review"), and each verdict comes back via MCP to exactly the agent waiting for it. It's also the perfect pilot for phase 0: it demands multi-agent coordination but not public multi-tenancy, billing, or onboarding strangers.</p>
+    <p>Willingness-to-pay signal from the neighboring market: Chromatic charges $179–399/mo, Currents $49/mo, gotoHuman $99–950/mo, and a managed human gate like Bug0 reaches $2,500/mo. Real budget exists in this category — for scenario C, not for A.</p>
+  </section>
+
+  <section id="mercado">
+    <div class="eyebrow">3</div>
+    <h2>What already exists (verified, not from memory)</h2>
+    <p>About 25 products were researched and adversarially verified across four categories: visual testing, AI-agent QA, MCP human-in-the-loop, and report hosting. The four boxes that matter: <strong>(a)</strong> review for a non-technical owner · <strong>(b)</strong> background evidence (files/DB/emails) · <strong>(c)</strong> verdict consumable by the agent · <strong>(d)</strong> mobile-first review.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Product</th><th>What it is</th><th>a</th><th>b</th><th>c</th><th>d</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Ranger</strong></td><td>Agentic browser QA; the agent reads the human review via CLI (<code>get-review</code>)</td><td class="no">✕ dev</td><td class="no">✕</td><td class="yes">✓ CLI</td><td class="no">—</td></tr>
+          <tr><td><strong>Chromatic</strong></td><td>Component snapshots; the PM is a first-class approver, but per build, not per story</td><td class="yes">✓ UI only</td><td class="no">✕</td><td class="part">partial</td><td class="no">✕</td></tr>
+          <tr><td><strong>gotoHuman</strong></td><td>Human review inbox for agent workflows; forms with image and video</td><td class="yes">✓ generic</td><td class="part">partial</td><td class="no">✕ MCP only sends</td><td class="no">—</td></tr>
+          <tr><td><strong>HumanLayer</strong></td><td>Real blocking MCP verdict… for a function call, text, dev/ops persona</td><td class="no">✕</td><td class="no">✕</td><td class="yes">✓ 1 action</td><td class="part">partial</td></tr>
+          <tr><td><strong>Percy / Applitools</strong></td><td>Pixel-diff with accept/deny for devs/QA</td><td class="no">✕</td><td class="no">✕</td><td class="part">partial</td><td class="no">✕</td></tr>
+          <tr><td><strong>Currents / Allure / Testmo</strong></td><td>Test-result hosting; QA audience; MCP for <em>reading results</em>, not verdicts</td><td class="no">✕</td><td class="part">partial</td><td class="part">results</td><td class="no">✕</td></tr>
+          <tr><td><strong>ProofShot</strong></td><td>HTML report of agent evidence for humans — no verdict, no loop, no MCP</td><td class="part">partial</td><td class="part">logs</td><td class="no">✕</td><td class="no">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <h4>Commodity — don't differentiate here</h4>
+        <ul>
+          <li>Screenshot/video capture and hosting</li>
+          <li>Attached-evidence dashboards</li>
+          <li>Pixel-diff with accept/deny</li>
+          <li>Generic human-approval primitives</li>
+          <li>MCP for reading test results</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>Genuinely discovered — the moat</h4>
+        <ul>
+          <li>Stories in the owner's language as the evidence model</li>
+          <li><strong>Background evidence</strong>: <code>.eml</code>, DB rows, files, payloads — no one treats them as evidence</li>
+          <li><strong>Per-story</strong> GOOD/FAIL/NOTES verdict exposed to the agent via MCP</li>
+          <li>Mobile-first review for this persona</li>
+          <li>Content-hash baselines with NEW/CHANGED + ratchet — no analog</li>
+        </ul>
+      </div>
+    </div>
+    <div class="risk"><b>The window is closing along the wrong axis of copying:</b> the transport (verdict→agent via MCP) is the easy part to replicate, and Ranger already has it in its dev version; Momentic, Shiplight, and Currents already publish MCP servers. A pivot by any of them toward the "product owner" persona is incremental. The defensible moat is the combination (a)+(b): owner-language stories + background evidence + baseline semantics — not the MCP.</div>
+  </section>
+
+  <section id="falta">
+    <div class="eyebrow">4</div>
+    <h2>What's missing for it to be worth it</h2>
+    <p>As we'd been framing it so far — "the generator, but remote" — it's <strong>not</strong> worth it: that's a render service, pure commodity. What turns it into something that holds up is this, in order:</p>
+    <ol>
+      <li><strong>The complete verdict loop, with a channel to the human.</strong> <code>get_verdict</code> isn't enough: the owner needs to find out there's something to review (push/email: "12 stories await your review") and the agent needs to be able to <em>wait</em> for the verdict (<code>wait_for_verdict</code> with a timeout) to keep going on its own. Without notification there's no loop; there's just a URL someone forgets to open.</li>
+      <li><strong>Accept from the UI with write-back to the repo.</strong> If the owner already marks GOOD story by story, forcing "the agent runs <code>--accept</code> afterward" is inherited friction. The accept happens where the review happens; the service returns the updated baseline and the thin client commits it to the repo — git remains the auditable record.</li>
+      <li><strong>Background evidence with primary material, from day one of the contract.</strong> It's the differentiator no one has (verified). If the service is born "UI-only" it's a poor man's Chromatic; if it's born with downloadable <code>timeline</code>/<code>state-diff</code>/<code>artifact</code>, it's born without competition.</li>
+      <li><strong>Onboarding without the kit: 20 minutes, any agent.</strong> If installing the client still costs hundreds of thousands of tokens, the service never takes off. The goal: MCP config + a short capture prompt ("this is how you produce valid evidence") and the first report ships the same afternoon. The REPLICATION-PROMPT shrinks down to an ingest contract.</li>
+      <li><strong>Semantic history + content-hash dedup.</strong> Version runs (data), not HTML: "when did this story turn green?" becomes answerable, identical media gets stored once, and every UI improvement re-renders the whole history retroactively.</li>
+      <li><strong>CI as an emitter.</strong> The run can come from the pipeline, not just from the agent on the laptop — without this, it doesn't get into teams.</li>
+      <li><strong>Multi-project dashboard.</strong> An owner with N products reviews everything in one place; it only makes sense once the service exists, so it's a structural advantage.</li>
+    </ol>
+    <p>And what <strong>not</strong> to do: don't compete on pixel-diff (a saturated commodity), don't try to centralize capture (impossible: the app lives on the client's machine), and the LLM layer stays for last — the loop has to prove value with humans before optimizing what the human sees.</p>
+  </section>
+
+  <section id="api">
+    <div class="eyebrow">5</div>
+    <h2>API and MCP surface proposal</h2>
+    <p>The MCP runs <strong>locally (stdio)</strong>: the agent passes it <em>paths</em>; the local server reads the files and uploads them over HTTP. Not a single video byte crosses the model's context. Media is content-addressed: before uploading, the client asks which hashes are missing and only uploads what's new.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>MCP tool (agent)</th><th>Underlying REST</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>submit_run</code></td><td class="num">POST /v1/projects/:id/runs<br>PUT /v1/blobs/:hash</td><td>Sends the manifest (spec + results + evidence with paths); the local server uploads only the blobs whose hash doesn't already exist. Returns <code>run_id</code> + review URL.</td></tr>
+          <tr><td><code>get_run</code></td><td class="num">GET /v1/runs/:id</td><td>Status: processing / ready / verdict in. Includes the NEW/CHANGED summary vs. baseline.</td></tr>
+          <tr><td><code>wait_for_verdict</code></td><td class="num">GET /v1/runs/:id/verdict<br>(long-poll) · optional webhook</td><td>Blocks until the owner finishes (or timeout). Returns the verdict <strong>per story</strong>: GOOD / FAIL / NOTES(text) / UNMARKED.</td></tr>
+          <tr><td><code>accept</code> · <code>accept_only</code></td><td class="num">POST /v1/runs/:id/accept</td><td>Same semantics as the kit (scoped, content-hash). Returns the updated baseline to commit to the repo.</td></tr>
+          <tr><td><code>get_history</code></td><td class="num">GET /v1/projects/:id/history</td><td>Metric rows + accepted runs; the ratchet validates server-side and reports what would trigger a regression.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The manifest — the natural extension of the kit's current contract (same <code>features.json</code>, same badges, same accept semantics):</p>
+    <pre><code>{
+  "project": "pedidos-nube",
+  "spec": { …features.json in full… },
+  "run": { "startedAt": "…", "suite": "e2e", "metrics": { "coverage": 84.1, "mutation": null } },
+  "stories": [{
+    "id": "checkout/confirmacion-email",
+    "status": "pass",
+    "evidence": [
+      { "type": "video",      "blob": "sha256:9f31…", "caption": "The order is submitted and the confirmation appears" },
+      { "type": "timeline",   "events": [
+          { "t": "10:02:01.120", "e": "POST /orders accepted" },
+          { "t": "10:02:03.480", "e": "worker processed the order" },
+          { "t": "10:02:04.010", "e": "confirmation email sent" } ] },
+      { "type": "artifact",   "blob": "sha256:c04a…", "kind": "eml",
+        "caption": "The email exactly as it arrived, with the PDF attached" },
+      { "type": "state-diff", "before": { "orders": 0 }, "after": { "orders": 1 },
+        "material": { "blob": "sha256:77d2…", "kind": "row.json" } }
+    ]
+  }]
+}</code></pre>
+    <p class="meta">Each piece of evidence: readable render + downloadable primary material. Truncation is always declared ("50 of 12,000 rows"), never silent. Auth: API key per project. The kit's entire §6 contract (badges, verdict format, accept) is preserved — the service is just another consumer of the same contract, not a new one.</p>
+  </section>
+
+  <section id="agente">
+    <div class="eyebrow">6</div>
+    <h2>A typical day for the client agent</h2>
+    <p>What exactly the agent developing a product using the service does — and what it no longer has to do:</p>
+    <ol class="steps">
+      <li><span class="who">agent</span><b>Implements the feature</b> in the product's repo, as always.</li>
+      <li><span class="who">agent</span><b>Declares the behavior</b> in <code>features.json</code>: the story in the owner's language ("When the order is submitted, a confirmation email arrives with the PDF attached"), marked <code>NEW</code>.</li>
+      <li><span class="who">agent</span><b>Writes the story and captures valid evidence</b> against the app in its local environment — browser for web, emulator/simulator for Android/iOS, the window for desktop: paced actions (~400–500 ms), decode/paint gates before every screenshot, raw video; if the behavior is background, it captures the effect in the moment — the inserted row, the generated file, the <code>.eml</code>.</li>
+      <li><span class="who">agent</span><b><code>submit_run</code></b> with the manifest and the paths. The local MCP uploads only the new blobs (dedup by hash). It receives the review URL. <em>No longer on its side: the 2,000-line generator, ffmpeg, HTML, CSP, artifact deploy.</em></li>
+      <li><span class="who">service</span><b>Validates, encodes, and publishes.</b> The owner gets the notification: "Pedidos Nube: 3 new stories await your review."</li>
+      <li><span class="who">owner</span><b>Reviews from the phone</b>: watches the video, opens the email exactly as it arrived, and marks story by story — GOOD, FAIL, or NOTES with text.</li>
+      <li><span class="who">agent</span><b><code>wait_for_verdict</code></b> wakes up with the structured verdict: 2 GOOD, 1 NOTES ("the PDF arrives without the logo"). It turns each NOTES into a fix or an issue, each FAIL into a red story that stays honestly red.</li>
+      <li><span class="who">agent</span><b><code>accept</code></b> for what got approved (or the owner already accepted from the UI): it receives the updated baseline and commits it — git remains the record. The next run will show only what changed.</li>
+    </ol>
+    <p>The agent goes from operating a pipeline to doing only what no one else can do from outside: <strong>writing faithful stories and capturing true evidence</strong>. Everything else belongs to the service.</p>
+  </section>
+
+  <section id="ui">
+    <div class="eyebrow">7</div>
+    <h2>UI proposal: a review queue, not a document</h2>
+    <p>The current report is a document you read. The service's UI is a <strong>queue you operate</strong>: the owner comes in through a notification, reviews story by story with the evidence full-screen, marks it with a thumb, and leaves knowing how much is left. The kit's already-proven mobile doctrine (no horizontal scroll at 360 px, lightbox, touch targets) is the floor, implemented just once.</p>
+
+    <div class="mockrow" role="img" aria-label="Three mobile screens: review queue, story with video and verdict, background evidence with downloadable material">
+      <div>
+        <div class="phone"><div class="screen">
+          <div class="bar">
+            <div class="t">Pedidos Nube · run #48</div>
+            <div class="s">reviewed 7 of 12 · today 10:14</div>
+            <div class="prog"><i></i></div>
+          </div>
+          <div class="body">
+            <div class="mcard">
+              <div class="badges"><span class="mbadge b-pass">PASS</span><span class="mbadge b-new">NEW</span></div>
+              <div class="txt">When the order is submitted, a confirmation email arrives with the PDF attached</div>
+              <div class="done">✓ GOOD</div>
+            </div>
+            <div class="mcard">
+              <div class="badges"><span class="mbadge b-fail">FAIL</span><span class="mbadge b-edge">EDGE CASE</span></div>
+              <div class="txt">If payment fails, the order stays "pending" and the customer is notified</div>
+              <div class="done" style="color:#EE9A92">✗ FAIL — no notice to the customer</div>
+            </div>
+            <div class="mcard" style="outline:1.5px solid #4FAEBF">
+              <div class="badges"><span class="mbadge b-pass">PASS</span><span class="mbadge b-new">NEW</span></div>
+              <div class="txt">The daily summary sends itself, every night at 02:00</div>
+              <div class="done" style="color:#8FA3AE">— next up for review</div>
+            </div>
+          </div>
+        </div></div>
+        <div class="phone-label"><b>Review queue</b> · visible progress, pending first</div>
+      </div>
+
+      <div>
+        <div class="phone"><div class="screen">
+          <div class="bar">
+            <div class="t">What you asked for</div>
+            <div class="s">"When the order is submitted, a confirmation email arrives"</div>
+          </div>
+          <div class="body">
+            <div class="evid">
+              <div class="vidbox">
+                <div class="playbtn">▶</div>
+                <div class="vtime">0:00 / 0:19 · 1×</div>
+              </div>
+              <div class="cap">The full purchase, at the app's real pace — no steps skipped</div>
+            </div>
+            <div class="evid">
+              <div class="cap" style="margin-top:0">Capture: the confirmation screen with the order number</div>
+            </div>
+          </div>
+          <div class="verdictbar">
+            <div class="vbtn g sel">GOOD</div>
+            <div class="vbtn f">FAIL</div>
+            <div class="vbtn n">NOTES</div>
+          </div>
+        </div></div>
+        <div class="phone-label"><b>Story UI</b> · large evidence, one-tap verdict</div>
+      </div>
+
+      <div>
+        <div class="phone"><div class="screen">
+          <div class="bar">
+            <div class="t">What you asked for</div>
+            <div class="s">"The daily summary sends itself every night"</div>
+          </div>
+          <div class="body">
+            <div class="evid">
+              <div class="tl">
+                <div><span class="tt">02:00:00</span> · scheduled task kicked off</div>
+                <div><span class="tt">02:00:41</span> · summary generated (238 orders)</div>
+                <div><span class="tt">02:00:42</span> · email sent to maria@…</div>
+              </div>
+            </div>
+            <div class="attach"><span class="ic">EML</span> The email exactly as it arrived <span class="dl">Open ↓</span></div>
+            <div class="attach"><span class="ic">PDF</span> resumen-2026-07-05.pdf · 182 KB <span class="dl">Open ↓</span></div>
+            <div class="attach"><span class="ic">ROW</span> Row recorded in <span style="font-family:var(--mono)">daily_digests</span> <span class="dl">View ↓</span></div>
+          </div>
+          <div class="verdictbar">
+            <div class="vbtn g">GOOD</div>
+            <div class="vbtn f">FAIL</div>
+            <div class="vbtn n">NOTES</div>
+          </div>
+        </div></div>
+        <div class="phone-label"><b>Background story</b> · timeline + real primary material</div>
+      </div>
+    </div>
+
+    <h3>On desktop: density, not another product</h3>
+    <div class="desktop" role="img" aria-label="Desktop view: story list on the left, detail with evidence and verdict on the right">
+      <div class="dbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="durl">review.behavior.app/pedidos-nube/runs/48</span></div>
+      <div class="cols">
+        <div class="list">
+          <div class="li"><span>Confirmation email</span><span class="mbadge b-pass">✓</span></div>
+          <div class="li"><span>Failed payment → pending</span><span class="mbadge b-fail">✗</span></div>
+          <div class="li on"><span>Daily summary 02:00</span><span class="mbadge b-new">NEW</span></div>
+          <div class="li"><span>Export orders to CSV</span><span class="mbadge b-new">NEW</span></div>
+        </div>
+        <div class="detail">
+          <div style="font-weight:700">"The daily summary sends itself, every night at 02:00"</div>
+          <div class="tl" style="max-width:420px">
+            <div><span class="tt">02:00:00</span> · scheduled task kicked off</div>
+            <div><span class="tt">02:00:42</span> · email sent · <span style="color:#63C3D6">EML ↓</span> · <span style="color:#63C3D6">PDF ↓</span></div>
+          </div>
+          <div style="display:flex; gap:6px; max-width:300px">
+            <div class="vbtn g" style="padding:6px 14px">GOOD</div>
+            <div class="vbtn f" style="padding:6px 14px">FAIL</div>
+            <div class="vbtn n" style="padding:6px 14px">NOTES</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ul>
+      <li><strong>The verdict is always one tap away</strong>: fixed bottom bar on mobile; NOTES opens a text field that reaches the agent verbatim.</li>
+      <li><strong>The evidence rules</strong>: video with native controls and a speed bar; nothing is displayed above its encoded width; the primary material is always downloadable next to its render.</li>
+      <li><strong>The export still exists</strong>: self-contained HTML (strict CSP) as a file snapshot — for archiving, sharing without the service, or outliving it.</li>
+    </ul>
+  </section>
+
+  <section id="riesgos">
+    <div class="eyebrow">8</div>
+    <h2>Risks and open decisions</h2>
+    <ul>
+      <li><strong>Market convergence (the real risk).</strong> The MCP transport is copyable within a quarter; Ranger already has it for devs. The defense is depth in what can't be copied quickly: the evidence model of owner-language + background + baselines. If it gets built, build <em>that</em> first.</li>
+      <li><strong>Running a service is a new job.</strong> Private media from other people's apps demands serious auth, defined retention, and incident response. It's a shift in posture away from "everything lives in your repo." (The single-tenant phase 0 sidesteps this until there's a signal.)</li>
+      <li><strong>Baseline: repo or service?</strong> Standing recommendation: baselines live in git (auditable, yours) and the service processes them; the accept-from-UI returns the baseline to commit (write-back), it doesn't hijack it. The verdict, though, is server-side — that's the new part of the value.</li>
+      <li><strong>Privacy of the primary material.</strong> Real rows and files can carry sensitive data → the deterministic-fixtures doctrine holds, plus configurable redaction per project. The LLM layer (whenever it arrives) is opt-in per project.</li>
+      <li><strong>Longevity.</strong> If the service dies, the self-contained export and the replicable kit keep working — that emergency exit is kept on purpose, and it's also the sales argument against lock-in.</li>
+    </ul>
+  </section>
+
+  <section id="roadmap">
+    <div class="eyebrow">9</div>
+    <h2>Roadmap: validate cheap before building expensive</h2>
+    <div class="phase"><span class="tag">PHASE 0 · validation</span><p><strong>Minimal single-tenant service, no billing, no multi-tenant auth</strong>: ingest + generation (reusing the kit's generator almost as-is) + simple hosting + persisted verdict + 4 MCP tools (<code>submit_run</code>, <code>get_run</code>, <code>wait_for_verdict</code>, <code>accept</code>) + email notification. Use it on 2–3 real repos of your own. <strong>Measurable success criterion:</strong> the complete loop —run → notification → mobile review → verdict → the agent acts— happens with no copy/paste, and the owner prefers it to the current artifact. If they don't, it was a cheap lesson.</p></div>
+    <div class="phase"><span class="tag">PHASE 1 · core</span><p>Only with signal from phase 0: multi-project, API keys, content-addressed dedup, semantic history, full server-side encoding, CI as emitter. Full parity with the kit for UI evidence.</p></div>
+    <div class="phase"><span class="tag">PHASE 2 · background</span><p>The non-UI evidence vocabulary with primary material (timeline, state-diff, artifact) — the differentiator with no competition. <em>Independent of this: porting the vocabulary to the current kit is worth it even if the service doesn't move forward.</em></p></div>
+    <div class="phase"><span class="tag">PHASE 3 · review</span><p>The review queue matures: multi-project dashboard, accept-from-UI with write-back, push notifications.</p></div>
+    <div class="phase"><span class="tag">PHASE 4 · LLM</span><p>The service's LLM layer (evidence QA, editorial, triage) — saved for last by explicit decision on 2026-07-06, opt-in, and it never issues the verdict.</p></div>
+    <p style="margin-top:1.4rem"><strong>Today's decision isn't "build the SaaS": it's "spend a phase 0."</strong> It's the small bet that buys the information — if the verdict loop changes how you review your own products, the rest of the analysis kicks in; if not, the current kit was already the right answer.</p>
+  </section>
+
+  <p class="footnote">Market analysis sources: web research with adversarial verification (2026-07-06) on Ranger, Chromatic, gotoHuman, HumanLayer, Percy, Applitools, Argos, Meticulous, QA Wolf, Momentic, Shiplight, Spur, Currents, Allure TestOps, Testmo, ReportPortal, TestRail, Zebrunner, Vercel Toolbar MCP, and ProofShot, among others. Design and base contracts: <code>behavior-report-kit</code> (SKILL.md §6, docs/SERVICE-DESIGN.md). Token figures are field estimates, labeled as such.</p>
+</div>

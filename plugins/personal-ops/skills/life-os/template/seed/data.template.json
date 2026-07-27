@@ -1,0 +1,231 @@
+{
+ "nodes": [
+  {
+   "id": "example-theme",
+   "group": "cluster",
+   "slot": 1,
+   "icon": "🧩",
+   "label": "Example work theme",
+   "sub": "replace me",
+   "prio": "P1",
+   "prioScore": 4,
+   "cx": 3,
+   "val": 4,
+   "owner": "[NAME]",
+   "status": "en curso",
+   "matrix": true,
+   "people": [
+    {
+     "n": "[ALLY]",
+     "r": "their role"
+    }
+   ],
+   "links": [
+    {
+     "t": "Example source doc",
+     "u": "https://example.com",
+     "i": "📄"
+    }
+   ],
+   "ins": [],
+   "detail": "What this theme is, why it matters, current state. HTML allowed."
+  },
+  {
+   "id": "iss-EX-1",
+   "kind": "issue",
+   "group": "issues",
+   "parent": "example-theme",
+   "owner": "mine",
+   "state": "live",
+   "icon": "📋",
+   "label": "EX-1",
+   "sub": "Example tracker issue",
+   "url": "https://example.com/issue/EX-1"
+  },
+  {
+   "id": "ally-ex",
+   "group": "people",
+   "slot": 1,
+   "icon": "👤",
+   "label": "[ALLY]",
+   "sub": "role · relationship",
+   "prio": "—",
+   "prioScore": 2,
+   "cx": 1,
+   "owner": "[ALLY]",
+   "status": "aliado",
+   "matrix": false,
+   "people": [],
+   "links": [],
+   "ins": [],
+   "detail": "What they care about, what to bring them, the play."
+  }
+ ],
+ "edges": [
+  {
+   "from": "ally-ex",
+   "to": "example-theme",
+   "type": "own",
+   "label": "le importa / impulsa"
+  }
+ ],
+ "lenses": [
+  {
+   "id": "all",
+   "label": "Todos",
+   "nodes": "*",
+   "note": "Everything."
+  }
+ ],
+ "rituals": [
+  {
+   "id": "r-daily",
+   "icon": "🌅",
+   "label": "Daily check",
+   "cad": "diario · 15 min",
+   "nodes": [
+    "example-theme"
+   ],
+   "guide": "What this ritual is for.",
+   "excel": "<ul><li>One excellence play for the role.</li></ul>"
+  }
+ ],
+ "deadlines": [
+  [
+   "2000-02-01",
+   "🎯 Example deadline",
+   "example-theme"
+  ]
+ ],
+ "week_pendings": [
+  [
+   "ex1",
+   "🧩",
+   "Example weekly pending",
+   "example-theme",
+   "2026-01-05"
+  ]
+ ],
+ "focus": [
+  [
+   "example-theme",
+   "#0ea5e9",
+   "🧩",
+   "Example focus item",
+   "why it is the focus"
+  ]
+ ],
+ "evidence": [
+  "<b>DATE</b> — First evidence line for the KPI log."
+ ],
+ "done_log": [],
+ "journal": [],
+ "inbox": [],
+ "memory": {
+  "cats": [
+   {
+    "id": "personas",
+    "icon": "👥",
+    "label": "Personas",
+    "notes": []
+   },
+   {
+    "id": "lecciones",
+    "icon": "🎓",
+    "label": "Lecciones",
+    "notes": []
+   },
+   {
+    "id": "decisiones",
+    "icon": "⚖️",
+    "label": "Decisiones",
+    "notes": []
+   },
+   {
+    "id": "gotchas",
+    "icon": "⚠️",
+    "label": "Gotchas",
+    "notes": []
+   },
+   {
+    "id": "preferencias",
+    "icon": "🎛️",
+    "label": "Preferencias",
+    "notes": []
+   }
+  ]
+ },
+ "competencias": {
+  "updated": "2000-01-01",
+  "note": "Self-score 1-5 vs your company's rubric; review quarterly.",
+  "items": [
+   {
+    "id": "ownership",
+    "label": "Ownership",
+    "score": 0,
+    "note": ""
+   },
+   {
+    "id": "decision-making",
+    "label": "Decision Making",
+    "score": 0,
+    "note": ""
+   },
+   {
+    "id": "tech-depth",
+    "label": "Technical Depth",
+    "score": 0,
+    "note": ""
+   },
+   {
+    "id": "values",
+    "label": "Values",
+    "score": 0,
+    "note": ""
+   },
+   {
+    "id": "biz-strategy",
+    "label": "Business Strategy",
+    "score": 0,
+    "note": ""
+   },
+   {
+    "id": "tech-strategy",
+    "label": "Technical Strategy",
+    "score": 0,
+    "note": ""
+   },
+   {
+    "id": "xfn",
+    "label": "XFN Partnership",
+    "score": 0,
+    "note": ""
+   },
+   {
+    "id": "communication",
+    "label": "Communication",
+    "score": 0,
+    "note": ""
+   }
+  ]
+ },
+ "templates": {
+  "tpl-daily": "• Shipped: [thing]\n• In progress: [thing] — [next step]\n• Blocked: [thing] (need: [who/what])",
+  "tpl-weekly": "1) Shipped this week: [thing + number]\n2) Blocking us: [thing]\n3) Decision I need: [decision]",
+  "tpl-health": "[Area] health — week of [date]\n• Key numbers: [N]\n• Trend: [better/worse + why]\n• Suggested decision: [one concrete thing]"
+ },
+ "narrativa": "<b>[One sentence that everything hangs from: the owner's professional narrative.]</b>",
+ "meta": {
+  "updated": "2000-01-01",
+  "fuentes": "[your sources]"
+ },
+ "tabs": {
+  "ritmo": "<div class='sect'><div class='t'>Rituals</div><p class='hint'>Rendered from RITUALS; add per-ritual guidance here if needed.</p></div>",
+  "proyectos": "<div class='sect'><div class='t'>Projects</div><p class='hint'>Ordered project walkthrough. Replace me.</p></div>",
+  "aliados": "<div class='sect'><div class='t'>Stakeholder playbook</div><p class='hint'>Per-person plays. Replace me.</p></div>",
+  "insights": "<div class='sect'><div class='t'>Insights</div><p class='hint'>Numbered insights referenced by nodes' ins[]. Replace me.</p></div>",
+  "kpis": "<div class='sect'><div class='t'>KPIs</div><p class='hint'>Your fundamental numbers.</p><div class='t'>Evidence log</div><p class='hint'>@EVIDENCE@</p></div>\n<div class=\"sect\"><div class=\"t\">📏 Performance (computed at build)</div>\n@PERF@\n<div class=\"t\" style=\"margin-top:10px\">🎯 Competencies (self-score · quarterly)</div>\n@COMPETENCIAS@\n</div>",
+  "fuentes": "<div class='srcl'><details open><summary><b>Sources</b></summary><div>📄 Replace with your planning docs, channels, trackers.</div></details></div>",
+  "prompt_head": "<p class='hint'>Copy this prompt to bootstrap any agent with your full context.</p>\n<button class='ddbtn' id='copyPrompt' style='margin:6px 0;font-size:12px;padding:5px 12px'>📋 Copy prompt</button>"
+ }
+}

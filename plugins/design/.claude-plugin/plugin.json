@@ -1,0 +1,10 @@
+{
+  "name": "design",
+  "version": "1.0.0",
+  "description": "Diagrams and UI craft: excalidraw, diagram-conventions, proposal-artifact, redesign-existing-projects, web-design-guidelines and the two Vercel React/Next.js guides.",
+  "author": {
+    "name": "NightZpy"
+  },
+  "homepage": "https://github.com/NightZpy/claude-skills",
+  "license": "MIT"
+}

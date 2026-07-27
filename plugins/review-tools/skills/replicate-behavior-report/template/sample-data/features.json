@@ -1,0 +1,20 @@
+{
+	"Bienvenida": {
+		"askedFor": "que la app salude a la persona al entrar y le deje exportar el reporte visible",
+		"behaviors": {
+			"la persona ve un mensaje de bienvenida al abrir la app": {
+				"status": "approved",
+				"done": [
+					"aparece el saludo con el nombre de la app",
+					"el botón de continuar queda visible y habilitado"
+				]
+			},
+			"la persona puede exportar el reporte visible como PDF": {
+				"status": "proposed",
+				"done": [
+					"se genera un PDF descargable con el contenido visible"
+				]
+			}
+		}
+	}
+}
