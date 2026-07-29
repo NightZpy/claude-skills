@@ -1,56 +1,96 @@
 ---
 name: issue-tracking
-description: Use whenever work starts, changes state, or finishes on anything bigger than a one-line fix — a new feature, a bug report, an idea raised but not finished in the same breath, a blocker hit, a branch or PR opened, a scope change, or work that just got verified. Also use when the user says "abre un issue", "trackea esto", "anota esto para después", "ya está listo, ciérralo", or asks what is pending. Apply this proactively at the START of non-trivial work, not only when the user mentions issues.
+description: Use whenever work starts, changes state, or finishes on anything bigger than a one-line fix — a new feature, a bug report, an idea raised but not finished in the same breath, work actually beginning, a blocker hit, a branch or PR opened, a scope change, work that just got verified, or a request being dropped or rejected. Also use when the user says "abre un issue", "trackea esto", "anota esto para después", "ya está listo, ciérralo", "esto ya no lo vamos a hacer", or asks what is pending. Apply this proactively at the START of non-trivial work, not only when the user mentions issues.
 ---
 
 # Issue tracking
 
-Every non-trivial piece of work gets a tracking issue, kept in sync with reality.
-An issue that is opened and never updated is worse than none: it reports a state
-that stopped being true.
+Every non-trivial piece of work gets a tracking issue whose state matches reality.
+An issue that is opened and never moved is worse than none: it reports a state that
+stopped being true, and the next person trusts it.
 
 ## Where the tracking lives
 
-Check once per repo: `gh issue list`. If it returns issues (or an empty list on a
-repo with issues enabled), GitHub is the tracker. If there is no remote or issues
-are disabled, use the repo's living backlog doc (`docs/*-backlog.md` or similar) —
-same discipline, different medium.
+Check once per repo: `gh issue list`. If it works, GitHub is the tracker. If there
+is no remote or issues are disabled, use the repo's living backlog doc
+(`docs/*-backlog.md` or similar) — same states, different medium.
+
+**Skip all of this for trivial one-step work**: a typo, a rename, a one-line fix.
+Just do it.
+
+## The state machine
+
+| State | Enter it when | Command |
+|---|---|---|
+| **Open** | The user asks for a feature, reports a bug, or raises an idea not being finished in this same breath | `gh issue create` |
+| **In progress** | You actually start — the branch is created, the first file is touched. Not when the issue is filed | `gh issue edit N --add-assignee @me` + branch name in a comment |
+| **Blocked** | Work stops on something outside this issue: a decision you need, a broken dependency, another issue | comment saying **what** blocks it and **who** unblocks it |
+| **Closed — completed** | Done **and** verified | `gh issue close N --reason completed --comment "<one-line result>"` |
+| **Closed — not planned** | The work will not happen: rejected, obsolete, duplicate, out of scope | `gh issue close N --reason "not planned" --comment "<why>"` |
+| **Reopened** | It regressed, or the ask came back | `gh issue reopen N` + a comment saying what changed |
+
+### Labels, only if the repo already has them
+
+Status labels are a repo convention, not a given — `gh issue edit --add-label` fails
+outright on a label that does not exist. So check first:
+
+```bash
+gh label list | grep -iE 'progress|blocked|wip'
+```
+
+Match? Use it, and **swap, never stack**: the states above are mutually exclusive,
+so moving to blocked removes the active label and resuming removes `blocked`.
+
+```bash
+gh issue edit N --add-label blocked --remove-label "in progress"
+```
+
+No match? The comment already carries the state. Never invent a label taxonomy the
+repo does not use — a status vocabulary only one person writes is noise to everyone
+filtering on it.
 
 ## Open
 
-Open when the user asks for a feature, reports a bug, or raises an idea that is not
-being finished in the same breath.
-
-Search first — near-duplicates fragment the history:
+Search before creating — near-duplicates fragment the history:
 
 ```bash
 gh issue list --search "<keywords>" --state all
 ```
 
-Found one? Comment there instead of opening a second.
+Found one? Comment there instead of opening a second. Found a closed one describing
+the same thing? Reopen it rather than filing a fresh issue.
 
-**Skip entirely for trivial one-step work**: a typo, a rename, a one-line fix. Just
-do it.
+## In progress means started, not planned
+
+The transition to *in progress* is the one most often skipped, and it is the one
+that makes the tracker readable: an issue list where everything is "open" tells you
+nothing about what is actually being worked on right now.
+
+Move it when work begins, and put the branch name in a comment. When the PR opens,
+link it (`Closes #N` in the PR body ties them and closes on merge).
+
+## Closing — the two reasons are not interchangeable
+
+`completed` means it shipped. `not planned` means it will not. Picking the wrong
+one poisons every future search: a rejected idea closed as `completed` looks like
+delivered work months later.
+
+**Never close on "should work".** Same evidence bar as any completion claim: point
+at a passing test, a run, or an observed behavior. No evidence, no close.
+
+**Never close as `not planned` on your own judgment.** Dropping work the user asked
+for is their decision — propose it and get an answer. The exception is a genuine
+duplicate, where you close the newer one pointing at the older.
 
 ## Update
 
 One comment per meaningful state change: a decision taken, a blocker hit, the
-branch/commit/PR link, a scope change. Not a play-by-play of every step — the issue
-is a record someone reads later, not a log.
+branch/commit/PR link, a scope change. Not a play-by-play — the issue is a record
+someone reads later, not a log.
 
-## Close
-
-Close only when the work is done **and verified**, via the PR/commit (`Closes #N`)
-or `gh issue close` with a one-line result.
-
-Same evidence bar as any completion claim: never close on "should work". If you
-cannot point at a passing test, a run, or an observed behavior, the issue stays
-open.
-
-## Reopen and re-scope
-
-Something regressed, or the ask changed? Reopen and comment what changed. Do not
-file a fresh issue for the same thread of work — the history is the value.
+Scope changed materially? Edit the title and body so they describe the work as it
+is now, and comment what changed. An issue whose title stopped matching its content
+is invisible in search.
 
 ## Writing style
 
