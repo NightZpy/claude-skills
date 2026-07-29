@@ -23,15 +23,31 @@ Just do it.
 | State | Enter it when | Command |
 |---|---|---|
 | **Open** | The user asks for a feature, reports a bug, or raises an idea not being finished in this same breath | `gh issue create` |
-| **In progress** | You actually start — the branch is created, the first file is touched. Not when the issue is filed | `gh issue edit N --add-assignee @me --add-label "in progress"` |
-| **Blocked** | Work stops on something outside this issue: a decision you need, a broken dependency, another issue | comment saying **what** blocks it and **who** unblocks it, `--add-label blocked` |
+| **In progress** | You actually start — the branch is created, the first file is touched. Not when the issue is filed | `gh issue edit N --add-assignee @me` + branch name in a comment |
+| **Blocked** | Work stops on something outside this issue: a decision you need, a broken dependency, another issue | comment saying **what** blocks it and **who** unblocks it |
 | **Closed — completed** | Done **and** verified | `gh issue close N --reason completed --comment "<one-line result>"` |
 | **Closed — not planned** | The work will not happen: rejected, obsolete, duplicate, out of scope | `gh issue close N --reason "not planned" --comment "<why>"` |
 | **Reopened** | It regressed, or the ask came back | `gh issue reopen N` + a comment saying what changed |
 
-Labels are a repo convention, not a given. Check with `gh label list` before using
-one; if the repo has no equivalent label, a comment carries the same state and
-costs nothing. Never invent a label taxonomy the repo does not already use.
+### Labels, only if the repo already has them
+
+Status labels are a repo convention, not a given — `gh issue edit --add-label` fails
+outright on a label that does not exist. So check first:
+
+```bash
+gh label list | grep -iE 'progress|blocked|wip'
+```
+
+Match? Use it, and **swap, never stack**: the states above are mutually exclusive,
+so moving to blocked removes the active label and resuming removes `blocked`.
+
+```bash
+gh issue edit N --add-label blocked --remove-label "in progress"
+```
+
+No match? The comment already carries the state. Never invent a label taxonomy the
+repo does not use — a status vocabulary only one person writes is noise to everyone
+filtering on it.
 
 ## Open
 
