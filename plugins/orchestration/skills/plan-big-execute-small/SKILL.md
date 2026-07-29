@@ -46,6 +46,13 @@ Dispatch gotchas learned (don't repeat):
 
 Sonnet is the workhorse executor; Haiku only for genuinely mechanical steps. Judgment (architecture, subtle bugs, security, ambiguous specs) is never handed to an executor: either you do it inline, or — if it meets the bar below — Fable specifies it *before* any code is written.
 
+### Harness mechanics for Claude subagents
+
+Two properties of the `Agent` tool silently break the tiering above if you get them wrong:
+
+- **The 1M-context variant is only obtainable by leaving an agent UNTAGGED**, so it inherits the session model. The subagent enum (`sonnet|opus|haiku|fable`) has no 1M entry, so an explicit `model: 'opus'` yields *standard* context. Untag anything that needs deep reasoning over a lot of material.
+- **`CLAUDE_CODE_SUBAGENT_MODEL` must stay `"inherit"` or stay unset** in `settings.json`. A fixed value is the highest-priority override and silently beats the per-call `model` — every tier in this skill collapses to one model, with no error to tell you. Precedence: `CLAUDE_CODE_SUBAGENT_MODEL` (when fixed) > per-call `model` > subagent frontmatter `model` > session model.
+
 ## When Fable advises — decided UP FRONT, never after a failure
 
 Fable is the most expensive model available, so it is consulted **once, at triage, before planning** — never as a rescue. "I tried, it failed, now I'll call Fable" pays twice for work Fable would have done once; and if the failure came from missing information, a bigger model doesn't fix it either.

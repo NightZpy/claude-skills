@@ -4,14 +4,14 @@
     "name": "NightZpy"
   },
   "metadata": {
-    "description": "Hand-authored Claude Code skills, split into four installable plugins so you only load what you use.",
-    "version": "1.1.0"
+    "description": "Hand-authored Claude Code skills, split into five installable plugins so you only load what you use.",
+    "version": "1.2.0"
   },
   "plugins": [
     {
       "name": "orchestration",
       "description": "How work gets routed: plan-big-execute-small (advisor/executor orchestration), ask (Q&A delegated to a clean cheap subagent), advisor-tool (the Claude API advisor tool).",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "NightZpy"
       },
@@ -34,6 +34,15 @@
         "name": "NightZpy"
       },
       "source": "./plugins/design"
+    },
+    {
+      "name": "dev-workflow",
+      "description": "Daily engineering discipline: review-policy (who reviews code and how), git-rebase-safety (never lose a commit), issue-tracking (open, update and close tracking issues in sync with the work).",
+      "version": "1.0.0",
+      "author": {
+        "name": "NightZpy"
+      },
+      "source": "./plugins/dev-workflow"
     },
     {
       "name": "review-tools",

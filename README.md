@@ -14,12 +14,13 @@ Packaging them as a plugin removes the second copy entirely.
 /plugin marketplace add NightZpy/claude-skills
 ```
 
-Then install only the plugins you actually use — the collection is split into four
+Then install only the plugins you actually use — the collection is split into five
 so nothing loads that you don't want:
 
 | Plugin | Skills |
 |---|---|
 | `orchestration` | plan-big-execute-small · ask · advisor-tool |
+| `dev-workflow` | review-policy · git-rebase-safety · issue-tracking |
 | `personal-ops` | life-os · mac-doctor · npm-supply-chain |
 | `design` | excalidraw · diagram-conventions · proposal-artifact · redesign-existing-projects · web-design-guidelines · vercel-composition-patterns · vercel-react-best-practices |
 | `review-tools` | replicate-behavior-report · video-frame-review · docx-comments |
@@ -94,6 +95,15 @@ layout exists to prevent.
 - **replicate-behavior-report** — installs the behavior-report review system in a repo: the E2E behavior-story pipeline, the quality gates and the report generator, with `template/` (generator + runnable fixtures) and `scripts/` bundled.
 - **advisor-tool** — the server-side advisor tool (`advisor_20260301`) for the
   Claude API: cheap executor consults a stronger advisor mid-generation.
+
+**Daily engineering discipline**
+- **review-policy** — code review goes to Codex's own reviewers, never to an inline
+  self-review; how to pick the model, read background jobs, and fall back to a
+  fresh Claude subagent when Codex can't run.
+- **git-rebase-safety** — never lose a commit to a rebase: record what must
+  survive, resolve conflicts deliberately, and diff the commit list afterwards.
+- **issue-tracking** — open, update and close tracking issues so they stay in sync
+  with the work instead of reporting a state that stopped being true.
 
 **Diagrams & design**
 - **excalidraw** — generates `.excalidraw` architecture diagrams from codebase

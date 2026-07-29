@@ -1,6 +1,6 @@
 {
   "name": "orchestration",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "How work gets routed: plan-big-execute-small (advisor/executor orchestration), ask (Q&A delegated to a clean cheap subagent), advisor-tool (the Claude API advisor tool).",
   "author": {
     "name": "NightZpy"
