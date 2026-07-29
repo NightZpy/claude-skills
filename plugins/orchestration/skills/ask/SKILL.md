@@ -21,10 +21,11 @@ and never make the user pick a model.
 
 ### 1. Resolve the grounding doc
 Find the doc the subagent should read FIRST:
-1. **Personal grounding registry**, `~/.claude/ask-registry.md` if it exists — a subject → absolute-path
-   table (e.g. *a platform and its SDK* → its Q&A doc). Use it when the question is about a documented
-   dependency, **even from another repo**: that is what lets you ask about a dependency from the repo that
-   consumes it. No such file? Skip to 2.
+1. **Personal grounding registry**, `~/.claude/ask-registry.md` — a subject → absolute-path table (e.g. *a
+   platform and its SDK* → its Q&A doc). Use it only when the file exists **and** a row matches the subject
+   of the question; that match is what lets you ask about a dependency **from another repo**. File missing,
+   or present with no matching row? Fall through to 2 — never let an unmatched registry shadow the repo's
+   own docs.
 2. Else the **current repo's** `CLAUDE.md` if it names a Q&A grounding doc.
 3. Else: no curated doc — the subagent grounds itself in the repo's `README` + `docs/`, plus a code-graph
    MCP if one is connected for that repo.
