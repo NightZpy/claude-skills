@@ -21,12 +21,13 @@ and never make the user pick a model.
 
 ### 1. Resolve the grounding doc
 Find the doc the subagent should read FIRST:
-1. **Global Q&A grounding registry** in `~/.claude/CLAUDE.md` (§ "Q&A — delegate to the `ask` skill") —
-   maps a subject (e.g. *a platform and its SDK*) to an absolute path. Use it when the question is about a
-   documented dependency, **even from another repo** — that is what lets you ask about a dependency from
-   the repo that consumes it.
+1. **Personal grounding registry**, `~/.claude/ask-registry.md` if it exists — a subject → absolute-path
+   table (e.g. *a platform and its SDK* → its Q&A doc). Use it when the question is about a documented
+   dependency, **even from another repo**: that is what lets you ask about a dependency from the repo that
+   consumes it. No such file? Skip to 2.
 2. Else the **current repo's** `CLAUDE.md` if it names a Q&A grounding doc.
-3. Else: no curated doc — the subagent grounds itself in the repo's `README` + `docs/` + the code-review-graph.
+3. Else: no curated doc — the subagent grounds itself in the repo's `README` + `docs/`, plus a code-graph
+   MCP if one is connected for that repo.
 
 ### 2. Pick the model by need (you choose — the user never specifies). Cap at sonnet.
 - **haiku** → single fact / definition / location / "what does command X do" / "which port / env var" /
@@ -40,7 +41,7 @@ Find the doc the subagent should read FIRST:
 Call the **Agent** tool with `subagent_type: "Explore"`, `model:` your pick from step 2, and a prompt like:
 
 > Answer this question, grounded in `<grounding-doc-abs-path>` — **read it first**, then the doc map it
-> points to, then the code-review-graph MCP if a graph exists for that repo, then targeted file reads only
+> points to, then a code-graph MCP if one is connected for that repo, then targeted file reads only
 > if needed. Cite every claim as `doc` or `file:line`. Be terse. Answer in the user's language. Read-only —
 > do not edit anything. If unsure, say so and point to the file.
 > **Question:** "<the user's exact question>"
@@ -54,5 +55,6 @@ Return the subagent's answer as-is (it's already terse + cited). Add nothing unl
 ## Why this exists
 The main session may carry a huge context; reading docs/code there is expensive and pollutes it. A fresh
 `Explore` subagent reads in a clean small context and returns only the short answer. (This cheap haiku/sonnet
-tiering is intentional and specific to Q&A — it is the deliberate exception to the heavy-work "leave it
-untagged for opus-1M" tiering rule in `~/.claude/CLAUDE.md`.)
+tiering is intentional and specific to Q&A — it is the deliberate exception to the heavy-work tiering in the
+`plan-big-execute-small` skill, where deep reasoning is left untagged so it inherits the 1M-context session
+model.)

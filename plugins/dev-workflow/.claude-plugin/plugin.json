@@ -1,0 +1,10 @@
+{
+  "name": "dev-workflow",
+  "version": "1.0.0",
+  "description": "Daily engineering discipline: review-policy (who reviews code and how), git-rebase-safety (never lose a commit), issue-tracking (open, update and close tracking issues in sync with the work).",
+  "author": {
+    "name": "NightZpy"
+  },
+  "homepage": "https://github.com/NightZpy/claude-skills",
+  "license": "MIT"
+}
