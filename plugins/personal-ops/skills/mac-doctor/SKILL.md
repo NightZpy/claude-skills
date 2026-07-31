@@ -1,49 +1,49 @@
 ---
 name: mac-doctor
-description: Use when la Mac está lenta, el ventilador suena fuerte, hay procesos comiendo RAM/CPU, swap alto, la VM de Docker/Colima pesada, contenedores en crash-loop, o el disco está lleno / algo falla con ENOSPC. También cuando el usuario pide "revisa qué consume", "por qué suena el ventilador", "qué ocupa espacio en la Mac", "reporte de disco" o "diagnostica la Mac".
+description: Use when the Mac is slow, the fan is loud, processes are eating RAM/CPU, swap is high, the Docker/Colima VM is heavy, containers are in a crash-loop, or the disk is full / something fails with ENOSPC. Also when the user asks "revisa qué consume", "por qué suena el ventilador", "qué ocupa espacio en la Mac", "reporte de disco" or "diagnostica la Mac".
 ---
 
 # mac-doctor
 
-Diagnóstico de CPU/RAM/ventilador/disco en macOS en UN solo comando. No leas procesos a mano ni corras top/ps/docker/du por separado — el script ya recolecta todo y devuelve solo hallazgos + la acción exacta.
+CPU/RAM/fan/disk diagnostics for macOS in ONE command. Do not read processes by hand or run top/ps/docker/du separately — the script already collects everything and returns only findings + the exact action.
 
-## Uso
+## Usage
 
 ```bash
-~/.claude/skills/mac-doctor/doctor.sh          # rápido: CPU, RAM, swap, Docker, disco (%)
-~/.claude/skills/mac-doctor/doctor.sh --disk   # + desglose de qué ocupa el espacio (tarda minutos)
+~/.claude/skills/mac-doctor/doctor.sh          # fast: CPU, RAM, swap, Docker, disk (%)
+~/.claude/skills/mac-doctor/doctor.sh --disk   # + breakdown of what is taking the space (takes minutes)
 ```
 
-`--disk` lista carpetas >1GB y archivos sueltos >1GB, y guarda el reporte en `~/.claude/mac-doctor-disk.txt`. Úsalo cuando el usuario pida saber qué ocupa espacio o cuando el run rápido reporte disco ≥85%.
+`--disk` lists folders >1GB and individual files >1GB, and saves the report to `~/.claude/mac-doctor-disk.txt`. Use it when the user asks what is taking up space, or when the fast run reports disk ≥85%.
 
-## Interpretar la salida
+## Reading the output
 
-- `HALLAZGO:` — problema real detectado, con su `ACCION:` en la línea siguiente o en `== ACCIONES ==`.
-- `INFO:` — consumo alto que puede ser legítimo; solo investigar si el usuario se queja.
-- Sin HALLAZGO → el sistema está normal; reporta el resumen MEM/SWAP/VM y termina.
+- `FINDING:` — a real problem, with its `ACTION:` on the next line or under `== ACTIONS ==`.
+- `INFO:` — high consumption that may be legitimate; only investigate if the user complains.
+- No `FINDING:` → the system is normal; report the MEM/SWAP/VM summary and stop.
 
-## Reglas para el agente
+## Rules for the agent
 
-1. Acciones marcadas `[SUDO]` NO las ejecutes tú: pide al usuario correr `! sudo <cmd>` en el prompt.
-2. `kill` de procesos que no creaste esta sesión requiere aprobación explícita del usuario — muestra el hallazgo y pregunta.
-3. Daemons macOS atascados (audioanalyticsd, mediaanalysisd, etc.) ignoran SIGTERM: siempre `kill -9`; launchd los relanza limpio.
-4. Antes de reparar un AOF de redis corrupto: backup del volumen primero (la acción del script lo indica).
-5. Tras `colima restart`: los contenedores `unless-stopped` vuelven solos; los de política `no` hay que arrancarlos a mano (`docker ps -a` para encontrarlos).
-6. **Nunca automatices `docker volume prune`.** Un volumen cuenta como "sin usar" con que su contenedor esté parado, así que la lista incluye las bases de datos de los proyectos apagados. El `RECLAIMABLE` de volúmenes es además casi siempre migajas frente al de imágenes: no compensa el riesgo. `docker image prune -f` (dangling) sí es seguro sin preguntar; `-a` requiere aprobación porque borra imágenes con tag de otros proyectos.
+1. Actions marked `[SUDO]` are NOT yours to run: ask the user to run `! sudo <cmd>` in the prompt.
+2. Killing processes you did not create this session needs the user's explicit approval — show the finding and ask.
+3. Stuck macOS daemons (audioanalyticsd, mediaanalysisd, etc.) ignore SIGTERM: always `kill -9`; launchd restarts them clean.
+4. Before repairing a corrupt redis AOF: back the volume up first (the script's action says so).
+5. After `colima restart`: `unless-stopped` containers come back on their own; those with policy `no` must be started by hand (`docker ps -a` to find them).
+6. **Never automate `docker volume prune`.** A volume counts as "unused" as soon as its container is stopped, so the list includes the databases of every powered-down project. The volumes' `RECLAIMABLE` is also almost always crumbs next to the images': not worth the risk. `docker image prune -f` (dangling) is safe without asking; `-a` needs approval because it deletes tagged images belonging to other projects.
 
-## Patrones conocidos
+## Known patterns
 
-Causas que este skill ya ha diagnosticado, aplicables a cualquier Mac:
+Causes this skill has already diagnosed, applicable to any Mac:
 
-- Colima con `mountType: sshfs` → CPU constante >100%. Fix: `virtiofs` (editar el yaml; el flag `--mount-type` del CLI no persiste).
-- Intérpretes huérfanos (`bash`/`python`/`node` con padre `launchd`) girando días enteros. Fix: kill.
-- Daemons de análisis de macOS (`audioanalyticsd`, `mediaanalysisd`…) atascados semanas al ~100%. Fix: `sudo kill -9`.
-- Redis en crash-loop por AOF corrupto tras parada abrupta de la VM. Fix: backup del volumen + `redis-check-aof --fix`.
-- Contenedor en crash-loop porque el código fuente de su bind-mount ya no existe en el host. Fix: eliminar el contenedor.
-- Disco casi lleno por la imagen de la VM de Docker (archivo sparse que solo crece). El grueso suele estar en volúmenes e imágenes, no en el host.
-- **Imágenes `<none>` acumuladas por rebuilds.** Cada `docker compose up --build` deja la imagen anterior sin tag y nadie las recoge: 31 huérfanas de ~2.85GB llegaron a ocupar 53GB de los 125GB de una VM. Fix: `docker image prune -f`. Si el proyecto reconstruye a menudo, la cura de fondo es que su script de build pode al final (en Scenorai se hizo en `run.sh`, issue #562).
-- **Un `fstrim` que reporta poco NO prueba que el espacio sea dato real.** Si el root de la VM monta con `discard` (`colima ssh -- sh -c 'grep " / " /proc/mounts'`), los bloques ya vuelven al host al borrar y `fstrim` no tiene nada que hacer: reportará ~0B en `/` y unos MB en `/boot/efi` (FAT, sin discard) *siempre*, esté la VM llena de basura o no. En esta máquina se leyó ese resultado como "los 125GB son dato real e irrecuperable" cuando en realidad 53GB eran imágenes huérfanas. **El diagnóstico correcto es `docker system df`, no `fstrim`.** Orden: podar primero, medir después.
+- Colima with `mountType: sshfs` → constant CPU >100%. Fix: `virtiofs` (edit the yaml; the CLI's `--mount-type` flag does not persist).
+- Orphaned interpreters (`bash`/`python`/`node` whose parent is `launchd`) spinning for days. Fix: kill.
+- macOS analysis daemons (`audioanalyticsd`, `mediaanalysisd`…) stuck at ~100% for weeks. Fix: `sudo kill -9`.
+- Redis in a crash-loop from a corrupt AOF after the VM stopped abruptly. Fix: back the volume up + `redis-check-aof --fix`.
+- Container in a crash-loop because the source behind its bind-mount no longer exists on the host. Fix: remove the container.
+- Disk nearly full because of the Docker VM's image (a sparse file that only grows). The bulk is usually in volumes and images, not on the host.
+- **`<none>` images piled up by rebuilds.** Every `docker compose up --build` leaves the previous image untagged and nothing collects them: 31 orphans of ~2.85GB each held 53GB of a 125GB VM. Fix: `docker image prune -f`. If the project rebuilds often, the real cure is having its build script prune at the end (in Scenorai this went into `run.sh`, issue #562).
+- **An `fstrim` that reports little does NOT prove the space is real data.** If the VM's root mounts with `discard` (`colima ssh -- sh -c 'grep " / " /proc/mounts'`), blocks already return to the host on deletion and `fstrim` has nothing left to do: it will report ~0B on `/` and a few MB on `/boot/efi` (FAT, no discard) *every time*, whether the VM is full of garbage or not. On this machine that result was read as "the 125GB are real and unrecoverable" when 53GB were in fact orphaned images. **The correct diagnostic is `docker system df`, not `fstrim`.** Order: prune first, measure after.
 
-## Notas locales (opcional, fuera de este repo)
+## Local notes (optional, outside this repo)
 
-Los detalles de UNA máquina — nombres de contenedores, PIDs recurrentes, fechas, qué se decidió no tocar — no van aquí: este skill es público y genérico. Si existe `~/.claude/mac-doctor-notes.md`, el script lo señala al final de su salida; léelo antes de proponer acciones y añade ahí lo que aprendas de esta máquina.
+The details of ONE machine — container names, recurring PIDs, dates, what was decided not to touch — do not belong here: this skill is public and generic. If `~/.claude/mac-doctor-notes.md` exists, the script points to it at the end of its output; read it before proposing actions, and add whatever you learn about this machine there.
