@@ -83,6 +83,16 @@ if docker info >/dev/null 2>&1; then
   fi
   echo "DOCKER top RAM:"
   docker stats --no-stream --format '{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}' 2>/dev/null | sort -t$'\t' -k2 -hr | head -5 | sed 's/^/  /'
+  # El disco de la VM (diffdisk) solo crece y du lo ve como UN archivo opaco:
+  # desde el host es imposible saber si esos GB son dato real o basura. Esta es
+  # la única lectura que lo distingue, por eso va en el run rápido y no en --disk.
+  echo "DOCKER espacio:"
+  docker system df --format '{{.Type}}\t{{.Size}}\t{{.Reclaimable}} recuperable' 2>/dev/null | sed 's/^/  /'
+  DANGLING=$(docker image ls -f dangling=true -q 2>/dev/null | wc -l | tr -d ' ')
+  if [ "${DANGLING:-0}" -ge 5 ]; then
+    finding "$DANGLING imagenes <none> huerfanas — cada rebuild deja la anterior sin tag y nadie las recoge (se acumulan GB por proyecto)"
+    action "docker image prune -f   # SOLO dangling: no toca imagenes con tag, contenedores ni volumenes"
+  fi
   BUILDERS=$(docker ps --format '{{.Names}}' | grep buildx_buildkit || true)
   for b in $BUILDERS; do
     echo "INFO: builder buildkit activo: $b (se puede parar, se relanza solo al próximo build): docker buildx stop ${b%0}"
@@ -100,6 +110,17 @@ echo "DISCO: $(echo "$DISK" | awk '{print $3" usados / "$2" ("$4" libres, "$5")"
 if [ "$DISK_PCT" -ge 85 ]; then
   finding "disco al ${DISK_PCT}% — con poco margen, apps que escriben seguido (Claude Code y sus transcripts) fallan con ENOSPC"
   action "correr: ~/.claude/skills/mac-doctor/doctor.sh --disk   # desglose de qué ocupa el espacio"
+  # Si hay VM de Docker, mira DOCKER espacio antes que el desglose del host: casi
+  # siempre el mayor "archivo" del home es el diffdisk y ahí la basura no se ve.
+  if [ -d "$HOME/.colima" ]; then
+    # Con `discard` los bloques borrados vuelven al host solos; sin él hace falta
+    # fstrim. Saberlo evita leer un `fstrim` de 0B como "no hay nada que liberar".
+    if colima ssh -- sh -c 'grep -q " / .*discard" /proc/mounts' 2>/dev/null; then
+      echo "  (VM monta / con discard: tras podar, el espacio vuelve al host solo — fstrim NO hace falta)"
+    else
+      echo "  ACCION: tras podar, devolver los bloques al host: colima ssh -- sudo fstrim -av"
+    fi
+  fi
 fi
 # El desglose barre todo el home con du: tarda minutos, por eso va tras el flag.
 # ponytail: du -d 2 lista padres e hijos (los GB se cuentan dos veces al sumar); sirve para localizar, no para cuadrar totales.
