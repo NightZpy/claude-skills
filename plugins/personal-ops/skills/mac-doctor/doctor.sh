@@ -13,6 +13,11 @@ action()  { ACTIONS+=("$1"); }
 
 echo "== mac-doctor $(date '+%Y-%m-%d %H:%M') =="
 
+# Read early: section 4 needs it to tell "the daemon is broken" apart from
+# "the host is full and the guest is only reporting the symptom".
+DISK=$(df -h /System/Volumes/Data | tail -1)
+DISK_PCT=$(echo "$DISK" | awk '{gsub(/%/,"",$5); print $5}')
+
 # --- 1. Global memory ---
 MEM=$(top -l 1 -n 0 | grep PhysMem)
 SWAP=$(sysctl -n vm.swapusage)
@@ -97,15 +102,49 @@ if docker info >/dev/null 2>&1; then
   for b in $BUILDERS; do
     echo "INFO: buildkit builder running: $b (safe to stop, it relaunches on the next build): docker buildx stop ${b%0}"
   done
+
+  # `docker system df` counts ONLY the writable layer: it NEVER looks at the
+  # *-json.log files. A container with 59GB of logs is reported as a few hundred
+  # KB, so the GB are invisible from the host. This is the only reading that sees
+  # them, and it is the single most common way a Docker VM fills up.
+  if [ -d "$HOME/.colima" ]; then
+    CNAMES=$(docker ps -a --no-trunc --format '{{.ID}} {{.Names}}' 2>/dev/null)
+    colima ssh -- sudo sh -c 'ls -S /var/lib/docker/containers/*/*-json.log 2>/dev/null | head -5 | while read -r f; do du -m "$f"; done' 2>/dev/null \
+    | while read -r mb path; do
+        [ "${mb:-0}" -lt 1024 ] && continue
+        cid=$(basename "$(dirname "$path")")
+        cname=$(echo "$CNAMES" | awk -v i="$cid" '$1==i{print $2}')
+        echo "FINDING: container log of $((mb/1024))GB: ${cname:-$cid} — docker system df does NOT count these files"
+        echo "  ACTION: truncate it (safe with the container running: Docker keeps the fd open, only the log history is lost)"
+        echo "    colima ssh -- sudo truncate -s 0 $path"
+      done
+  fi
+
+  # json-file with an empty Config = no max-size: the log grows until it fills
+  # the disk. This is the CAUSE; truncating above is only the symptom.
+  CIDS=$(docker ps -q 2>/dev/null)
+  if [ -n "$CIDS" ]; then
+    # shellcheck disable=SC2086
+    NOROT=$(docker inspect -f '{{if and (eq .HostConfig.LogConfig.Type "json-file") (not .HostConfig.LogConfig.Config)}}x{{end}}' $CIDS 2>/dev/null | grep -c x || true)
+    if [ "${NOROT:-0}" -ge 1 ]; then
+      finding "$NOROT containers using json-file with NO rotation — their logs grow without limit"
+      action "cap every project in ONE place: in ~/.colima/default/colima.yaml replace 'docker: {}' with 'docker:' + 'log-driver: \"json-file\"' + 'log-opts: {max-size: \"50m\", max-file: \"4\"}' (200MB ceiling per container), then colima restart. NOTE: it only applies to containers created AFTERWARDS; the existing ones keep no rotation until they are recreated"
+    fi
+  fi
+else
+  # A daemon that does not answer while the disk is full is NOT a broken daemon:
+  # the sparse diffdisk cannot grow, and the guest turns that into I/O errors.
+  if [ -d "$HOME/.colima" ] && [ "${DISK_PCT:-0}" -ge 97 ]; then
+    finding "the Docker daemon does not answer AND the disk is at ${DISK_PCT}% — the guest's I/O errors are a symptom of the FULL HOST, not of a corrupt VM"
+    echo "  ACTION: free space on the HOST first. Until there is room, 'colima restart' just loops on 'Waiting for the essential requirement 1 of 2: ssh' and repeats the same failure"
+  fi
 fi
 
 # --- 5. Host top 5 by RAM (informational) ---
 echo "HOST top RAM:"
 ps -Ao rss=,comm= | sort -rn | head -5 | awk '{rss=$1; $1=""; printf "  %.1fGB %s\n", rss/1024/1024, substr($0,2)}'
 
-# --- 6. Disk ---
-DISK=$(df -h /System/Volumes/Data | tail -1)
-DISK_PCT=$(echo "$DISK" | awk '{gsub(/%/,"",$5); print $5}')
+# --- 6. Disk (DISK/DISK_PCT are read at the top: section 4 needs them) ---
 echo "DISK: $(echo "$DISK" | awk '{print $3" used / "$2" ("$4" free, "$5")"}')"
 if [ "$DISK_PCT" -ge 85 ]; then
   finding "disk at ${DISK_PCT}% — little headroom; apps that write constantly (Claude Code and its transcripts) fail with ENOSPC"
@@ -117,7 +156,7 @@ if [ "$DISK_PCT" -ge 85 ]; then
     # With `discard`, deleted blocks return to the host on their own; without it
     # fstrim is needed. Knowing which avoids reading a 0B fstrim as "nothing to free".
     if colima ssh -- sh -c 'grep -q " / .*discard" /proc/mounts' 2>/dev/null; then
-      echo "  (the VM mounts / with discard: after pruning, space returns to the host by itself — fstrim is NOT needed)"
+      echo "  (the VM mounts / with discard: space returns to the host by itself — but LAZILY: right after deleting, the host may not have moved at all, and it drains over the next couple of minutes. Measure again before concluding it did not work. fstrim is NOT needed)"
     else
       echo "  ACTION: after pruning, return the blocks to the host: colima ssh -- sudo fstrim -av"
     fi
