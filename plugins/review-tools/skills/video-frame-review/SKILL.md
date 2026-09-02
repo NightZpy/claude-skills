@@ -144,6 +144,36 @@ to ffmpeg's `fps=1/N` and `fps=N`). Add `--scale 2940` when text is unreadable,
 `--out DIR` to control the destination. It prints `dir:`, `frames:` and `rate:` —
 read the count from there.
 
+### Frame timestamps run half an interval late
+
+ffmpeg's `fps` filter doesn't sample at the interval boundary — for output
+slot `t`, it selects the source frame nearest the *midpoint* of that
+`1/fps`-wide window, but the slot itself is still labelled `t`. If you name
+frame `i` (1-indexed, as `f_%02d` files come out) by `(i-1)/fps`, every frame
+is actually showing content from half an interval later than its name
+claims.
+
+**Formula:** `true_t = window_start + (i - 0.5) / fps` for 1-indexed `i`
+(equivalently, `window_start + (i + 0.5) / fps` for 0-indexed `i`).
+
+**Measured** (this repo, 2026-09-02, against `/private/tmp/review-98b3fc37/final.mp4`,
+verified by PSNR against seek-based single-frame extraction at each candidate
+time — the correct time scores roughly 2x the PSNR of its naive neighbors):
+- `fps=0.5` (one every 2s): frame 1 is content from t=1.00s, not t=0 — a
+  uniform **+1.00s** offset.
+- `fps=2` (one every 0.5s): frame 1 is content from t=0.25s, and frame 10
+  (naive t=4.5s) is content from t=4.75s — a uniform **+0.25s** offset.
+
+**The check:** extract one frame by seek at the *naive* nominal time it would
+get from `(i-1)/fps` (`ffmpeg -ss <naive_t> -frames:v 1 ...`) and diff it
+against the fps-extracted frame with that same index. If they don't match,
+and a seek at `naive_t + 1/(2·fps)` does, your frame names need the
+correction above, not the extraction itself.
+
+Use `true_t`, not the naive index math, wherever a frame's time is stated
+downstream — the `## Frame NN (HH:MM:SSs)` label you hand the describer in
+step 4, and any timestamp you cite in synthesis.
+
 ### 3. Sanity-check ONE frame yourself
 
 Before dispatching the subagent, `Read` `f_01.png` yourself. Confirm:
@@ -324,6 +354,7 @@ Example output (synthetic — illustrating the shape):
 - **Label observation vs inference**. "The badge says X" is observation; "the badge said X because the atom wasn't updated" is inference — mark it as such.
 - **Cite frame numbers** for state transitions ("Frame 17 — error banner appears, modal stays open"). Lets the user replay if they disagree.
 - **Don't speculate beyond evidence**. If the critical text remained `[unreadable]` after zoom passes, surface that explicitly and ask the user to re-record at higher fidelity or share the API response directly — don't fill the gap with plausible-sounding guesses.
+- **Verify before it drives the diagnosis.** The describer can invent content, not just misread it — in one run it narrated three people in numbered shirts on a frame that was actually an illustration with no people in it at all. Nothing caught that except the orchestrator happening to open the frame directly. Before a description feeds the diagnosis, or gets quoted in the output, `Read` the source frame yourself — a fabricated observation is worse than `[unreadable]`, because it doesn't hedge.
 
 ## Common pitfalls
 

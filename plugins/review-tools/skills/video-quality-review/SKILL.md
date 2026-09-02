@@ -98,9 +98,28 @@ branches.
 
 ### Every finding is tagged `measured` or `judged`
 
-`measured` = a threshold was compared against a number you produced. No
-discretion was involved.
+`measured` = either of:
+- a threshold was compared against a number you produced, no discretion
+  involved, **or**
+- two genuinely independent instruments read the same thing and agreed,
+  with no discretion used to decide what either one reported (e.g. a
+  vision describer and an OCR engine both transcribe the same garbled
+  string the same way).
+
 `judged` = you looked and formed an opinion, however well-evidenced.
+
+This widens `measured` rather than adding a third tag — the tag vocabulary on
+a finding line stays two words, and agreement between independent instruments
+removes exactly the same discretion a threshold comparison does: what
+happened is no longer a matter of interpretation.
+
+**Independence is the whole test.** Two runs of the *same* model or engine are
+not independent — they fail in the same places, which is exactly why the ASR
+collusion rule below (§"Where this rubric fails") downgrades same-family ASR
+agreement to `judged`. Before tagging a corroborated finding `measured`, be
+able to name why the two instruments are independent (different model
+family, different technique — vision model vs. OCR, not two calls to the
+same vision model).
 
 The word is mandatory on every finding. It is the mechanical form of the rule
 that matters most here: **never state a judgement with the false confidence of a
@@ -260,13 +279,32 @@ anything finer than 2s. Ever.
 **3. Onsets are intervals, never instants:**
 `t=[last-clean-sample – first-affected-sample]`, e.g. `t=[00:14.0–00:16.0] P1`.
 
-**Prerequisite:** frames must be named by their real timestamp
-(`window_start + i/fps`, or ffmpeg's `-frame_pts`). Naming frames by index and
-calling the index a timestamp makes rule 2 impossible to honour.
+**Prerequisite:** frames must be named by their real timestamp — either
+ffmpeg's own `-frame_pts`, or `window_start + (i - 0.5)/fps` for a 1-indexed
+`i`. Note the `-0.5`: ffmpeg's `fps` filter samples the *midpoint* of each
+interval, not its boundary, so `window_start + i/fps` is off by half an
+interval — measured and detailed in `video-frame-review`'s "Frame timestamps
+run half an interval late". Naming frames by index and calling the index a
+timestamp makes rule 2 impossible to honour either way.
 
-**The checker.** Before delivering, verify every finding's cited precision
-against its pass's resolution. A finding finer than its pass is a defect *in the
-report* — fix it or drop it. Do not deliver a report that fails this.
+**The checker.** Before delivering the report, run this over every finding, in
+order:
+
+1. Read the finding's pass label (the token after the `t=[...]` interval,
+   e.g. `P1`). Look up that pass's declared resolution from its header
+   entry.
+2. Scan the **whole finding line** — not just the `t=[...]` field — for any
+   number that implies time precision finer than that resolution. This
+   includes numbers inside the `evidence` and `expected` prose ("0.83s
+   ahead", "3 frames later", "at 00:14.3"). A P1 finding (2s resolution) that
+   says the interval right but then writes "0.83s ahead" in its evidence
+   sentence still fails the checker — the violation lives in the prose, not
+   the field, and a checker that only parses `t=[...]` will not catch it.
+3. Any hit fails the check on that finding. Round the number to the pass's
+   resolution, widen it back into an interval, or drop the claim it can't
+   support. Do not deliver a report that still has one.
+
+A finding finer than its pass is a defect *in the report* — fix it or drop it.
 
 ## Output format
 
@@ -330,6 +368,22 @@ failure this rubric is built to prevent — a confident, well-formatted verdict
 arrived at by pattern-matching instead of by looking at what was collected.
 
 **Get the evidence with the cheap tier, decide with the expensive one.**
+
+### Verify before it becomes a finding
+
+Cheap description is a lead, not evidence. In one run a describer reported
+three men in numbered shirts on a frame that was actually an illustration
+with "2026" printed on it — an invented frame, not a misread one. No finding
+depended on it only because the orchestrator happened to look at that frame
+directly; nothing in the process required it.
+
+**An observation a finding rests on must be verified by the orchestrator
+before it is written up as a finding — at minimum:**
+- Any finding at **S3 or S4**. Read the source frame(s) yourself; do not
+  write the finding from the describer's text alone.
+- Anything **quoted verbatim** — a subtitle string, an on-screen number, a
+  heading. Confirm it against the frame, not against the describer's
+  transcription of it.
 
 ### Frame passes, via `video-frame-review`
 
