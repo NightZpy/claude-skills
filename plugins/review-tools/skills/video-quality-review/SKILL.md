@@ -312,6 +312,25 @@ Cheapest and it tells the frame passes where to look. Produces: loudness,
 independent ASR with word timings, scene-cut times, animation segment bounds.
 Feeds D2, D3's cut check, D4/D6 text alignment.
 
+### Which model does what — observation is cheap, judgement is not
+
+A review is two different jobs, and paying frontier prices for the first one is
+the main way this skill gets expensive for no gain.
+
+| job | model | why |
+|---|---|---|
+| **Describing frames** — verbatim text, colours, wardrobe, sharpness, frame-to-frame deltas | **Haiku** | Pure observation. A bigger model does not see more; it just costs more per frame, and there are ~200 frames per video. |
+| **Running the passes** — extraction, OCR, ffmpeg, alignment, collecting evidence, deciding where to zoom | **Sonnet** | Mechanical orchestration against a written plan. This is the bulk of the token spend, and it is the part where a cheaper model changes nothing about the answer. |
+| **The verdict** — reading the assembled evidence, assigning levels, weighing severity, writing the report | **Opus or Fable** | This is where judgement actually happens: whether a mismatch is Rough or Broken, whether one defect dominates, what the evidence does not support. |
+
+The split is not a cost preference, it is a quality argument in both directions.
+A frontier model doing frame description wastes money on a task with a single
+correct answer. A cheap model doing the final judgement produces exactly the
+failure this rubric is built to prevent — a confident, well-formatted verdict
+arrived at by pattern-matching instead of by looking at what was collected.
+
+**Get the evidence with the cheap tier, decide with the expensive one.**
+
 ### Frame passes, via `video-frame-review`
 
 That skill is the frame-evidence engine: extract → describe with a cheap
