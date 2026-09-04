@@ -1,7 +1,7 @@
 {
   "name": "design",
-  "version": "1.1.0",
-  "description": "Diagrams and UI craft: artifact-visual-system, excalidraw, diagram-conventions, proposal-artifact, redesign-existing-projects, web-design-guidelines and the two Vercel React/Next.js guides.",
+  "version": "1.2.0",
+  "description": "Diagrams, teaching and UI craft: tutor (explain anything as a picture-first lesson), artifact-visual-system, excalidraw, diagram-conventions, proposal-artifact, redesign-existing-projects, web-design-guidelines and the two Vercel React/Next.js guides.",
   "author": {
     "name": "NightZpy"
   },
