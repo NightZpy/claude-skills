@@ -22,7 +22,7 @@ so nothing loads that you don't want:
 | `orchestration` | plan-big-execute-small · ask · advisor-tool |
 | `dev-workflow` | review-policy · git-rebase-safety · issue-tracking |
 | `personal-ops` | life-os · mac-doctor · npm-supply-chain |
-| `design` | artifact-visual-system · excalidraw · diagram-conventions · proposal-artifact · redesign-existing-projects · web-design-guidelines · vercel-composition-patterns · vercel-react-best-practices |
+| `design` | tutor · artifact-visual-system · excalidraw · diagram-conventions · proposal-artifact · redesign-existing-projects · web-design-guidelines · vercel-composition-patterns · vercel-react-best-practices |
 | `review-tools` | replicate-behavior-report · video-frame-review · docx-comments |
 
 ```
@@ -106,6 +106,9 @@ layout exists to prevent.
   with the work instead of reporting a state that stopped being true.
 
 **Diagrams & design**
+- **tutor** — teaching mode: explains anything picture-first, either as a
+  self-contained explainer artifact or as inline sketches (pseudocode, call
+  trees, mermaid, diffs). Ships its own visual system so every lesson matches.
 - **artifact-visual-system** — a ready-made visual system for Claude Artifacts: design
   tokens, component recipes, the mermaid workarounds the runtime needs, and a
   zoomable/full-screen diagram viewer.
