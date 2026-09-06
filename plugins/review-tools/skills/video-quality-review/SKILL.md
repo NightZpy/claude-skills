@@ -222,6 +222,14 @@ default into, and the middle is where "everything is basically fine" hides.
   identity markers of a rival or wrong entity, or readable text presented as
   information is gibberish. A knowledgeable viewer would call the video fake.
 
+> **A `Clean` earned with an identifiable subject and a `Clean` earned without
+> one are not the same result.** Half of what D5 detects is identity — a wrong
+> face, a rival's crest, a shirt number that changes. Material with no
+> identifiable subject (objects, places, data) has no identity to contradict, so
+> that half cannot fail. Report it as `NOT SCORED — no identifiable subject` for
+> the identity component and score the rest normally; see "Refuse to score what
+> you cannot perceive" below.
+
 ## Severity
 
 Nielsen 0–4, with the decomposition mandatory. Every finding carries
@@ -457,6 +465,14 @@ capability>` and keep the marker stable across videos so comparability survives:
   judgement and must never be phrased as a retention measurement.
 - **Ken Burns naturalness outside densified windows** — motion inferred from two
   sparse stills is not observed motion.
+- **Identity consistency when there is no identifiable subject** — a video of
+  objects, places or data has no face, kit or crest to contradict. Half of D5's
+  detection power is identity, and on this material that half has an empty
+  candidate set: it cannot fail, so its passing means nothing. Report
+  `NOT SCORED — no identifiable subject` for that component and score D5's
+  remaining components (legible embedded text, sharpness, palette consistency)
+  as normal. **Do not fold the missing component into a `Clean`** — a reader
+  comparing two videos would read equivalence where there is none.
 
 **Accepted blind spot.** A defect that appears and fully resolves inside a P1
 2-second gap, away from any cut, will be missed. The alternative is
