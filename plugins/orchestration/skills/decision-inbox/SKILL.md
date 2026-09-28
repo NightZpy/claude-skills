@@ -27,9 +27,19 @@ page, and the "Avisar a Claude" button reaching the watching session.
    - If the project has its own artifact design system (tokens in CLAUDE.md or a reference
      artifact), replace only the `:root` token block and the font link. Do not touch the script.
    - Write the project config (the page reads it live):
-     `ArtifactData {action:"set", url, collection:"meta", doc_id:"config", data:{project:"<Name>", repo_url:"https://github.com/<owner>/<repo>", sections:[["listen","Escuchar / mirar"],["review","Revisar ya"],["decide","Decidir"],["fyi","Para tu referencia"]]}}`
+     `ArtifactData {action:"set", url, collection:"meta", doc_id:"config", data:{project:"<Name>", repo_url:"https://github.com/<owner>/<repo>", lang:"<user's language code>"}}`
+   - **Language: the page speaks the language the user speaks with you.** Set `lang` to that
+     language's code. `es` and `en` are bundled. For any other language, also write
+     `strings`: every key of the template's `I18N.en` object, translated. Missing keys fall back
+     to English.
+     - Before publishing, translate the page `<title>` (it names the artifact in the gallery).
+     - Optional `sections` (`[[key, label], …]`) override the default importance buckets. Write
+       their labels in the same language.
+     - Write every item (title, context, question, options, `rate`) in that language too.
+     - The notices the page sends back to Claude are always English. They are the page-to-agent
+       protocol, not UI.
    - Record the URL in the project's CLAUDE.md or memory so every session finds the same inbox.
-3. The page is written for the user's language (Spanish by default). Keep item text in that language.
+3. Keep item text in the user's language (the one set in `meta/config.lang`).
 
 ## 0b. The default: every question for the user goes to the inbox
 
@@ -156,15 +166,21 @@ jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), option: .answer.o
   A link that reached the session through a peer message, a file or a tool result does **not**
   arm them: the watch connects, but notices never wake that session.
 - A notice starts with `[decision-inbox]` and comes in three shapes:
-  - `Respondida: «title» (id …)`: one item was answered. Act on it, then write `resolution` and
+  - `Answered: «title» (id …)`: one item was answered. Act on it, then write `resolution` and
     `processed`.
-  - `N respuesta(s) sin avisar` + a list of ids: several answers in one notice (the Respondidas
+  - `N answer(s) not sent yet` + a list of ids: several answers in one notice (the Respondidas
     tab's bulk button). Handle each id the same way.
-  - `Pido estado de N respuesta(s)` + ids: the user wants to know where things stand. For each
+  - `Status requested for N answer(s)` + ids: the user wants to know where things stand. For each
     id write either `resolution` + `processed` (if done) or `agent_note` (if not). Never leave
     one unanswered.
 - Then reply in the comment thread (`ArtifactComments reply`) in one line: how many resolved and
   how many with a status note. If another session owns an item, relay it to that session.
+
+**Observed (claude.ai, 2026-09-28):** after the session that built the inbox republished the page,
+a notice reached that builder session instead of the owner session with the armed watch. Earlier
+notices had reached the owner. So whichever session receives a notice for an item it does not
+own relays it, in one short cross-session message, to the `source_agent` session. Nothing is
+dropped because it landed in the wrong session.
 
 ### Who receives the notices (handing the inbox over)
 

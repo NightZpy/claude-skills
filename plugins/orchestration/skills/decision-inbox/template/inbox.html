@@ -171,38 +171,51 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 
 <div class="wrap">
   <header class="hero">
-    <p class="kicker" id="kicker">Lo que espera tu respuesta</p>
-    <h1>Buzón de decisiones</h1>
-    <p>Los agentes dejan aquí sus preguntas, pruebas a ciegas y revisiones. Ves una a la vez, por importancia; al responder aparece la siguiente.</p>
+    <p class="kicker" id="kicker" data-t="kicker">Lo que espera tu respuesta</p>
+    <h1 data-t="title">Buzón de decisiones</h1>
+    <p data-t="intro"></p>
   </header>
 
-  <div class="bar" role="toolbar" aria-label="Vista">
-    <button class="tab" data-f="open" aria-pressed="true">Abiertas<span class="n" id="n-open">–</span></button>
-    <button class="tab" data-f="answered" aria-pressed="false">Respondidas<span class="n" id="n-answered">–</span></button>
-    <button class="tab" data-f="all" aria-pressed="false">Todas<span class="n" id="n-all">–</span></button>
-    <span class="status-line" id="live">conectando…</span>
+  <div class="bar" role="toolbar" data-t-aria="view">
+    <button class="tab" data-f="open" aria-pressed="true"><span data-t="tab_open"></span><span class="n" id="n-open">–</span></button>
+    <button class="tab" data-f="answered" aria-pressed="false"><span data-t="tab_answered"></span><span class="n" id="n-answered">–</span></button>
+    <button class="tab" data-f="all" aria-pressed="false"><span data-t="tab_all"></span><span class="n" id="n-all">–</span></button>
+    <span class="status-line" id="live" data-t="connecting"></span>
   </div>
-  <div class="bar2" id="sections" role="toolbar" aria-label="Importancia"></div>
+  <div class="bar2" id="sections" role="toolbar" data-t-aria="importance"></div>
 
   <div id="warn" class="warn" hidden></div>
-  <main id="list"><div class="empty">Cargando decisiones…</div></main>
+  <main id="list"><div class="empty" data-t="loading"></div></main>
 
   <footer>
-    Colecciones <b>items</b> e <b>issues</b> · estados open → answered → processed · el agente marca processed al recoger tu respuesta.<br>
-    En las pruebas a ciegas la clave no está en esta página: el agente la añade después de tu veredicto.
+    <span data-t="footer_states"></span><br>
+    <span data-t="footer_blind"></span>
   </footer>
 </div>
 
 <script>
-const KIND = {text:"Pregunta", choice:"Elegir", image:"Imagen", video:"Vídeo", audio:"Audio", blind_test:"Prueba a ciegas"};
-const STATUS = {open:"abierta", answered:"respondida", processed:"resuelta"};
+// UI text. meta/config.lang picks a bundled language; meta/config.strings overrides any key
+// (a full set for any other language). Notices sent to Claude stay in English: they are the
+// page-to-agent protocol, not UI.
+const I18N = {es: {"title": "Buzón de decisiones", "kicker": "Lo que espera tu respuesta", "kicker_project": "{project} · lo que espera tu respuesta", "intro": "Los agentes dejan aquí sus preguntas, pruebas a ciegas y revisiones. Ves una a la vez, por importancia; al responder aparece la siguiente.", "view": "Vista", "tab_open": "Abiertas", "tab_answered": "Respondidas", "tab_all": "Todas", "connecting": "conectando…", "importance": "Importancia", "loading": "Cargando decisiones…", "footer_states": "Estados: abierta → respondida → resuelta. El agente la marca resuelta cuando actúa sobre tu respuesta y escribe qué hizo.", "footer_blind": "En las pruebas a ciegas la clave no está en esta página: el agente la añade después de tu veredicto.", "kind_text": "Pregunta", "kind_choice": "Elegir", "kind_image": "Imagen", "kind_video": "Vídeo", "kind_audio": "Audio", "kind_blind_test": "Prueba a ciegas", "status_open": "abierta", "status_answered": "respondida", "status_processed": "resuelta", "status_withdrawn": "retirada", "follow_all": "Todas", "follow_unsent": "Sin avisar", "follow_waiting": "Avisadas, sin resolver", "follow_resolved": "Resueltas", "sec_listen": "Escuchar / mirar", "sec_review": "Revisar ya", "sec_decide": "Decidir", "sec_fyi": "Para tu referencia", "rate_q": "¿Cómo queda frente a la referencia?", "rate_good": "Bien", "rate_partial": "Regular", "rate_bad": "Mal", "file_missing": "Archivo no disponible", "load_fail": "No se pudo cargar este archivo.", "img_alt": "imagen", "rate_aria": "Calificar {x}", "compare_with": "Comparar con:", "reference": "Referencia", "reference_n": "Referencia {n}", "candidate_n": "Candidata {n}", "rated": "{q} · {done} de {n} calificadas", "rating_fail": "No se pudo guardar la calificación ({code}).", "lb_compare": "Comparar con la referencia", "lb_gallery": "Galería", "i_of_n": "{i} de {n}", "close": "Cerrar", "prev": "Anterior", "next": "Siguiente", "open_gh": "Abrir en GitHub ↗", "untitled": "(sin título)", "chip_unsent": "sin avisar", "chip_asked": "estado pedido", "chip_sent": "avisada", "key_revealed": "clave revelada", "key_hidden": "clave oculta", "your_answer": "Tu respuesta · {at}", "resolved": "Resuelta", "agent_status": "Estado del agente", "key": "Clave: ", "multi_hint": "Puedes marcar varias", "min_n": ", mínimo {n}", "max_n": ", máximo {n}", "options": "Opciones", "max_err": "Máximo {n}. Desmarca una antes de elegir otra.", "comment_opt": "Comentario (opcional)", "answer_ph": "Tu respuesta", "comment": "Comentario", "save": "Guardar respuesta", "save_notify": "Guardar y avisar a Claude", "no_comments": "Los avisos no están disponibles en esta vista", "cancel": "Cancelar", "change": "Cambiar respuesta", "notify": "Avisar a Claude", "ask_status": "Pedir estado", "related": "Relacionadas ({n})", "hide_related": "Ocultar relacionadas ({n})", "created": "creada {at}", "bulk_notify": "Avisar a Claude de {n} sin avisar", "nothing_unsent": "Nada sin avisar", "bulk_status": "Pedir estado de {n} avisadas", "none_waiting": "Ninguna esperando", "empty_section": "Nada pendiente en esta categoría.", "empty_all": "Nada pendiente. Todo respondido.", "answered_n": "{done}/{n} respondidas", "prev_arrow": "← Anterior", "next_arrow": "Siguiente →", "queue": "En cola", "empty_view": "No hay decisiones en esta vista.", "min_err": "Marca al menos {n}.", "need_answer": "Elige una opción, califica o escribe un comentario antes de guardar.", "saving": "Guardando…", "saved": "Guardado.", "no_perm": "No tienes permiso para responder aquí (hace falta ser Colaborador o más).", "save_fail": "No se pudo guardar ({code}). Tu texto sigue aquí; vuelve a intentarlo.", "sent_claude": "Aviso enviado a Claude.", "why_writers": "solo los editores pueden enviarlo a Claude", "why_nosession": "ahora mismo no hay ninguna sesión de Claude escuchando", "why_off": "el envío a Claude no está disponible aquí", "why_default": "el envío a Claude no está disponible", "posted_not_sent": "Comentario publicado, pero no enviado a Claude: {why}.", "fail_consent": "No diste permiso para comentar desde la página. El aviso no se envió.", "fail_forbidden": "Comentar desde la página está desactivado para ti.", "fail_rate": "Demasiados avisos seguidos; espera un momento.", "fail_claude": "No se pudo enviar a Claude; no se publicó nada.", "fail_generic": "No se pudo enviar el aviso ({code}).", "sending_notice": "Enviando aviso…", "asking": "Pidiendo estado…", "sending": "Enviando…", "offline": "sin conexión", "no_view": "Esta vista no puede leer el buzón. Ábrelo en claude.ai.", "no_db": "sin base de datos", "no_db_msg": "No se pudo abrir el buzón en esta vista.", "disconnected": "desconectado", "lost": "Se perdió la conexión con el buzón ({code}). Recarga la página.", "live": "en vivo · {time}"},
+  en: {"title": "Decision inbox", "kicker": "Waiting for your answer", "kicker_project": "{project} · waiting for your answer", "intro": "Agents leave their questions, blind tests and reviews here. You see one at a time, most important first; answering brings up the next.", "view": "View", "tab_open": "Open", "tab_answered": "Answered", "tab_all": "All", "connecting": "connecting…", "importance": "Importance", "loading": "Loading decisions…", "footer_states": "States: open → answered → resolved. The agent resolves an item once it acts on your answer and writes what it did.", "footer_blind": "In blind tests the key is not on this page: the agent adds it after your verdict.", "kind_text": "Question", "kind_choice": "Choose", "kind_image": "Image", "kind_video": "Video", "kind_audio": "Audio", "kind_blind_test": "Blind test", "status_open": "open", "status_answered": "answered", "status_processed": "resolved", "status_withdrawn": "withdrawn", "follow_all": "All", "follow_unsent": "Not sent", "follow_waiting": "Sent, unresolved", "follow_resolved": "Resolved", "sec_listen": "Listen / watch", "sec_review": "Review now", "sec_decide": "Decide", "sec_fyi": "For your reference", "rate_q": "How does it compare with the reference?", "rate_good": "Good", "rate_partial": "Fair", "rate_bad": "Poor", "file_missing": "File not available", "load_fail": "This file could not be loaded.", "img_alt": "image", "rate_aria": "Rate {x}", "compare_with": "Compare with:", "reference": "Reference", "reference_n": "Reference {n}", "candidate_n": "Candidate {n}", "rated": "{q} · {done} of {n} rated", "rating_fail": "The rating could not be saved ({code}).", "lb_compare": "Compare with the reference", "lb_gallery": "Gallery", "i_of_n": "{i} of {n}", "close": "Close", "prev": "Previous", "next": "Next", "open_gh": "Open on GitHub ↗", "untitled": "(untitled)", "chip_unsent": "not sent", "chip_asked": "status requested", "chip_sent": "sent", "key_revealed": "key revealed", "key_hidden": "key hidden", "your_answer": "Your answer · {at}", "resolved": "Resolved", "agent_status": "Agent status", "key": "Key: ", "multi_hint": "You can pick several", "min_n": ", at least {n}", "max_n": ", at most {n}", "options": "Options", "max_err": "At most {n}. Untick one before picking another.", "comment_opt": "Comment (optional)", "answer_ph": "Your answer", "comment": "Comment", "save": "Save answer", "save_notify": "Save and notify Claude", "no_comments": "Notices are not available in this view", "cancel": "Cancel", "change": "Change answer", "notify": "Notify Claude", "ask_status": "Ask for status", "related": "Related ({n})", "hide_related": "Hide related ({n})", "created": "created {at}", "bulk_notify": "Notify Claude of {n} not sent", "nothing_unsent": "Nothing to send", "bulk_status": "Ask status of {n} sent", "none_waiting": "None waiting", "empty_section": "Nothing pending in this category.", "empty_all": "Nothing pending. All answered.", "answered_n": "{done}/{n} answered", "prev_arrow": "← Previous", "next_arrow": "Next →", "queue": "Up next", "empty_view": "No decisions in this view.", "min_err": "Pick at least {n}.", "need_answer": "Pick an option, rate, or write a comment before saving.", "saving": "Saving…", "saved": "Saved.", "no_perm": "You can't answer here (you need Contributor access or higher).", "save_fail": "Could not save ({code}). Your text is still here; try again.", "sent_claude": "Notice sent to Claude.", "why_writers": "only editors can send it to Claude", "why_nosession": "no Claude session is listening right now", "why_off": "sending to Claude is not available here", "why_default": "sending to Claude is not available", "posted_not_sent": "Comment posted but not sent to Claude: {why}.", "fail_consent": "You did not allow commenting from the page. The notice was not sent.", "fail_forbidden": "Commenting from the page is turned off for you.", "fail_rate": "Too many notices in a row; wait a moment.", "fail_claude": "Could not send to Claude; nothing was posted.", "fail_generic": "The notice could not be sent ({code}).", "sending_notice": "Sending notice…", "asking": "Asking for status…", "sending": "Sending…", "offline": "offline", "no_view": "This view cannot read the inbox. Open it on claude.ai.", "no_db": "no database", "no_db_msg": "The inbox could not be opened in this view.", "disconnected": "disconnected", "lost": "Lost the connection to the inbox ({code}). Reload the page.", "live": "live · {time}"}};
+let LANG = /^es\b/i.test(navigator.language || "") ? "es" : "en", STRINGS = {};
+const t = (k, v = {}) => String(STRINGS[k] ?? (I18N[LANG] || I18N.en)[k] ?? I18N.en[k] ?? k).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? "");
+const kindName = k => t("kind_" + k) === "kind_" + k ? (k || t("kind_text")) : t("kind_" + k);
+const statusName = s => t("status_" + s) === "status_" + s ? s : t("status_" + s);
+function applyStatic() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-t]").forEach(n => { n.textContent = t(n.dataset.t); });
+  document.querySelectorAll("[data-t-aria]").forEach(n => n.setAttribute("aria-label", t(n.dataset.tAria)));
+}
 // What happened after the answer. unsent: nobody told the agent yet · waiting: told, no resolution yet · resolved: the agent closed it.
-const FOLLOW = [["all","Todas"],["unsent","Sin avisar"],["waiting","Avisadas, sin resolver"],["resolved","Resueltas"]];
+const FOLLOW = ["all", "unsent", "waiting", "resolved"];
 const followOf = it => st(it) === "processed" || it.resolution ? "resolved" : st(it) !== "answered" ? null : it.notified_at ? "waiting" : "unsent";
 // Importance buckets, most urgent first.
-// Overridden by meta/config.sections.
-let SECTIONS = [["listen","Escuchar / mirar"],["review","Revisar ya"],["decide","Decidir"],["fyi","Para tu referencia"]];
-let SEC_RANK = Object.fromEntries(SECTIONS.map(([k], i) => [k, i]));
+// Overridden by meta/config.sections ([[key, label], ...], labels in the user's language).
+let CUSTOM_SECTIONS = null;
+const sections = () => CUSTOM_SECTIONS || ["listen", "review", "decide", "fyi"].map(k => [k, t("sec_" + k)]);
+let SEC_RANK = {listen:0, review:1, decide:2, fyi:3};
 let REPO = "";   // meta/config.repo_url, e.g. https://github.com/owner/repo
 let items = [], issues = {}, filter = "open", section = "all", follow = "all", currentId = null, db = null, comments = null, bulkNote = null;
 const drafts = {}, notes = {}, relOpen = {};
@@ -219,7 +232,7 @@ function el(tag, attrs = {}, ...kids) {
   for (const k of kids.flat()) if (k != null && k !== false) n.append(k.nodeType ? k : String(k));
   return n;
 }
-const fmt = iso => { try { return new Date(iso).toLocaleString("es", {day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); } catch { return iso || ""; } };
+const fmt = iso => { try { return new Date(iso).toLocaleString(LANG, {day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); } catch { return iso || ""; } };
 const st = it => it.status || "open";
 const issueNo = it => it.issue ? String(it.issue).replace(/^#/, "") : null;
 const order = (a, b) => (SEC_RANK[a.section] ?? 9) - (SEC_RANK[b.section] ?? 9) || (a.priority ?? 50) - (b.priority ?? 50) || String(a.created_at).localeCompare(String(b.created_at));
@@ -228,12 +241,12 @@ const mediaCache = new Map();   // keeps audio/video players alive across re-ren
 const srcOf = m => m.url || (m.asset_id ? "/_blob/" + m.asset_id : "");
 const typeOf = (m, it) => m.type || (it.kind === "audio" ? "audio" : it.kind === "video" ? "video" : "image");
 const keyOf = m => m.asset_id || m.label || srcOf(m);
-const DEFAULT_RATE = {question:"¿Cómo queda frente a la referencia?", options:[{id:"good", label:"Bien"}, {id:"partial", label:"Regular"}, {id:"bad", label:"Mal"}]};
+const defaultRate = () => ({question: t("rate_q"), options: ["good", "partial", "bad"].map(id => ({id, label: t("rate_" + id)}))});
 // Comparison mode: at least one image with role "reference" and one with role "candidate".
 function compareOf(it) {
   const imgs = (it.media || []).filter(m => typeOf(m, it) === "image");
   const refs = imgs.filter(m => m.role === "reference"), cands = imgs.filter(m => m.role === "candidate");
-  return refs.length && cands.length ? {refs, cands, rate: it.rate || DEFAULT_RATE} : null;
+  return refs.length && cands.length ? {refs, cands, rate: it.rate || defaultRate()} : null;
 }
 const refPick = {};   // item id -> index of the reference shown next to each candidate
 // Single choice keeps answer.option_id; multi-choice (item.multi) uses answer.option_ids. Both read through here.
@@ -253,11 +266,11 @@ function renderMedia(it) {
       mediaCache.set(key, el("div", {class:"media"}, list.map(m => {
         const src = srcOf(m), t = typeOf(m, it);
         let body;
-        if (!src) body = el("span", {}, "Archivo no disponible");
+        if (!src) body = el("span", {}, t("file_missing"));
         else if (t === "audio") body = el("audio", {controls:true, preload:"metadata", src});
         else if (t === "video") body = el("video", {controls:true, playsinline:true, preload:"metadata", src});
-        else body = el("img", {src, alt:m.label || "imagen", loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"gallery", index: gallery.indexOf(m)})});
-        if (src) body.addEventListener("error", () => body.replaceWith(el("span", {class:"m missing"}, "No se pudo cargar este archivo.")));
+        else body = el("img", {src, alt:m.label || t("img_alt"), loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"gallery", index: gallery.indexOf(m)})});
+        if (src) body.addEventListener("error", () => body.replaceWith(el("span", {class:"m missing"}, t("load_fail"))));
         return el("figure", {class:"m"}, m.label ? el("figcaption", {}, m.label) : null, body);
       })));
     }
@@ -268,7 +281,7 @@ function renderMedia(it) {
 
 function rateButtons(it, cand, rate, cls) {
   const r = ratingsOf(it), k = keyOf(cand), locked = st(it) !== "open" && !drafts[it.id]?.editing;
-  return el("div", {class: cls || "rate", role:"group", "aria-label": "Calificar " + (cand.label || "")},
+  return el("div", {class: cls || "rate", role:"group", "aria-label": t("rate_aria", {x: cand.label || ""})},
     rate.options.map(o => el("button", {class:"seg", type:"button", disabled: locked, "aria-pressed": String(r[k] === o.id),
       onclick: e => { e.stopPropagation(); setRating(it, k, r[k] === o.id ? null : o.id); }}, o.label)));
 }
@@ -276,15 +289,15 @@ function renderCompare(it, {refs, cands, rate}) {
   const ri = Math.min(refPick[it.id] || 0, refs.length - 1), ref = refs[ri], r = ratingsOf(it);
   const done = cands.filter(c => r[keyOf(c)]).length;
   return el("div", {class:"cmp"},
-    refs.length > 1 ? el("div", {class:"refs"}, el("span", {}, "Comparar con:"),
-      refs.map((m, i) => el("button", {class:"seg", type:"button", "aria-pressed": String(i === ri), onclick: () => { refPick[it.id] = i; render(); }}, m.label || "Referencia " + (i + 1)))) : null,
-    el("p", {class:"ratesum"}, `${rate.question} · ${done} de ${cands.length} calificadas`),
+    refs.length > 1 ? el("div", {class:"refs"}, el("span", {}, t("compare_with")),
+      refs.map((m, i) => el("button", {class:"seg", type:"button", "aria-pressed": String(i === ri), onclick: () => { refPick[it.id] = i; render(); }}, m.label || t("reference_n", {n: i + 1})))) : null,
+    el("p", {class:"ratesum"}, t("rated", {q: rate.question, done, n: cands.length})),
     cands.map((c, ci) => el("div", {class:"pair" + (r[keyOf(c)] ? " rated" : "")},
       el("div", {class:"pair-imgs"},
-        el("figure", {}, el("figcaption", {class:"ref"}, ref.label || "Referencia"),
-          el("img", {src: srcOf(ref), alt: ref.label || "referencia", loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"compare", index: ci})})),
-        el("figure", {}, el("figcaption", {}, c.label || "Candidata " + (ci + 1)),
-          el("img", {src: srcOf(c), alt: c.label || "candidata", loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"compare", index: ci})}))),
+        el("figure", {}, el("figcaption", {class:"ref"}, ref.label || t("reference")),
+          el("img", {src: srcOf(ref), alt: ref.label || t("reference"), loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"compare", index: ci})})),
+        el("figure", {}, el("figcaption", {}, c.label || t("candidate_n", {n: ci + 1})),
+          el("img", {src: srcOf(c), alt: c.label || t("candidate_n", {n: ci + 1}), loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"compare", index: ci})}))),
       rateButtons(it, c, rate))));
 }
 
@@ -293,7 +306,7 @@ async function setRating(it, key, value) {
   d.ratings = {...(d.ratings || {}), [key]: value};
   render();
   try { await db.doc("items/" + it.id).update({ratings: {[key]: value}}); }   // saved at once; the answer is not required
-  catch (e) { notes[it.id] = {cls:"err", msg:"No se pudo guardar la calificación (" + (e?.code || "error") + ")."}; render(); }
+  catch (e) { notes[it.id] = {cls:"err", msg: t("rating_fail", {code: e?.code || "error"})}; render(); }
 }
 
 // Lightbox: gallery (one image, move between them) or compare (reference + candidate, rate in place).
@@ -313,18 +326,18 @@ function renderLB() {
   if (cmp) {
     const ref = cmp.refs[Math.min(refPick[it.id] || 0, cmp.refs.length - 1)];
     stage = el("div", {class:"lb-stage duo"},
-      el("div", {class:"lb-pane"}, el("span", {}, ref.label || "Referencia"), el("img", {src: srcOf(ref), alt: ref.label || ""})),
+      el("div", {class:"lb-pane"}, el("span", {}, ref.label || t("reference")), el("img", {src: srcOf(ref), alt: ref.label || ""})),
       el("div", {class:"lb-pane"}, el("span", {}, cur.label || ""), el("img", {src: srcOf(cur), alt: cur.label || ""})));
   } else stage = el("div", {class:"lb-stage"}, el("div", {class:"lb-pane"}, el("span", {}, cur.label || ""), el("img", {src: srcOf(cur), alt: cur.label || ""})));
-  const box = el("div", {class:"lb", role:"dialog", "aria-modal":"true", "aria-label": cmp ? "Comparar con la referencia" : "Galería", tabindex:"-1"},
-    el("div", {class:"lb-head"}, el("b", {}, cur.label || ""), el("span", {class:"cnt"}, `${lb.index + 1} de ${list.length}`),
-      el("button", {class:"lb-btn x", type:"button", onclick: closeLB}, "Cerrar")),
+  const box = el("div", {class:"lb", role:"dialog", "aria-modal":"true", "aria-label": cmp ? t("lb_compare") : t("lb_gallery"), tabindex:"-1"},
+    el("div", {class:"lb-head"}, el("b", {}, cur.label || ""), el("span", {class:"cnt"}, t("i_of_n", {i: lb.index + 1, n: list.length})),
+      el("button", {class:"lb-btn x", type:"button", onclick: closeLB}, t("close"))),
     stage,
     el("div", {class:"lb-foot"},
       cmp ? el("div", {class:"lb-q"}, cmp.rate.question) : null,
-      el("button", {class:"lb-btn", type:"button", disabled: lb.index === 0, onclick: () => go(lb.index - 1)}, "Anterior"),
+      el("button", {class:"lb-btn", type:"button", disabled: lb.index === 0, onclick: () => go(lb.index - 1)}, t("prev")),
       cmp ? rateButtons(it, cur, cmp.rate) : null,
-      el("button", {class:"lb-btn", type:"button", disabled: lb.index === list.length - 1, onclick: () => go(lb.index + 1)}, "Siguiente")));
+      el("button", {class:"lb-btn", type:"button", disabled: lb.index === list.length - 1, onclick: () => go(lb.index + 1)}, t("next"))));
   box.addEventListener("keydown", e => {
     if (e.key === "Escape") closeLB();
     else if (e.key === "ArrowLeft" && lb.index > 0) go(lb.index - 1);
@@ -355,11 +368,11 @@ function issueBox(it) {
   return el("div", {class:"issue"},
     el("div", {class:"h"}, el("span", {class:"num"}, "#" + n), is?.title ? el("span", {class:"ti"}, is.title) : null),
     is?.summary ? el("p", {}, is.summary) : null,
-    (is?.url || REPO) ? el("a", {href: is?.url || REPO.replace(/\/$/, "") + "/issues/" + n, target:"_blank", rel:"noopener"}, "Abrir en GitHub ↗") : null);
+    (is?.url || REPO) ? el("a", {href: is?.url || REPO.replace(/\/$/, "") + "/issues/" + n, target:"_blank", rel:"noopener"}, t("open_gh")) : null);
 }
 function rowFor(o, onPick) {
   return el("button", {class:"row" + (st(o) !== "open" ? " done" : ""), type:"button", onclick: () => onPick(o)},
-    el("span", {class:"t"}, o.title), el("span", {class:"k"}, st(o) === "open" ? (KIND[o.kind] || o.kind) : STATUS[st(o)]));
+    el("span", {class:"t"}, o.title), el("span", {class:"k"}, st(o) === "open" ? kindName(o.kind) : statusName(st(o))));
 }
 function jump(o) {
   if (st(o) === "open") { filter = "open"; section = "all"; currentId = o.id; }
@@ -374,18 +387,18 @@ function card(it) {
   const editing = s === "open" || d.editing;
   const opts = Array.isArray(it.options) ? it.options : [];
   const node = el("section", {class:`card ${s}`, id:"item-" + it.id});
-  const secName = (SECTIONS.find(([k]) => k === it.section) || [])[1];
+  const secName = (sections().find(([k]) => k === it.section) || [])[1];
 
   node.append(el("div", {class:"top"},
     el("div", {class:"meta"},
-      el("span", {class:"q"}, KIND[it.kind] || it.kind || "Pregunta"),
-      el("span", {class:"chip " + s}, STATUS[s] || s),
+      el("span", {class:"q"}, kindName(it.kind)),
+      el("span", {class:"chip " + s}, statusName(s)),
       secName ? el("span", {class:"chip"}, secName) : null,
-      followOf(it) === "unsent" ? el("span", {class:"chip unsent"}, "sin avisar") : null,
-      followOf(it) === "waiting" ? el("span", {class:"chip waiting"}, it.status_asked_at ? "estado pedido" : "avisada") : null,
-      it.kind === "blind_test" ? el("span", {class:"chip blind"}, it.key_revealed ? "clave revelada" : "clave oculta") : null,
+      followOf(it) === "unsent" ? el("span", {class:"chip unsent"}, t("chip_unsent")) : null,
+      followOf(it) === "waiting" ? el("span", {class:"chip waiting"}, it.status_asked_at ? t("chip_asked") : t("chip_sent")) : null,
+      it.kind === "blind_test" ? el("span", {class:"chip blind"}, it.key_revealed ? t("key_revealed") : t("key_hidden")) : null,
       it.source_agent ? el("span", {class:"chip"}, it.source_agent) : null),
-    el("h2", {}, it.title || "(sin título)"),
+    el("h2", {}, it.title || t("untitled")),
     issueBox(it),
     it.context ? el("p", {class:"ctx"}, it.context) : null,
     it.question ? el("p", {class:"question"}, it.question) : null));
@@ -396,28 +409,28 @@ function card(it) {
   if (it.answer && !editing) {
     const picked = opts.filter(o => chosenIds(it.answer).includes(o.id));
     node.append(el("div", {class:"given"},
-      el("span", {class:"lbl"}, "Tu respuesta · " + fmt(it.answer.answered_at)),
+      el("span", {class:"lbl"}, t("your_answer", {at: fmt(it.answer.answered_at)})),
       picked.length ? el("p", {}, el("b", {}, picked.map(o => o.label).join(" · "))) : null,
       it.answer.text ? el("p", {style:"white-space:pre-wrap"}, it.answer.text) : null,
       ratingLine(it) ? el("p", {}, ratingLine(it)) : null));
   }
   const stamp = x => [x.by, x.at ? fmt(x.at) : null].filter(Boolean).join(" · ");
-  if (it.resolution?.text) node.append(el("div", {class:"resolution"}, el("span", {class:"lbl"}, "Resuelta" + (stamp(it.resolution) ? " · " + stamp(it.resolution) : "")), el("p", {}, it.resolution.text)));
-  else if (it.agent_note?.text) node.append(el("div", {class:"agentnote"}, el("span", {class:"lbl"}, "Estado del agente" + (stamp(it.agent_note) ? " · " + stamp(it.agent_note) : "")), el("p", {}, it.agent_note.text)));
-  if (it.key_revealed && s !== "open") node.append(el("div", {class:"reveal"}, el("b", {}, "Clave: "), it.key_revealed));
+  if (it.resolution?.text) node.append(el("div", {class:"resolution"}, el("span", {class:"lbl"}, t("resolved") + (stamp(it.resolution) ? " · " + stamp(it.resolution) : "")), el("p", {}, it.resolution.text)));
+  else if (it.agent_note?.text) node.append(el("div", {class:"agentnote"}, el("span", {class:"lbl"}, t("agent_status") + (stamp(it.agent_note) ? " · " + stamp(it.agent_note) : "")), el("p", {}, it.agent_note.text)));
+  if (it.key_revealed && s !== "open") node.append(el("div", {class:"reveal"}, el("b", {}, t("key")), it.key_revealed));
 
   const box = el("div", {class:"answer-box"});
   if (editing) {
     if (opts.length) {
       const multi = !!it.multi, max = multi ? (it.max || opts.length) : 1;
-      if (multi) box.append(el("p", {class:"note"}, "Puedes marcar varias" + (it.min > 1 ? `, mínimo ${it.min}` : "") + (it.max ? `, máximo ${it.max}` : "") + "."));
-      const g = el("div", {class:"opts", role: multi ? "group" : "radiogroup", "aria-label":"Opciones"});
+      if (multi) box.append(el("p", {class:"note"}, t("multi_hint") + (it.min > 1 ? t("min_n", {n: it.min}) : "") + (it.max ? t("max_n", {n: it.max}) : "") + "."));
+      const g = el("div", {class:"opts", role: multi ? "group" : "radiogroup", "aria-label": t("options")});
       opts.forEach(o => g.append(el("button", {class:"opt" + (multi ? " multi" : ""), type:"button", role: multi ? "checkbox" : "radio", "aria-checked": String(d.option_ids.includes(o.id)),
         onclick: () => {
           const on = d.option_ids.includes(o.id);
           if (!multi) d.option_ids = on ? [] : [o.id];
           else if (on) d.option_ids = d.option_ids.filter(x => x !== o.id);
-          else if (d.option_ids.length >= max) { notes[it.id] = {cls:"err", msg:`Máximo ${max}. Desmarca una antes de elegir otra.`}; return render(); }
+          else if (d.option_ids.length >= max) { notes[it.id] = {cls:"err", msg: t("max_err", {n: max})}; return render(); }
           else d.option_ids = [...d.option_ids, o.id];
           delete notes[it.id]; render();
         }},
@@ -425,30 +438,30 @@ function card(it) {
       box.append(g);
     }
     const tid = "c-" + it.id;
-    const ta = el("textarea", {id:tid, maxlength:"3000", placeholder: opts.length ? "Comentario (opcional)" : "Tu respuesta"});
+    const ta = el("textarea", {id:tid, maxlength:"3000", placeholder: opts.length ? t("comment_opt") : t("answer_ph")});
     ta.value = d.text; ta.addEventListener("input", () => { d.text = ta.value; });
-    box.append(el("label", {class:"lbl", for:tid}, "Comentario"), ta);
+    box.append(el("label", {class:"lbl", for:tid}, t("comment")), ta);
   }
   const acts = el("div", {class:"actions"});
   if (editing) {
-    acts.append(el("button", {class:"btn", type:"button", disabled: !db, onclick: () => save(it, false)}, "Guardar respuesta"));
-    acts.append(el("button", {class:"btn ghost", type:"button", disabled: !db || !comments, title: comments ? "" : "Los avisos no están disponibles en esta vista", onclick: () => save(it, true)}, "Guardar y avisar a Claude"));
-    if (d.editing) acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = false; render(); }}, "Cancelar"));
+    acts.append(el("button", {class:"btn", type:"button", disabled: !db, onclick: () => save(it, false)}, t("save")));
+    acts.append(el("button", {class:"btn ghost", type:"button", disabled: !db || !comments, title: comments ? "" : t("no_comments"), onclick: () => save(it, true)}, t("save_notify")));
+    if (d.editing) acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = false; render(); }}, t("cancel")));
   } else {
-    acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = true; render(); }}, "Cambiar respuesta"));
-    const f = followOf(it), off = comments ? "" : "Los avisos no están disponibles en esta vista";
-    if (f === "unsent") acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: off, onclick: () => notify(it)}, "Avisar a Claude"));
-    if (f === "waiting") acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: off, onclick: () => askStatus(it)}, "Pedir estado"));
+    acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = true; render(); }}, t("change")));
+    const f = followOf(it), off = comments ? "" : t("no_comments");
+    if (f === "unsent") acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: off, onclick: () => notify(it)}, t("notify")));
+    if (f === "waiting") acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: off, onclick: () => askStatus(it)}, t("ask_status")));
   }
   const rel = related(it);
   if (rel.length) acts.append(el("button", {class:"btn ghost", type:"button", "aria-expanded": String(!!relOpen[it.id]), onclick: () => { relOpen[it.id] = !relOpen[it.id]; render(); }},
-    (relOpen[it.id] ? "Ocultar relacionadas" : "Relacionadas") + " (" + rel.length + ")"));
+    t(relOpen[it.id] ? "hide_related" : "related", {n: rel.length})));
   box.append(acts);
   const n = notes[it.id];
   if (n) box.append(el("p", {class:"note " + n.cls, role:"status"}, n.msg));
   node.append(box);
   if (rel.length && relOpen[it.id]) node.append(el("div", {class:"rel"}, rel.map(o => rowFor(o, jump))));
-  node.append(el("span", {class:"ref"}, [it.id, it.created_at ? "creada " + fmt(it.created_at) : null].filter(Boolean).join(" · ")));
+  node.append(el("span", {class:"ref"}, [it.id, it.created_at ? t("created", {at: fmt(it.created_at)}) : null].filter(Boolean).join(" · ")));
   return node;
 }
 
@@ -461,21 +474,21 @@ function renderSections(pool) {
   if (filter !== "open") { box.hidden = true; return; }
   box.hidden = false;
   const btn = (k, label, n) => el("button", {class:"sec", type:"button", "aria-pressed": String(section === k), onclick: () => { section = k; currentId = null; render(); }}, label, el("span", {class:"n"}, n));
-  box.replaceChildren(btn("all", "Todas", pool.length),
-    ...SECTIONS.map(([k, l]) => [k, l, pool.filter(i => i.section === k).length]).filter(x => x[2]).map(x => btn(...x)));
+  box.replaceChildren(btn("all", t("follow_all"), pool.length),
+    ...sections().map(([k, l]) => [k, l, pool.filter(i => i.section === k).length]).filter(x => x[2]).map(x => btn(...x)));
 }
 
 function renderFollow(box) {
   box.hidden = false;
   const done = items.filter(i => st(i) !== "open");
   const unsent = done.filter(i => followOf(i) === "unsent"), waiting = done.filter(i => followOf(i) === "waiting");
-  const btn = ([k, label]) => el("button", {class:"sec", type:"button", "aria-pressed": String(follow === k), onclick: () => { follow = k; render(); }},
-    label, el("span", {class:"n"}, k === "all" ? done.length : done.filter(i => followOf(i) === k).length));
+  const btn = k => el("button", {class:"sec", type:"button", "aria-pressed": String(follow === k), onclick: () => { follow = k; render(); }},
+    t("follow_" + k), el("span", {class:"n"}, k === "all" ? done.length : done.filter(i => followOf(i) === k).length));
   box.replaceChildren(...FOLLOW.map(btn), el("div", {class:"bulk"},
     el("button", {class:"btn", type:"button", disabled: !comments || !unsent.length, onclick: () => notifyMany(unsent, "notify")},
-      unsent.length ? `Avisar a Claude de ${unsent.length} sin avisar` : "Nada sin avisar"),
+      unsent.length ? t("bulk_notify", {n: unsent.length}) : t("nothing_unsent")),
     el("button", {class:"btn ghost", type:"button", disabled: !comments || !waiting.length, onclick: () => notifyMany(waiting, "status")},
-      waiting.length ? `Pedir estado de ${waiting.length} avisadas` : "Ninguna esperando"),
+      waiting.length ? t("bulk_status", {n: waiting.length}) : t("none_waiting")),
     bulkNote ? el("p", {class:"note " + bulkNote.cls, role:"status"}, bulkNote.msg) : null));
 }
 
@@ -493,20 +506,20 @@ function render() {
     renderSections(open);
     const pool = section === "all" ? open : open.filter(i => i.section === section);
     if (!pool.length) {
-      view = [el("div", {class:"empty"}, open.length ? "Nada pendiente en esta categoría." : "Nada pendiente. Todo respondido.")];
+      view = [el("div", {class:"empty"}, open.length ? t("empty_section") : t("empty_all"))];
     } else {
       if (!pool.some(i => i.id === currentId)) currentId = pool[0].id;
       const idx = pool.findIndex(i => i.id === currentId), cur = pool[idx];
       const doneAll = items.length - open.length;
       view = [
-        el("div", {class:"progress"}, el("span", {}, `${idx + 1} de ${pool.length}`),
+        el("div", {class:"progress"}, el("span", {}, t("i_of_n", {i: idx + 1, n: pool.length})),
           el("span", {class:"track"}, el("span", {class:"fill", style:`width:${items.length ? Math.round(100 * doneAll / items.length) : 0}%`})),
-          el("span", {}, `${doneAll}/${items.length} respondidas`)),
+          el("span", {}, t("answered_n", {done: doneAll, n: items.length}))),
         card(cur),
         el("div", {class:"nav"},
-          el("button", {class:"btn ghost", type:"button", disabled: idx === 0, onclick: () => { currentId = pool[idx - 1].id; render(); scrollTop(); }}, "← Anterior"),
-          el("button", {class:"btn ghost", type:"button", disabled: idx === pool.length - 1, onclick: () => { currentId = pool[idx + 1].id; render(); scrollTop(); }}, "Siguiente →")),
-        pool.length > 1 ? el("div", {class:"queue"}, el("h3", {}, "En cola"),
+          el("button", {class:"btn ghost", type:"button", disabled: idx === 0, onclick: () => { currentId = pool[idx - 1].id; render(); scrollTop(); }}, t("prev_arrow")),
+          el("button", {class:"btn ghost", type:"button", disabled: idx === pool.length - 1, onclick: () => { currentId = pool[idx + 1].id; render(); scrollTop(); }}, t("next_arrow"))),
+        pool.length > 1 ? el("div", {class:"queue"}, el("h3", {}, t("queue")),
           pool.filter(i => i.id !== cur.id).map(o => rowFor(o, o2 => { currentId = o2.id; render(); scrollTop(); }))) : null,
       ];
     }
@@ -514,7 +527,7 @@ function render() {
     renderSections([]);
     const shown = items.filter(i => filter === "all" || (st(i) !== "open" && (follow === "all" || followOf(i) === follow)))
       .sort((a, b) => (st(a) === "open") - (st(b) === "open") || order(a, b));
-    view = shown.length ? shown.map(card) : [el("div", {class:"empty"}, "No hay decisiones en esta vista.")];
+    view = shown.length ? shown.map(card) : [el("div", {class:"empty"}, t("empty_view"))];
   }
   list.replaceChildren(...view.filter(Boolean));
   if (lb) renderLB();   // the open lightbox follows live data (ratings, reference choice)
@@ -527,16 +540,16 @@ async function save(it, alsoNotify) {
   const text = (d.text || "").trim();
   const ratings = Object.fromEntries(Object.entries(ratingsOf(it)).filter(([, v]) => v));
   const ids = d.option_ids;
-  if (it.multi && ids.length && it.min && ids.length < it.min) { notes[it.id] = {cls:"err", msg:`Marca al menos ${it.min}.`}; return render(); }
-  if (!ids.length && !text && !Object.keys(ratings).length) { notes[it.id] = {cls:"err", msg:"Elige una opción, califica o escribe un comentario antes de guardar."}; return render(); }
-  notes[it.id] = {cls:"", msg:"Guardando…"}; render();
+  if (it.multi && ids.length && it.min && ids.length < it.min) { notes[it.id] = {cls:"err", msg: t("min_err", {n: it.min})}; return render(); }
+  if (!ids.length && !text && !Object.keys(ratings).length) { notes[it.id] = {cls:"err", msg: t("need_answer")}; return render(); }
+  notes[it.id] = {cls:"", msg: t("saving")}; render();
   const answer = {option_id: it.multi ? null : ids[0] || null, option_ids: ids, text, ratings, answered_at: new Date().toISOString()};
   try {
     await db.doc("items/" + it.id).update({status:"answered", answer, resolution:null, agent_note:null, notified_at:null, status_asked_at:null});
     d.editing = false;
-    notes[it.id] = {cls:"ok", msg:"Guardado."};
+    notes[it.id] = {cls:"ok", msg: t("saved")};
   } catch (e) {
-    notes[it.id] = {cls:"err", msg: e?.code === "invalid_argument" ? "No tienes permiso para responder aquí (hace falta ser Colaborador o más)." : "No se pudo guardar (" + (e?.code || "error") + "). Tu texto sigue aquí; vuelve a intentarlo."};
+    notes[it.id] = {cls:"err", msg: e?.code === "invalid_argument" ? t("no_perm") : t("save_fail", {code: e?.code || "error"})};
     return render();
   }
   if (alsoNotify) await notify({...it, answer});
@@ -548,23 +561,23 @@ async function postToClaude(anchorEl, text) {
   const anchor = await comments.anchorFor(anchorEl);
   let how = "";
   try { how = await comments.canSendToClaude(); } catch { how = "off"; }
-  if (how === "available") { await comments.sendToClaude({anchor, text}); return {cls:"ok", msg:"Aviso enviado a Claude."}; }
+  if (how === "available") { await comments.sendToClaude({anchor, text}); return {cls:"ok", msg: t("sent_claude")}; }
   await comments.create({anchor, text});
-  const why = {writers_only:"solo los editores pueden enviarlo a Claude", no_session:"ahora mismo no hay ninguna sesión de Claude escuchando", off:"el envío a Claude no está disponible aquí"}[how] || "el envío a Claude no está disponible";
-  return {cls:"", msg:`Comentario publicado, pero no enviado a Claude: ${why}.`};
+  const why = t({writers_only:"why_writers", no_session:"why_nosession", off:"why_off"}[how] || "why_default");
+  return {cls:"", msg: t("posted_not_sent", {why})};
 }
-const failMsg = e => ({consent_required:"No diste permiso para comentar desde la página. El aviso no se envió.", forbidden:"Comentar desde la página está desactivado para ti.", rate_limited:"Demasiados avisos seguidos; espera un momento.", claude_unavailable:"No se pudo enviar a Claude; no se publicó nada."}[e?.code] || "No se pudo enviar el aviso (" + (e?.code || "error") + ").");
+const failMsg = e => { const k = {consent_required:"fail_consent", forbidden:"fail_forbidden", rate_limited:"fail_rate", claude_unavailable:"fail_claude"}[e?.code]; return k ? t(k) : t("fail_generic", {code: e?.code || "error"}); };
 function answerLine(it) {
   const picked = (it.options || []).filter(o => chosenIds(it.answer).includes(o.id)).map(o => o.label);
-  return [picked.length ? (picked.length > 1 ? "opciones: " : "opción: ") + picked.join(", ") : null, ratingLine(it) ? "calificaciones: " + ratingLine(it) : null, it.answer?.text ? "comentario: " + it.answer.text : null].filter(Boolean).join(" · ");
+  return [picked.length ? (picked.length > 1 ? "options: " : "option: ") + picked.join(", ") : null, ratingLine(it) ? "ratings: " + ratingLine(it) : null, it.answer?.text ? "comment: " + it.answer.text : null].filter(Boolean).join(" · ");
 }
 
 async function notify(it) {
   const n = issueNo(it);
-  const text = [`[decision-inbox] Respondida: «${it.title}» (id ${it.id}${n ? ", #" + n : ""}${it.source_agent ? ", de " + it.source_agent : ""}).`,
-    answerLine(it), "Léela con ArtifactData (colección items, status == answered). Al terminar escribe resolution {text, at, by} y márcala processed."].filter(Boolean).join("\n").slice(0, 3900);
-  const keep = notes[it.id]?.cls === "ok" ? "Guardado. " : "";
-  notes[it.id] = {cls:"", msg: keep + "Enviando aviso…"}; render();
+  const text = [`[decision-inbox] Answered: «${it.title}» (id ${it.id}${n ? ", #" + n : ""}${it.source_agent ? ", from " + it.source_agent : ""}).`,
+    answerLine(it), "Read it with ArtifactData (collection items, status == answered). When done, write resolution {text, at, by} and set status processed."].filter(Boolean).join("\n").slice(0, 3900);
+  const keep = notes[it.id]?.cls === "ok" ? t("saved") + " " : "";
+  notes[it.id] = {cls:"", msg: keep + t("sending_notice")}; render();
   try {
     const r = await postToClaude(document.getElementById("item-" + it.id) || document.querySelector("main"), text);
     notes[it.id] = {cls: r.cls, msg: keep + r.msg};
@@ -574,8 +587,8 @@ async function notify(it) {
 }
 
 async function askStatus(it) {
-  const text = `[decision-inbox] Pido estado de 1 respuesta(s) ya avisadas y sin resolver. Escribe agent_note {text, at, by} con lo que llevas, o resolution {text, at, by} y status processed si ya está.\n- ${it.id}: «${it.title}»${it.source_agent ? " (de " + it.source_agent + ")" : ""}`;
-  notes[it.id] = {cls:"", msg:"Pidiendo estado…"}; render();
+  const text = `[decision-inbox] Status requested for 1 answer already sent and unresolved. Write agent_note {text, at, by} with where it stands, or resolution {text, at, by} and status processed if done.\n- ${it.id}: «${it.title}»${it.source_agent ? " (from " + it.source_agent + ")" : ""}`;
+  notes[it.id] = {cls:"", msg: t("asking")}; render();
   try {
     const r = await postToClaude(document.getElementById("item-" + it.id) || document.querySelector("main"), text);
     notes[it.id] = r;
@@ -589,15 +602,15 @@ async function askStatus(it) {
 async function notifyMany(list, kind) {
   if (!list.length) return;
   const head = kind === "notify"
-    ? `[decision-inbox] ${list.length} respuesta(s) sin avisar. Léelas con ArtifactData (items, status == answered), actúa y escribe en cada una resolution {text, at, by} y status processed.`
-    : `[decision-inbox] Pido estado de ${list.length} respuesta(s) ya avisadas y sin resolver. En cada una escribe agent_note {text, at, by} con lo que llevas, o resolution {text, at, by} y status processed si ya está.`;
+    ? `[decision-inbox] ${list.length} answer(s) not sent yet. Read them with ArtifactData (items, status == answered), act, and write resolution {text, at, by} and status processed on each.`
+    : `[decision-inbox] Status requested for ${list.length} answer(s) already sent and unresolved. On each, write agent_note {text, at, by} with where it stands, or resolution {text, at, by} and status processed if done.`;
   let body = "", shown = 0;
   for (const it of list) {
-    const line = `\n- ${it.id}: «${it.title}»${it.source_agent ? " (de " + it.source_agent + ")" : ""}` + (kind === "notify" && answerLine(it) ? " → " + answerLine(it) : "");
-    if ((head + body + line).length > 3800) { body += `\n… y ${list.length - shown} más (consulta la colección).`; break; }
+    const line = `\n- ${it.id}: «${it.title}»${it.source_agent ? " (from " + it.source_agent + ")" : ""}` + (kind === "notify" && answerLine(it) ? " → " + answerLine(it) : "");
+    if ((head + body + line).length > 3800) { body += `\n… and ${list.length - shown} more (see the collection).`; break; }
     body += line; shown++;
   }
-  bulkNote = {cls:"", msg:"Enviando…"}; render();
+  bulkNote = {cls:"", msg: t("sending")}; render();
   try {
     const r = await postToClaude($("#sections"), head + body);
     const field = kind === "notify" ? "notified_at" : "status_asked_at", now = new Date().toISOString();
@@ -611,21 +624,25 @@ document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () =>
 
 (async () => {
   const claude = window.claude;
-  if (!claude?.use) { $("#live").textContent = "sin conexión"; $("#list").replaceChildren(el("div", {class:"empty"}, "Esta vista no puede leer el buzón. Ábrelo en claude.ai.")); return; }
+  if (!claude?.use) { applyStatic(); $("#live").textContent = t("offline"); $("#list").replaceChildren(el("div", {class:"empty"}, t("no_view"))); return; }
+  applyStatic();
   [db, comments] = await Promise.all([claude.use("db"), claude.use("comments").catch(() => null)]);
-  if (!db) { $("#live").textContent = "sin base de datos"; $("#list").replaceChildren(el("div", {class:"empty"}, "No se pudo abrir el buzón en esta vista.")); return; }
-  const fail = e => { $("#live").textContent = "desconectado"; const w = $("#warn"); w.hidden = false; w.textContent = "Se perdió la conexión con el buzón (" + (e?.code || "error") + "). Recarga la página."; };
+  if (!db) { $("#live").textContent = t("no_db"); $("#list").replaceChildren(el("div", {class:"empty"}, t("no_db_msg"))); return; }
+  const fail = e => { $("#live").textContent = t("disconnected"); const w = $("#warn"); w.hidden = false; w.textContent = t("lost", {code: e?.code || "error"}); };
   db.doc("meta/config").onSnapshot(snap => {
     const c = snap.data() || {};
-    if (Array.isArray(c.sections) && c.sections.length) { SECTIONS = c.sections; SEC_RANK = Object.fromEntries(SECTIONS.map(([k], i) => [k, i])); }
+    if (c.lang) LANG = String(c.lang);
+    STRINGS = c.strings && typeof c.strings === "object" ? c.strings : {};
+    if (Array.isArray(c.sections) && c.sections.length) { CUSTOM_SECTIONS = c.sections; SEC_RANK = Object.fromEntries(c.sections.map(([k], i) => [k, i])); }
     if (c.repo_url) REPO = c.repo_url;
-    if (c.project) $("#kicker").textContent = c.project + " · lo que espera tu respuesta";
+    applyStatic();
+    if (c.project) $("#kicker").textContent = t("kicker_project", {project: c.project});
     render();
   }, fail);
   db.collection("issues").onSnapshot(snap => { issues = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); render(); }, fail);
   db.collection("items").onSnapshot(snap => {
     items = snap.docs.map(d => ({...d.data(), id: d.id}));
-    $("#live").textContent = "en vivo · " + new Date().toLocaleTimeString("es", {hour:"2-digit", minute:"2-digit"});
+    $("#live").textContent = t("live", {time: new Date().toLocaleTimeString(LANG, {hour:"2-digit", minute:"2-digit"})});
     render();
   }, fail);
 })();
