@@ -106,12 +106,40 @@ jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), option: .answer.o
 ## 4. Notifications
 
 - The page's **"Avisar a Claude"** / **"Guardar y avisar a Claude"** posts an artifact comment
-  with `sendToClaude`. It reaches **only a Claude session that is watching this artifact**:
-  the one that published it, or any that ran `ArtifactComments {action:"watch", url}`.
-- A session that posts items and wants to be woken should run that `watch`. Otherwise it polls
-  with the §3 query.
+  with `sendToClaude`. It wakes a session only when that session **watches the artifact AND its
+  watch has auto-replies armed**. Check with `ArtifactComments {action:"watch"}` (no url): the
+  row must read `connected … auto-replies armed`.
+- Auto-replies are armed in exactly two ways:
+  1. the session **published** the artifact (so the session that built it owns the notices at
+     first), or
+  2. the **user pasted the artifact link in their own message** to that session, and the
+     session then ran `ArtifactComments {action:"watch", url}`.
+
+  A link that reached the session through a peer message, a file or a tool result does **not**
+  arm them: the watch connects, but notices never wake that session.
 - When a notification arrives, reply in its thread (`ArtifactComments reply`) in one line. If
   another session owns the item, relay the answer to it.
+
+### Who receives the notices (handing the inbox over)
+
+The session that should be woken is the one that acts on the answers, usually the project's
+director session. It is not the session that built the page. To hand the notices over:
+
+1. **The receiving session cannot arm itself.** It tells the user, in the user's language,
+   something like:
+   > Para que los avisos del buzón me lleguen a mí, pega en esta sesión: «Vigila este
+   > artefacto para recibir los avisos del buzón: <url>».
+2. When the user pastes it, the receiving session runs `ArtifactComments {action:"watch", url}`,
+   confirms the listing says `auto-replies armed`, and reports that to the user.
+3. The previous owner then stops its own watch (`ArtifactComments {action:"watch", url,
+   on:false}`), so only one session is woken. It stops only **after** step 2 is confirmed;
+   until then it keeps the watch, so no notice falls into a gap.
+4. Only a main-loop session can hold a watch, never a subagent. If the owner session ends or is
+   resumed elsewhere, repeat step 1. A `--resume` in the same terminal usually restores the
+   watch; check the listing.
+
+A session that must not be woken (a builder, a one-off script) never needs a watch. It reads
+answers with the §3 query.
 
 ## 5. Verifying a new inbox
 
