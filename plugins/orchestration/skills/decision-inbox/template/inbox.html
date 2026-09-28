@@ -68,6 +68,8 @@ h2{font-weight:800; font-size:clamp(22px,4vw,30px); line-height:1.1; letter-spac
 .opt:hover{border-color:var(--ink-2)}
 .opt[aria-checked="true"]{border-color:var(--tpl); background:var(--tpl-soft)}
 .opt .dot{flex:none; width:18px; height:18px; margin-top:3px; border-radius:50%; border:2px solid var(--line-strong); background:var(--surface)}
+.opt.multi .dot{border-radius:4px}
+.opt.multi[aria-checked="true"] .dot{background:var(--tpl); box-shadow:inset 0 0 0 3px var(--surface)}
 .opt[aria-checked="true"] .dot{border-color:var(--tpl); background:radial-gradient(circle,var(--tpl) 45%,var(--surface) 50%)}
 .opt b{display:block; font-weight:600}
 .opt small{display:block; color:var(--ink-2); font-size:14px; line-height:1.4; margin-top:2px}
@@ -124,6 +126,15 @@ textarea{width:100%; min-height:84px; resize:vertical; font:16px/1.45 Archivo,sa
 .seg[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
 .ratesum{font-size:14px; color:var(--ink-2)}
 @media (max-width:560px){ .cmp{padding-left:16px; padding-right:16px} }
+.resolution{margin:0 24px 16px; padding:14px 16px; border-radius:8px; background:var(--dsl-soft); color:var(--ink); border:1px solid var(--dsl)}
+.agentnote{margin:0 24px 16px; padding:14px 16px; border-radius:8px; background:var(--tpl-soft); color:var(--ink); border:1px solid var(--tpl)}
+.resolution .lbl{color:var(--dsl)} .agentnote .lbl{color:var(--tpl)}
+.resolution p, .agentnote p{margin:4px 0 0; white-space:pre-wrap}
+.chip.waiting{border-color:var(--tpl); color:var(--tpl); background:var(--tpl-soft)}
+.chip.unsent{border-color:var(--alert); color:var(--alert); background:var(--alert-soft)}
+.bulk{display:flex; flex-wrap:wrap; gap:8px; align-items:center; width:100%; margin-top:6px}
+.bulk .note{margin:0}
+@media (max-width:560px){ .resolution,.agentnote{margin-left:16px; margin-right:16px} }
 
 footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-3); line-height:1.9}
 :focus-visible{outline:2px solid var(--signal); outline-offset:3px}
@@ -184,13 +195,16 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 
 <script>
 const KIND = {text:"Pregunta", choice:"Elegir", image:"Imagen", video:"Vídeo", audio:"Audio", blind_test:"Prueba a ciegas"};
-const STATUS = {open:"abierta", answered:"respondida", processed:"procesada"};
+const STATUS = {open:"abierta", answered:"respondida", processed:"resuelta"};
+// What happened after the answer. unsent: nobody told the agent yet · waiting: told, no resolution yet · resolved: the agent closed it.
+const FOLLOW = [["all","Todas"],["unsent","Sin avisar"],["waiting","Avisadas, sin resolver"],["resolved","Resueltas"]];
+const followOf = it => st(it) === "processed" || it.resolution ? "resolved" : st(it) !== "answered" ? null : it.notified_at ? "waiting" : "unsent";
 // Importance buckets, most urgent first.
 // Overridden by meta/config.sections.
 let SECTIONS = [["listen","Escuchar / mirar"],["review","Revisar ya"],["decide","Decidir"],["fyi","Para tu referencia"]];
 let SEC_RANK = Object.fromEntries(SECTIONS.map(([k], i) => [k, i]));
 let REPO = "";   // meta/config.repo_url, e.g. https://github.com/owner/repo
-let items = [], issues = {}, filter = "open", section = "all", currentId = null, db = null, comments = null;
+let items = [], issues = {}, filter = "open", section = "all", follow = "all", currentId = null, db = null, comments = null, bulkNote = null;
 const drafts = {}, notes = {}, relOpen = {};
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -222,6 +236,9 @@ function compareOf(it) {
   return refs.length && cands.length ? {refs, cands, rate: it.rate || DEFAULT_RATE} : null;
 }
 const refPick = {};   // item id -> index of the reference shown next to each candidate
+// Single choice keeps answer.option_id; multi-choice (item.multi) uses answer.option_ids. Both read through here.
+const chosenIds = a => Array.isArray(a?.option_ids) ? a.option_ids : a?.option_id ? [a.option_id] : [];
+const newDraft = it => ({option_ids: chosenIds(it.answer), text: it.answer?.text ?? ""});
 const ratingsOf = it => ({...(it.ratings || {}), ...(drafts[it.id]?.ratings || {})});
 
 function renderMedia(it) {
@@ -272,7 +289,7 @@ function renderCompare(it, {refs, cands, rate}) {
 }
 
 async function setRating(it, key, value) {
-  const d = drafts[it.id] || (drafts[it.id] = {option_id: it.answer?.option_id ?? null, text: it.answer?.text ?? ""});
+  const d = drafts[it.id] || (drafts[it.id] = newDraft(it));
   d.ratings = {...(d.ratings || {}), [key]: value};
   render();
   try { await db.doc("items/" + it.id).update({ratings: {[key]: value}}); }   // saved at once; the answer is not required
@@ -353,7 +370,7 @@ function jump(o) {
 
 function card(it) {
   const s = st(it);
-  const d = drafts[it.id] || (drafts[it.id] = {option_id: it.answer?.option_id ?? null, text: it.answer?.text ?? ""});
+  const d = drafts[it.id] || (drafts[it.id] = newDraft(it));
   const editing = s === "open" || d.editing;
   const opts = Array.isArray(it.options) ? it.options : [];
   const node = el("section", {class:`card ${s}`, id:"item-" + it.id});
@@ -364,6 +381,8 @@ function card(it) {
       el("span", {class:"q"}, KIND[it.kind] || it.kind || "Pregunta"),
       el("span", {class:"chip " + s}, STATUS[s] || s),
       secName ? el("span", {class:"chip"}, secName) : null,
+      followOf(it) === "unsent" ? el("span", {class:"chip unsent"}, "sin avisar") : null,
+      followOf(it) === "waiting" ? el("span", {class:"chip waiting"}, it.status_asked_at ? "estado pedido" : "avisada") : null,
       it.kind === "blind_test" ? el("span", {class:"chip blind"}, it.key_revealed ? "clave revelada" : "clave oculta") : null,
       it.source_agent ? el("span", {class:"chip"}, it.source_agent) : null),
     el("h2", {}, it.title || "(sin título)"),
@@ -375,21 +394,33 @@ function card(it) {
   if (media) node.append(...media);
 
   if (it.answer && !editing) {
-    const opt = opts.find(o => o.id === it.answer.option_id);
+    const picked = opts.filter(o => chosenIds(it.answer).includes(o.id));
     node.append(el("div", {class:"given"},
       el("span", {class:"lbl"}, "Tu respuesta · " + fmt(it.answer.answered_at)),
-      opt ? el("p", {}, el("b", {}, opt.label)) : null,
+      picked.length ? el("p", {}, el("b", {}, picked.map(o => o.label).join(" · "))) : null,
       it.answer.text ? el("p", {style:"white-space:pre-wrap"}, it.answer.text) : null,
       ratingLine(it) ? el("p", {}, ratingLine(it)) : null));
   }
+  const stamp = x => [x.by, x.at ? fmt(x.at) : null].filter(Boolean).join(" · ");
+  if (it.resolution?.text) node.append(el("div", {class:"resolution"}, el("span", {class:"lbl"}, "Resuelta" + (stamp(it.resolution) ? " · " + stamp(it.resolution) : "")), el("p", {}, it.resolution.text)));
+  else if (it.agent_note?.text) node.append(el("div", {class:"agentnote"}, el("span", {class:"lbl"}, "Estado del agente" + (stamp(it.agent_note) ? " · " + stamp(it.agent_note) : "")), el("p", {}, it.agent_note.text)));
   if (it.key_revealed && s !== "open") node.append(el("div", {class:"reveal"}, el("b", {}, "Clave: "), it.key_revealed));
 
   const box = el("div", {class:"answer-box"});
   if (editing) {
     if (opts.length) {
-      const g = el("div", {class:"opts", role:"radiogroup", "aria-label":"Opciones"});
-      opts.forEach(o => g.append(el("button", {class:"opt", type:"button", role:"radio", "aria-checked": String(d.option_id === o.id),
-        onclick: () => { d.option_id = d.option_id === o.id ? null : o.id; render(); }},
+      const multi = !!it.multi, max = multi ? (it.max || opts.length) : 1;
+      if (multi) box.append(el("p", {class:"note"}, "Puedes marcar varias" + (it.min > 1 ? `, mínimo ${it.min}` : "") + (it.max ? `, máximo ${it.max}` : "") + "."));
+      const g = el("div", {class:"opts", role: multi ? "group" : "radiogroup", "aria-label":"Opciones"});
+      opts.forEach(o => g.append(el("button", {class:"opt" + (multi ? " multi" : ""), type:"button", role: multi ? "checkbox" : "radio", "aria-checked": String(d.option_ids.includes(o.id)),
+        onclick: () => {
+          const on = d.option_ids.includes(o.id);
+          if (!multi) d.option_ids = on ? [] : [o.id];
+          else if (on) d.option_ids = d.option_ids.filter(x => x !== o.id);
+          else if (d.option_ids.length >= max) { notes[it.id] = {cls:"err", msg:`Máximo ${max}. Desmarca una antes de elegir otra.`}; return render(); }
+          else d.option_ids = [...d.option_ids, o.id];
+          delete notes[it.id]; render();
+        }},
         el("span", {class:"dot", "aria-hidden":"true"}), el("span", {}, el("b", {}, o.label), o.detail ? el("small", {}, o.detail) : null))));
       box.append(g);
     }
@@ -424,11 +455,26 @@ function syncTabs() {
 }
 function renderSections(pool) {
   const box = $("#sections");
+  if (filter === "answered") return renderFollow(box);
   if (filter !== "open") { box.hidden = true; return; }
   box.hidden = false;
   const btn = (k, label, n) => el("button", {class:"sec", type:"button", "aria-pressed": String(section === k), onclick: () => { section = k; currentId = null; render(); }}, label, el("span", {class:"n"}, n));
   box.replaceChildren(btn("all", "Todas", pool.length),
     ...SECTIONS.map(([k, l]) => [k, l, pool.filter(i => i.section === k).length]).filter(x => x[2]).map(x => btn(...x)));
+}
+
+function renderFollow(box) {
+  box.hidden = false;
+  const done = items.filter(i => st(i) !== "open");
+  const unsent = done.filter(i => followOf(i) === "unsent"), waiting = done.filter(i => followOf(i) === "waiting");
+  const btn = ([k, label]) => el("button", {class:"sec", type:"button", "aria-pressed": String(follow === k), onclick: () => { follow = k; render(); }},
+    label, el("span", {class:"n"}, k === "all" ? done.length : done.filter(i => followOf(i) === k).length));
+  box.replaceChildren(...FOLLOW.map(btn), el("div", {class:"bulk"},
+    el("button", {class:"btn", type:"button", disabled: !comments || !unsent.length, onclick: () => notifyMany(unsent, "notify")},
+      unsent.length ? `Avisar a Claude de ${unsent.length} sin avisar` : "Nada sin avisar"),
+    el("button", {class:"btn ghost", type:"button", disabled: !comments || !waiting.length, onclick: () => notifyMany(waiting, "status")},
+      waiting.length ? `Pedir estado de ${waiting.length} avisadas` : "Ninguna esperando"),
+    bulkNote ? el("p", {class:"note " + bulkNote.cls, role:"status"}, bulkNote.msg) : null));
 }
 
 function render() {
@@ -464,7 +510,8 @@ function render() {
     }
   } else {
     renderSections([]);
-    const shown = items.filter(i => filter === "all" || st(i) !== "open").sort((a, b) => (st(a) === "open") - (st(b) === "open") || order(a, b));
+    const shown = items.filter(i => filter === "all" || (st(i) !== "open" && (follow === "all" || followOf(i) === follow)))
+      .sort((a, b) => (st(a) === "open") - (st(b) === "open") || order(a, b));
     view = shown.length ? shown.map(card) : [el("div", {class:"empty"}, "No hay decisiones en esta vista.")];
   }
   list.replaceChildren(...view.filter(Boolean));
@@ -477,9 +524,11 @@ async function save(it, alsoNotify) {
   const d = drafts[it.id];
   const text = (d.text || "").trim();
   const ratings = Object.fromEntries(Object.entries(ratingsOf(it)).filter(([, v]) => v));
-  if (!d.option_id && !text && !Object.keys(ratings).length) { notes[it.id] = {cls:"err", msg:"Elige una opción, califica o escribe un comentario antes de guardar."}; return render(); }
+  const ids = d.option_ids;
+  if (it.multi && ids.length && it.min && ids.length < it.min) { notes[it.id] = {cls:"err", msg:`Marca al menos ${it.min}.`}; return render(); }
+  if (!ids.length && !text && !Object.keys(ratings).length) { notes[it.id] = {cls:"err", msg:"Elige una opción, califica o escribe un comentario antes de guardar."}; return render(); }
   notes[it.id] = {cls:"", msg:"Guardando…"}; render();
-  const answer = {option_id: d.option_id || null, text, ratings, answered_at: new Date().toISOString()};
+  const answer = {option_id: it.multi ? null : ids[0] || null, option_ids: ids, text, ratings, answered_at: new Date().toISOString()};
   try {
     await db.doc("items/" + it.id).update({status:"answered", answer});
     d.editing = false;
@@ -492,32 +541,56 @@ async function save(it, alsoNotify) {
   else render();
 }
 
+// Posts one comment and, when this viewer can, sends it to the Claude session watching the page.
+async function postToClaude(anchorEl, text) {
+  const anchor = await comments.anchorFor(anchorEl);
+  let how = "";
+  try { how = await comments.canSendToClaude(); } catch { how = "off"; }
+  if (how === "available") { await comments.sendToClaude({anchor, text}); return {cls:"ok", msg:"Aviso enviado a Claude."}; }
+  await comments.create({anchor, text});
+  const why = {writers_only:"solo los editores pueden enviarlo a Claude", no_session:"ahora mismo no hay ninguna sesión de Claude escuchando", off:"el envío a Claude no está disponible aquí"}[how] || "el envío a Claude no está disponible";
+  return {cls:"", msg:`Comentario publicado, pero no enviado a Claude: ${why}.`};
+}
+const failMsg = e => ({consent_required:"No diste permiso para comentar desde la página. El aviso no se envió.", forbidden:"Comentar desde la página está desactivado para ti.", rate_limited:"Demasiados avisos seguidos; espera un momento.", claude_unavailable:"No se pudo enviar a Claude; no se publicó nada."}[e?.code] || "No se pudo enviar el aviso (" + (e?.code || "error") + ").");
+function answerLine(it) {
+  const picked = (it.options || []).filter(o => chosenIds(it.answer).includes(o.id)).map(o => o.label);
+  return [picked.length ? (picked.length > 1 ? "opciones: " : "opción: ") + picked.join(", ") : null, ratingLine(it) ? "calificaciones: " + ratingLine(it) : null, it.answer?.text ? "comentario: " + it.answer.text : null].filter(Boolean).join(" · ");
+}
+
 async function notify(it) {
-  const opt = (it.options || []).find(o => o.id === it.answer?.option_id);
   const n = issueNo(it);
   const text = [`[decision-inbox] Respondida: «${it.title}» (id ${it.id}${n ? ", #" + n : ""}${it.source_agent ? ", de " + it.source_agent : ""}).`,
-    opt ? "Opción: " + opt.label : null, ratingLine(it) ? "Calificaciones: " + ratingLine(it) : null, it.answer?.text ? "Comentario: " + it.answer.text : null,
-    "Léela con ArtifactData (colección items, status == answered) y márcala processed."].filter(Boolean).join("\n").slice(0, 3900);
+    answerLine(it), "Léela con ArtifactData (colección items, status == answered). Al terminar escribe resolution {text, at, by} y márcala processed."].filter(Boolean).join("\n").slice(0, 3900);
   const keep = notes[it.id]?.cls === "ok" ? "Guardado. " : "";
   notes[it.id] = {cls:"", msg: keep + "Enviando aviso…"}; render();
   try {
-    const target = document.getElementById("item-" + it.id) || document.querySelector("main");
-    const anchor = await comments.anchorFor(target);
-    let how = "";
-    try { how = await comments.canSendToClaude(); } catch { how = "off"; }
-    if (how === "available") {
-      await comments.sendToClaude({anchor, text});
-      notes[it.id] = {cls:"ok", msg: keep + "Aviso enviado a Claude."};
-    } else {
-      await comments.create({anchor, text});
-      const why = {writers_only:"solo los editores pueden enviarlo a Claude", no_session:"ahora mismo no hay ninguna sesión de Claude escuchando", off:"el envío a Claude no está disponible aquí"}[how] || "el envío a Claude no está disponible";
-      notes[it.id] = {cls:"", msg: keep + `Comentario publicado, pero no enviado a Claude: ${why}.`};
-    }
+    const r = await postToClaude(document.getElementById("item-" + it.id) || document.querySelector("main"), text);
+    notes[it.id] = {cls: r.cls, msg: keep + r.msg};
     try { await db.doc("items/" + it.id).update({notified_at: new Date().toISOString()}); } catch {}
-  } catch (e) {
-    const m = {consent_required:"No diste permiso para comentar desde la página. El aviso no se envió.", forbidden:"Comentar desde la página está desactivado para ti.", rate_limited:"Demasiados avisos seguidos; espera un momento.", claude_unavailable:"No se pudo enviar a Claude; no se publicó nada."}[e?.code];
-    notes[it.id] = {cls:"err", msg: keep + (m || "No se pudo enviar el aviso (" + (e?.code || "error") + ").")};
+  } catch (e) { notes[it.id] = {cls:"err", msg: keep + failMsg(e)}; }
+  render();
+}
+
+// One comment for many items: "notify" tells the agent about answers it has not seen;
+// "status" asks for the state of answers it was told about but has not resolved.
+async function notifyMany(list, kind) {
+  if (!list.length) return;
+  const head = kind === "notify"
+    ? `[decision-inbox] ${list.length} respuesta(s) sin avisar. Léelas con ArtifactData (items, status == answered), actúa y escribe en cada una resolution {text, at, by} y status processed.`
+    : `[decision-inbox] Pido estado de ${list.length} respuesta(s) ya avisadas y sin resolver. En cada una escribe agent_note {text, at, by} con lo que llevas, o resolution {text, at, by} y status processed si ya está.`;
+  let body = "", shown = 0;
+  for (const it of list) {
+    const line = `\n- ${it.id}: «${it.title}»${it.source_agent ? " (de " + it.source_agent + ")" : ""}` + (kind === "notify" && answerLine(it) ? " → " + answerLine(it) : "");
+    if ((head + body + line).length > 3800) { body += `\n… y ${list.length - shown} más (consulta la colección).`; break; }
+    body += line; shown++;
   }
+  bulkNote = {cls:"", msg:"Enviando…"}; render();
+  try {
+    const r = await postToClaude($("#sections"), head + body);
+    const field = kind === "notify" ? "notified_at" : "status_asked_at", now = new Date().toISOString();
+    for (const it of list) { try { await db.doc("items/" + it.id).update({[field]: now}); } catch {} }
+    bulkNote = r;
+  } catch (e) { bulkNote = {cls:"err", msg: failMsg(e)}; }
   render();
 }
 
