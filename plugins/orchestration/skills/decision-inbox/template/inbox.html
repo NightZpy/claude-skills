@@ -436,7 +436,9 @@ function card(it) {
     if (d.editing) acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = false; render(); }}, "Cancelar"));
   } else {
     acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = true; render(); }}, "Cambiar respuesta"));
-    acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: comments ? "" : "Los avisos no están disponibles en esta vista", onclick: () => notify(it)}, "Avisar a Claude"));
+    const f = followOf(it), off = comments ? "" : "Los avisos no están disponibles en esta vista";
+    if (f === "unsent") acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: off, onclick: () => notify(it)}, "Avisar a Claude"));
+    if (f === "waiting") acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: off, onclick: () => askStatus(it)}, "Pedir estado"));
   }
   const rel = related(it);
   if (rel.length) acts.append(el("button", {class:"btn ghost", type:"button", "aria-expanded": String(!!relOpen[it.id]), onclick: () => { relOpen[it.id] = !relOpen[it.id]; render(); }},
@@ -530,7 +532,7 @@ async function save(it, alsoNotify) {
   notes[it.id] = {cls:"", msg:"Guardando…"}; render();
   const answer = {option_id: it.multi ? null : ids[0] || null, option_ids: ids, text, ratings, answered_at: new Date().toISOString()};
   try {
-    await db.doc("items/" + it.id).update({status:"answered", answer});
+    await db.doc("items/" + it.id).update({status:"answered", answer, resolution:null, agent_note:null, notified_at:null, status_asked_at:null});
     d.editing = false;
     notes[it.id] = {cls:"ok", msg:"Guardado."};
   } catch (e) {
@@ -568,6 +570,17 @@ async function notify(it) {
     notes[it.id] = {cls: r.cls, msg: keep + r.msg};
     try { await db.doc("items/" + it.id).update({notified_at: new Date().toISOString()}); } catch {}
   } catch (e) { notes[it.id] = {cls:"err", msg: keep + failMsg(e)}; }
+  render();
+}
+
+async function askStatus(it) {
+  const text = `[decision-inbox] Pido estado de 1 respuesta(s) ya avisadas y sin resolver. Escribe agent_note {text, at, by} con lo que llevas, o resolution {text, at, by} y status processed si ya está.\n- ${it.id}: «${it.title}»${it.source_agent ? " (de " + it.source_agent + ")" : ""}`;
+  notes[it.id] = {cls:"", msg:"Pidiendo estado…"}; render();
+  try {
+    const r = await postToClaude(document.getElementById("item-" + it.id) || document.querySelector("main"), text);
+    notes[it.id] = r;
+    try { await db.doc("items/" + it.id).update({status_asked_at: new Date().toISOString()}); } catch {}
+  } catch (e) { notes[it.id] = {cls:"err", msg: failMsg(e)}; }
   render();
 }
 
