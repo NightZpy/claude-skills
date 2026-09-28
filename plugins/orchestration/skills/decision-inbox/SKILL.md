@@ -1,6 +1,6 @@
 ---
 name: decision-inbox
-description: Use BEFORE asking the user any question, choice, review or approval in chat when the project has a decision inbox (its URL is in CLAUDE.md or memory, or an artifact titled "Buzón de decisiones" exists) — post it there as an item and tell the user in one line that it is waiting in the inbox, instead of writing the question in chat. Also use when agents need answers that can wait (questions, multiple-choice decisions, reviews of images/videos/audio, blind A/B tests), when the user says "buzón de decisiones", "decision inbox", "déjame las preguntas en un sitio", "pendientes para mí", or hands over a list of pending decisions; to create an inbox for a project; and to read answers, write resolutions or reply to status requests.
+description: Use BEFORE asking the user any question, choice, review or approval in chat when the project has a decision inbox (its URL is in CLAUDE.md or memory, or an artifact titled "Decision inbox" — or "Buzón de decisiones" for an older, Spanish-configured one — exists) — post it there as an item and tell the user in one line that it is waiting in the inbox, instead of writing the question in chat. Also use when agents need answers that can wait (questions, multiple-choice decisions, reviews of images/videos/audio, blind A/B tests), when the user says "buzón de decisiones", "decision inbox", "déjame las preguntas en un sitio", "pendientes para mí", or hands over a list of pending decisions; to create an inbox for a project; and to read answers, write resolutions or reply to status requests.
 ---
 
 # decision-inbox — one place where the human answers agents asynchronously
@@ -15,8 +15,8 @@ watching session.
 ## 0. Find or create the inbox
 
 1. Look for an existing one first: `Artifact {action:"list"}` and search the titles for
-   "Buzón de decisiones", or check the project's CLAUDE.md / memory for its URL. **One inbox per
-   project**; never create a second one.
+   "Decision inbox" (or "Buzón de decisiones" for an older, Spanish-configured one), or check the
+   project's CLAUDE.md / memory for its URL. **One inbox per project**; never create a second one.
 2. **Create it from the session that will own it**: the director session that acts on the
    answers, not a helper that only builds the page. On claude.ai the session that created the
    artifact receives "Avisar a Claude" notices whether or not it watches (observed 2026-09-28).
@@ -30,19 +30,21 @@ watching session.
    - If the project has its own artifact design system (tokens in CLAUDE.md or a reference
      artifact), replace only the `:root` token block and the font link. Do not touch the script.
    - Write the project config (the page reads it live):
-     `ArtifactData {action:"set", url, collection:"meta", doc_id:"config", data:{project:"<Name>", repo_url:"https://github.com/<owner>/<repo>", lang:"<user's language code>"}}`
-   - **Language: the page speaks the language the user speaks with you.** Set `lang` to that
-     language's code. `es` and `en` are bundled. For any other language, also write
-     `strings`: every key of the template's `I18N.en` object, translated. Missing keys fall back
-     to English.
-     - Before publishing, translate the page `<title>` (it names the artifact in the gallery).
+     `ArtifactData {action:"set", url, collection:"meta", doc_id:"config", data:{project:"<Name>", repo_url:"https://github.com/<owner>/<repo>"}}`
+   - **Language: the skill sets up the inbox in English by default.** The template's own default
+     is English (`LANG = "en"`); `meta/config.lang` overrides it. Choose another language, for
+     example the one the user speaks, only when you have a reason to — set `lang` to that
+     language's code. `es` is bundled; any other language also needs a translated `strings` set:
+     every key of the template's `I18N.en` object. Missing keys fall back to English.
+     - When you set a non-English `lang`, also translate the page `<title>` (it names the
+       artifact in the gallery) and write it in that language.
      - Optional `sections` (`[[key, label], …]`) override the default importance buckets. Write
-       their labels in the same language.
-     - Write every item (title, context, question, options, `rate`) in that language too.
+       their labels in whatever language you set `lang` to.
+     - Write every item (title, context, question, options, `rate`) in that same language.
      - The notices the page sends back to Claude are always English. They are the page-to-agent
-       protocol, not UI.
+       protocol, not UI, and are unaffected by `lang`.
    - Record the URL in the project's CLAUDE.md or memory so every session finds the same inbox.
-3. Keep item text in the user's language (the one set in `meta/config.lang`).
+3. Keep item text in whatever language `meta/config.lang` is set to (English unless you changed it).
 
 ## 0b. The default: every question for the user goes to the inbox
 
@@ -93,7 +95,8 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `notified_at` | set by the page when the user pressed "Avisar a Claude" (per item or in bulk) |
 
 Collection **`issues`**, doc id = issue number: `{number, state, title, summary, url}`. `summary`
-is one line in the user's language, written by you from the issue body. Add or refresh it whenever
+is one line in the inbox's language (`meta/config.lang`, English by default), written by you
+from the issue body. Add or refresh it whenever
 you post an item with a new `issue`.
 
 Every measured number in `context` carries its date and environment, the same as anywhere else.
@@ -133,13 +136,14 @@ Every measured number in `context` carries its date and environment, the same as
 ## 3. Reading answers (low-token recipe)
 
 For comparison items add `ratings: .answer.ratings` to the `jq` projection. It maps asset
-ids, which you translate to labels with the item's `media` list.
+ids, which you translate to labels with the item's `media` list. For items using the newer
+review tools (§6) add `score: .answer.score, marks: .answer.marks` too.
 
 
 ```
 ArtifactData {action:"query", url, collection:"items",
               query:{where:[["status","==","answered"]]}, out_dir:"<scratchpad>/inbox"}
-jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), option: .answer.option_id, text: .answer.text, title}' <scratchpad>/inbox/items/*.json
+jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), option: .answer.option_id, text: .answer.text, score: .answer.score, marks: .answer.marks, title}' <scratchpad>/inbox/items/*.json
 ```
 
 - `out_dir` writes the documents to disk instead of your context. `jq` pulls out about 100 tokens
@@ -216,7 +220,42 @@ answers with the §3 query.
 - The first real answer from the human proves the save path; their first "Avisar a Claude" proves
   notifications. Record both.
 
-## 6. Limits: when to move to a local, project-owned inbox
+## 6. Review tools: scales, galleries, compare wipe, A/B, marks
+
+All opt-in per item — items without these fields render exactly as before.
+
+| Field | On | Use for |
+|---|---|---|
+| `scale: {min, max, step, labels?:{min,max}}` | any item | a numeric rating instead of/alongside options — "score this 0-1", "rate 1-10". Saved as `answer.score` (number). Counts as an answer on its own |
+| `rate: {question, scale:{...}}` | comparison items (media with `role:"reference"`/`"candidate"`) | a numeric per-candidate rating instead of the default Good/Fair/Poor. Saved in `ratings[<media key>]` as a number, the instant the user picks it (same as the default rate) |
+| `kind:"ui_review"` | any item | a UI-review item; renders with the normal gallery, just a different label on the card |
+| `media[].type:"gif"` or `"video"` | any item | mixed into the same lightbox gallery as images — Previous/Next, swipe, ←/→ step through pngs, gifs and videos together |
+| (toggle, no field) | any comparison item | the card and its lightbox both offer "Side by side" / "Slide" (before/after wipe with a draggable divider) for the same reference+candidate pair |
+| `ab: true` (or a candidate role on ≥2 same-type tracks) | audio or video media | a shared-transport A/B(/C/…) player: one play/seek bar, a lettered switch that swaps tracks without losing playback position. Works with any number of tracks ≥2 |
+| `marks: true`, optional `mark_scale: {min,max,step}` | audio/video media | "Mark moment" / "Mark tramo" buttons under the player; each mark can carry a note and, with `mark_scale`, a score |
+
+**When to reach for these:** `scale`/`rate.scale` when Good/Fair/Poor is too coarse (numeric
+severity, a 1-10 preference). Gallery gif/video when a UI review needs a short screen recording
+alongside screenshots. Compare wipe when pixel-level alignment matters more than a side-by-side
+glance (subtle style-transfer differences, before/after edits). A/B when judging performance
+takes (voice, video cuts) rather than static output — the shared transport is what makes an A/B
+listen/watch fair, since the listener hears the same moment on every candidate. Marks when a
+reviewer needs to flag specific timestamps in a take rather than rating the whole thing once.
+
+**Stored shapes**, read back the same way as any other answer (§3):
+
+- `answer.score`: the number picked on `item.scale`.
+- `ratings[<media key>]`: a number when the item's `rate` uses `scale`, same as any other rating.
+- `marks_data: {<media key>: [{id, t, note, score?, at} | {id, start, end, note, score?, at}]}`:
+  written immediately as the user adds/edits/deletes marks (same "saved before the answer"
+  pattern as `ratings`).
+- `answer.marks`: a copy of `marks_data` taken at save time, so a single `.answer` read carries
+  everything without cross-referencing `marks_data` separately.
+
+Blind tests keep working: the A/B switch always shows plain letters (A, B, C…), never a media
+label, so the same neutral-naming rule from §2 applies to the ratings shown under each letter too.
+
+## 7. Limits: when to move to a local, project-owned inbox
 
 The artifact covers Claude sessions well. Move to a table + page in the project's own app when:
 
