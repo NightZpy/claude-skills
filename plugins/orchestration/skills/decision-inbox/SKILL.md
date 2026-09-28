@@ -17,7 +17,10 @@ page, and the "Avisar a Claude" button reaching the watching session.
 1. Look for an existing one first: `Artifact {action:"list"}` and search the titles for
    "Buzón de decisiones", or check the project's CLAUDE.md / memory for its URL. **One inbox per
    project**; never create a second one.
-2. To create: load the `artifact-capabilities` and `artifact-design` skills (the platform requires
+2. **Create it from the session that will own it**: the director session that acts on the
+   answers, not a helper that only builds the page. On claude.ai the session that created the
+   artifact receives "Avisar a Claude" notices whether or not it watches (observed 2026-09-28).
+   To create: load the `artifact-capabilities` and `artifact-design` skills (the platform requires
    it), then publish `template/inbox.html` from this skill **unchanged in logic**:
    ```
    Artifact {file_path:"<copy of template/inbox.html>", icon:"inbox",
@@ -84,7 +87,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `status` | `open` → `answered` (page) → `processed` (agent, together with `resolution`); `withdrawn` if no longer needed |
 | `answer` | `{option_id, option_ids, text, ratings, answered_at}`, written by the page; `null` while open. `option_ids` always holds the chosen ids (one entry for single choice); `option_id` is the single choice, `null` on multi. Any of options, text or ratings is enough |
 | `resolution` | `{text, at, by}`, written by the agent **when it closes the item**: what it did or decided (implemented X in commit Y, asked a follow-up decision Z, dropped it because…). Shown to the user as "Resuelta" |
-| `agent_note` | `{text, at, by}`, a progress update when the item is not resolved yet, especially when the user asked for status. Shown as "Estado del agente" |
+| `agent_note` | `{text, at, by}`, a progress update when the item is not resolved yet, especially when the user asked for status. Shown as "Estado del agente". `at` must be the real current ISO time: a note newer than the last request marks the item "estado recibido" and takes it out of the bulk "Pedir estado" count |
 | `status_asked_at` | set by the page when the user pressed "Pedir estado" |
 | `key_revealed` | blind tests only; `null` until the agent reveals after the verdict |
 | `notified_at` | set by the page when the user pressed "Avisar a Claude" (per item or in bulk) |
