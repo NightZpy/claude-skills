@@ -1,6 +1,6 @@
 ---
 name: decision-inbox
-description: Use when agents need answers from the human that can wait — questions, multiple-choice decisions, reviews of images/videos/audio, blind A/B tests — or when the user says "buzón de decisiones", "decision inbox", "déjame las preguntas en un sitio", "pendientes para mí", or hands over a list of pending decisions. Creates (or reuses) one private claude.ai artifact per project where agents post items and the user answers from a phone; agents read answers back cheaply with ArtifactData. Also use to post new items to, or read answers from, an existing inbox.
+description: Use BEFORE asking the user any question, choice, review or approval in chat when the project has a decision inbox (its URL is in CLAUDE.md or memory, or an artifact titled "Buzón de decisiones" exists) — post it there as an item and tell the user in one line that it is waiting in the inbox, instead of writing the question in chat. Also use when agents need answers that can wait (questions, multiple-choice decisions, reviews of images/videos/audio, blind A/B tests), when the user says "buzón de decisiones", "decision inbox", "déjame las preguntas en un sitio", "pendientes para mí", or hands over a list of pending decisions; to create an inbox for a project; and to read answers, write resolutions or reply to status requests.
 ---
 
 # decision-inbox — one place where the human answers agents asynchronously
@@ -30,6 +30,26 @@ page, and the "Avisar a Claude" button reaching the watching session.
      `ArtifactData {action:"set", url, collection:"meta", doc_id:"config", data:{project:"<Name>", repo_url:"https://github.com/<owner>/<repo>", sections:[["listen","Escuchar / mirar"],["review","Revisar ya"],["decide","Decidir"],["fyi","Para tu referencia"]]}}`
    - Record the URL in the project's CLAUDE.md or memory so every session finds the same inbox.
 3. The page is written for the user's language (Spanish by default). Keep item text in that language.
+
+## 0b. The default: every question for the user goes to the inbox
+
+Once a project has an inbox, **a question for the user is an inbox item, not a chat message.**
+That covers "which option?", "do you approve?", "listen to this", "should I cancel X?" and "is
+it OK if…?". Post the item (§2), then write one line in chat:
+
+> Te dejé la decisión «<title>» en el buzón: <url>
+
+Keep in chat only what cannot wait for the user to open the inbox, and even then post the item
+too, so the decision is recorded:
+
+- **An authorization the permission system refused** (a paid action, a production write, anything
+  a classifier denied). An inbox answer is page data and does not count as the user's approval.
+  Post the item with the full context (what, cost, why, alternatives), and in chat ask the user
+  to approve **in chat**, pointing to the item.
+- Something blocking you **right now** with no other work to do. Ask in chat and post the item.
+
+Before posting, check that the inbox skill is actually what you are following. A session started
+before the plugin was installed or updated does not have it until the user restarts it.
 
 ## 1. Data model
 
