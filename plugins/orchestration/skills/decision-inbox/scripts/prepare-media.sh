@@ -6,22 +6,26 @@
 # - images larger than 1600px on the long side -> JPEG q82 (phones load them fast)
 # - video (mp4/webm) -> copied as is
 # - metadata stripped everywhere (tags can leak a blind-test answer)
-# Refuses blind-test key files and anything over the 20 MiB asset cap.
+# Refuses blind-test key files and anything over the 20 MiB asset cap. The key-file check is a
+# name heuristic that catches accidents; it is not a security boundary — never pass a key file here.
+# Inputs must be regular local files: every path goes to ffmpeg as file:<path>, so a name that starts
+# with '-' or looks like a protocol (http:, concat:, pipe:) is never read as an option or a URL.
 set -euo pipefail
 [ $# -ge 2 ] || { echo "usage: $0 <out_dir> <file>..." >&2; exit 2; }
-out=$1; shift; mkdir -p "$out"
+out=$1; shift; mkdir -p -- "$out"; out=$(cd -- "$out" && pwd)
 cap=$((20 * 1024 * 1024)); rc=0
 for f in "$@"; do
-  base=$(basename "$f"); stem=${base%.*}; ext=$(printf %s "${base##*.}" | tr '[:upper:]' '[:lower:]')
+  [ -f "$f" ] && [ ! -L "$f" ] || { echo "SKIPPED $f: not a regular file" >&2; rc=1; continue; }
+  base=$(basename -- "$f"); stem=${base%.*}; ext=$(printf %s "${base##*.}" | tr '[:upper:]' '[:lower:]')
   case "$base" in KEY*|key*|.key*|*[Kk][Ee][Yy]*.json|*[Kk][Ee][Yy]*.md)
     echo "REFUSED $f: looks like a blind-test key file" >&2; rc=1; continue;; esac
   case "$ext" in
-    mp3) ffmpeg -v error -y -i "$f" -map_metadata -1 -c:a copy "$out/$stem.mp4"; dst="$out/$stem.mp4";;
-    wav|m4a|ogg|flac|aac) ffmpeg -v error -y -i "$f" -map_metadata -1 -vn -c:a aac -b:a 256k "$out/$stem.mp4"; dst="$out/$stem.mp4";;
+    mp3) ffmpeg -v error -y -i "file:$f" -map_metadata -1 -c:a copy "file:$out/$stem.mp4"; dst="$out/$stem.mp4";;
+    wav|m4a|ogg|flac|aac) ffmpeg -v error -y -i "file:$f" -map_metadata -1 -vn -c:a aac -b:a 256k "file:$out/$stem.mp4"; dst="$out/$stem.mp4";;
     png|jpg|jpeg|webp)
-      ffmpeg -v error -y -i "$f" -map_metadata -1 -vf "scale='min(1600,iw)':'min(1600,ih)':force_original_aspect_ratio=decrease" -q:v 3 "$out/$stem.jpg"; dst="$out/$stem.jpg";;
-    mp4|webm) ffmpeg -v error -y -i "$f" -map_metadata -1 -c copy "$out/$base"; dst="$out/$base";;
-    gif|svg|pdf) cp "$f" "$out/$base"; dst="$out/$base";;
+      ffmpeg -v error -y -i "file:$f" -map_metadata -1 -vf "scale='min(1600,iw)':'min(1600,ih)':force_original_aspect_ratio=decrease" -q:v 3 "file:$out/$stem.jpg"; dst="$out/$stem.jpg";;
+    mp4|webm) ffmpeg -v error -y -i "file:$f" -map_metadata -1 -c copy "file:$out/$base"; dst="$out/$base";;
+    gif|svg|pdf) cp -- "$f" "$out/$base"; dst="$out/$base";;
     *) echo "SKIPPED $f: unsupported type .$ext" >&2; rc=1; continue;;
   esac
   size=$(wc -c < "$dst" | tr -d ' ')
