@@ -90,8 +90,40 @@ textarea{width:100%; min-height:84px; resize:vertical; font:16px/1.45 Archivo,sa
 .empty{background:var(--surface); color:var(--ink-2); border:1px dashed var(--line-strong); border-radius:10px; padding:28px; text-align:center}
 .warn{background:var(--alert-soft); color:var(--ink); border:1px solid var(--alert); border-radius:10px; padding:16px 18px; margin-bottom:20px}
 
-.lb{position:fixed; inset:0; z-index:20; background:rgba(18,21,26,.92); display:flex; align-items:center; justify-content:center; padding:16px; cursor:zoom-out}
-.lb img{max-width:100%; max-height:100%; object-fit:contain}
+.lb{position:fixed; inset:0; z-index:20; background:#12151A; color:#fff; display:grid; grid-template-rows:auto 1fr auto; padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.lb-head{display:flex; align-items:center; gap:10px; padding:10px 14px; font-family:"JetBrains Mono",monospace; font-size:13px}
+.lb-head .cnt{color:#A9B3BF}
+.lb-head .x{margin-left:auto}
+.lb-btn{font:600 14px Archivo,sans-serif; padding:8px 12px; border-radius:8px; border:1px solid #5A6573; background:transparent; color:#fff; cursor:pointer}
+.lb-btn:disabled{opacity:.35; cursor:default}
+.lb-stage{min-height:0; display:grid; gap:8px; padding:0 10px; grid-auto-flow:column; grid-auto-columns:1fr}
+.lb-stage.duo{grid-auto-flow:row; grid-auto-rows:1fr}
+@media (min-aspect-ratio:4/3){ .lb-stage.duo{grid-auto-flow:column; grid-auto-columns:1fr; grid-auto-rows:auto} }
+.lb-pane{min-height:0; min-width:0; display:grid; grid-template-rows:auto 1fr; gap:4px}
+.lb-pane span{font-family:"JetBrains Mono",monospace; font-size:12px; color:#CFD6DE}
+.lb-pane img{width:100%; height:100%; min-height:0; object-fit:contain}
+.lb-foot{display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; padding:10px 14px}
+.lb-foot .rate{display:flex; gap:6px; flex-wrap:wrap; justify-content:center}
+.lb .seg{border-color:#5A6573; background:transparent; color:#fff}
+.lb .seg[aria-pressed="true"]{background:#fff; color:#12151A; border-color:#fff}
+.lb-q{width:100%; text-align:center; font-size:14px; color:#CFD6DE}
+
+.cmp{padding:10px 24px 6px; display:grid; gap:14px}
+.refs{display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:14px; color:var(--ink-2)}
+.pair{background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:10px; display:grid; gap:10px}
+.pair.rated{border-color:var(--dsl)}
+.pair-imgs{display:grid; gap:8px; grid-template-columns:1fr 1fr}
+@media (max-width:640px){ .pair-imgs{grid-template-columns:1fr} }
+.pair figure{margin:0; display:grid; gap:4px; align-content:start}
+.pair figcaption{font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:700}
+.pair figcaption.ref{color:var(--ink-3); font-weight:400}
+.pair img{display:block; width:100%; height:auto; border-radius:4px; cursor:zoom-in; background:var(--sunk)}
+.rate{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.rate .lbl{margin-right:4px}
+.seg{font:600 14px Archivo,sans-serif; padding:7px 12px; border-radius:999px; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer}
+.seg[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.ratesum{font-size:14px; color:var(--ink-2)}
+@media (max-width:560px){ .cmp{padding-left:16px; padding-right:16px} }
 
 footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-3); line-height:1.9}
 :focus-visible{outline:2px solid var(--signal); outline-offset:3px}
@@ -178,28 +210,122 @@ const st = it => it.status || "open";
 const issueNo = it => it.issue ? String(it.issue).replace(/^#/, "") : null;
 const order = (a, b) => (SEC_RANK[a.section] ?? 9) - (SEC_RANK[b.section] ?? 9) || (a.priority ?? 50) - (b.priority ?? 50) || String(a.created_at).localeCompare(String(b.created_at));
 
-const mediaCache = new Map();   // keeps players alive across re-renders
-function renderMedia(it) {
-  const list = Array.isArray(it.media) ? it.media : [];
-  if (!list.length) return null;
-  const key = it.id + JSON.stringify(list);
-  if (!mediaCache.has(key)) mediaCache.set(key, el("div", {class:"media"}, list.map(m => {
-    const src = m.url || (m.asset_id ? "/_blob/" + m.asset_id : "");
-    const t = m.type || (it.kind === "audio" ? "audio" : it.kind === "video" ? "video" : "image");
-    let body;
-    if (!src) body = el("span", {}, "Archivo no disponible");
-    else if (t === "audio") body = el("audio", {controls:true, preload:"metadata", src});
-    else if (t === "video") body = el("video", {controls:true, playsinline:true, preload:"metadata", src});
-    else body = el("img", {src, alt:m.label || "imagen", loading:"lazy", onclick: () => zoom(src)});
-    if (src) body.addEventListener("error", () => body.replaceWith(el("span", {class:"m missing"}, "No se pudo cargar este archivo.")));
-    return el("figure", {class:"m"}, m.label ? el("figcaption", {}, m.label) : null, body);
-  })));
-  return mediaCache.get(key);
+const mediaCache = new Map();   // keeps audio/video players alive across re-renders
+const srcOf = m => m.url || (m.asset_id ? "/_blob/" + m.asset_id : "");
+const typeOf = (m, it) => m.type || (it.kind === "audio" ? "audio" : it.kind === "video" ? "video" : "image");
+const keyOf = m => m.asset_id || m.label || srcOf(m);
+const DEFAULT_RATE = {question:"¿Cómo queda frente a la referencia?", options:[{id:"good", label:"Bien"}, {id:"partial", label:"Regular"}, {id:"bad", label:"Mal"}]};
+// Comparison mode: at least one image with role "reference" and one with role "candidate".
+function compareOf(it) {
+  const imgs = (it.media || []).filter(m => typeOf(m, it) === "image");
+  const refs = imgs.filter(m => m.role === "reference"), cands = imgs.filter(m => m.role === "candidate");
+  return refs.length && cands.length ? {refs, cands, rate: it.rate || DEFAULT_RATE} : null;
 }
-function zoom(src) {
-  const lb = el("div", {class:"lb", role:"dialog", "aria-label":"Imagen ampliada", tabindex:"-1", onclick: () => lb.remove()}, el("img", {src, alt:""}));
-  lb.addEventListener("keydown", e => { if (e.key === "Escape") lb.remove(); });
-  document.body.append(lb); lb.focus();
+const refPick = {};   // item id -> index of the reference shown next to each candidate
+const ratingsOf = it => ({...(it.ratings || {}), ...(drafts[it.id]?.ratings || {})});
+
+function renderMedia(it) {
+  const cmp = compareOf(it);
+  const list = (it.media || []).filter(m => !cmp || typeOf(m, it) !== "image");
+  const out = [];
+  if (cmp) out.push(renderCompare(it, cmp));
+  if (list.length) {
+    const key = it.id + JSON.stringify(list);
+    if (!mediaCache.has(key)) {
+      const gallery = list.filter(m => typeOf(m, it) === "image" && srcOf(m));
+      mediaCache.set(key, el("div", {class:"media"}, list.map(m => {
+        const src = srcOf(m), t = typeOf(m, it);
+        let body;
+        if (!src) body = el("span", {}, "Archivo no disponible");
+        else if (t === "audio") body = el("audio", {controls:true, preload:"metadata", src});
+        else if (t === "video") body = el("video", {controls:true, playsinline:true, preload:"metadata", src});
+        else body = el("img", {src, alt:m.label || "imagen", loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"gallery", index: gallery.indexOf(m)})});
+        if (src) body.addEventListener("error", () => body.replaceWith(el("span", {class:"m missing"}, "No se pudo cargar este archivo.")));
+        return el("figure", {class:"m"}, m.label ? el("figcaption", {}, m.label) : null, body);
+      })));
+    }
+    out.push(mediaCache.get(key));
+  }
+  return out.length ? out : null;
+}
+
+function rateButtons(it, cand, rate, cls) {
+  const r = ratingsOf(it), k = keyOf(cand), locked = st(it) !== "open" && !drafts[it.id]?.editing;
+  return el("div", {class: cls || "rate", role:"group", "aria-label": "Calificar " + (cand.label || "")},
+    rate.options.map(o => el("button", {class:"seg", type:"button", disabled: locked, "aria-pressed": String(r[k] === o.id),
+      onclick: e => { e.stopPropagation(); setRating(it, k, r[k] === o.id ? null : o.id); }}, o.label)));
+}
+function renderCompare(it, {refs, cands, rate}) {
+  const ri = Math.min(refPick[it.id] || 0, refs.length - 1), ref = refs[ri], r = ratingsOf(it);
+  const done = cands.filter(c => r[keyOf(c)]).length;
+  return el("div", {class:"cmp"},
+    refs.length > 1 ? el("div", {class:"refs"}, el("span", {}, "Comparar con:"),
+      refs.map((m, i) => el("button", {class:"seg", type:"button", "aria-pressed": String(i === ri), onclick: () => { refPick[it.id] = i; render(); }}, m.label || "Referencia " + (i + 1)))) : null,
+    el("p", {class:"ratesum"}, `${rate.question} · ${done} de ${cands.length} calificadas`),
+    cands.map((c, ci) => el("div", {class:"pair" + (r[keyOf(c)] ? " rated" : "")},
+      el("div", {class:"pair-imgs"},
+        el("figure", {}, el("figcaption", {class:"ref"}, ref.label || "Referencia"),
+          el("img", {src: srcOf(ref), alt: ref.label || "referencia", loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"compare", index: ci})})),
+        el("figure", {}, el("figcaption", {}, c.label || "Candidata " + (ci + 1)),
+          el("img", {src: srcOf(c), alt: c.label || "candidata", loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"compare", index: ci})}))),
+      rateButtons(it, c, rate))));
+}
+
+async function setRating(it, key, value) {
+  const d = drafts[it.id] || (drafts[it.id] = {option_id: it.answer?.option_id ?? null, text: it.answer?.text ?? ""});
+  d.ratings = {...(d.ratings || {}), [key]: value};
+  render();
+  try { await db.doc("items/" + it.id).update({ratings: {[key]: value}}); }   // saved at once; the answer is not required
+  catch (e) { notes[it.id] = {cls:"err", msg:"No se pudo guardar la calificación (" + (e?.code || "error") + ")."}; render(); }
+}
+
+// Lightbox: gallery (one image, move between them) or compare (reference + candidate, rate in place).
+let lb = null;
+function openLB(state) { lb = {...state}; renderLB(); }
+function closeLB() { lb = null; document.querySelector(".lb")?.remove(); }
+function renderLB() {
+  document.querySelector(".lb")?.remove();
+  if (!lb) return;
+  const it = items.find(i => i.id === lb.itemId); if (!it) return closeLB();
+  const cmp = lb.mode === "compare" ? compareOf(it) : null;
+  const list = cmp ? cmp.cands : (it.media || []).filter(m => typeOf(m, it) === "image" && srcOf(m));
+  if (!list.length) return closeLB();
+  lb.index = Math.max(0, Math.min(lb.index, list.length - 1));
+  const cur = list[lb.index], go = n => { lb.index = n; renderLB(); };
+  let stage;
+  if (cmp) {
+    const ref = cmp.refs[Math.min(refPick[it.id] || 0, cmp.refs.length - 1)];
+    stage = el("div", {class:"lb-stage duo"},
+      el("div", {class:"lb-pane"}, el("span", {}, ref.label || "Referencia"), el("img", {src: srcOf(ref), alt: ref.label || ""})),
+      el("div", {class:"lb-pane"}, el("span", {}, cur.label || ""), el("img", {src: srcOf(cur), alt: cur.label || ""})));
+  } else stage = el("div", {class:"lb-stage"}, el("div", {class:"lb-pane"}, el("span", {}, cur.label || ""), el("img", {src: srcOf(cur), alt: cur.label || ""})));
+  const box = el("div", {class:"lb", role:"dialog", "aria-modal":"true", "aria-label": cmp ? "Comparar con la referencia" : "Galería", tabindex:"-1"},
+    el("div", {class:"lb-head"}, el("b", {}, cur.label || ""), el("span", {class:"cnt"}, `${lb.index + 1} de ${list.length}`),
+      el("button", {class:"lb-btn x", type:"button", onclick: closeLB}, "Cerrar")),
+    stage,
+    el("div", {class:"lb-foot"},
+      cmp ? el("div", {class:"lb-q"}, cmp.rate.question) : null,
+      el("button", {class:"lb-btn", type:"button", disabled: lb.index === 0, onclick: () => go(lb.index - 1)}, "Anterior"),
+      cmp ? rateButtons(it, cur, cmp.rate) : null,
+      el("button", {class:"lb-btn", type:"button", disabled: lb.index === list.length - 1, onclick: () => go(lb.index + 1)}, "Siguiente")));
+  box.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeLB();
+    else if (e.key === "ArrowLeft" && lb.index > 0) go(lb.index - 1);
+    else if (e.key === "ArrowRight" && lb.index < list.length - 1) go(lb.index + 1);
+  });
+  let x0 = null;
+  box.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, {passive:true});
+  box.addEventListener("touchend", e => {
+    if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (dx < -50 && lb.index < list.length - 1) go(lb.index + 1); else if (dx > 50 && lb.index > 0) go(lb.index - 1);
+  });
+  document.body.append(box); box.focus();
+}
+
+function ratingLine(it) {
+  const cmp = compareOf(it); if (!cmp) return "";
+  const r = {...(it.answer?.ratings || {}), ...ratingsOf(it)};
+  return cmp.cands.filter(c => r[keyOf(c)]).map(c => `${c.label || keyOf(c)}: ${(cmp.rate.options.find(o => o.id === r[keyOf(c)]) || {}).label || r[keyOf(c)]}`).join(" · ");
 }
 
 function related(it) {
@@ -246,14 +372,15 @@ function card(it) {
     it.question ? el("p", {class:"question"}, it.question) : null));
 
   const media = renderMedia(it);
-  if (media) node.append(media);
+  if (media) node.append(...media);
 
   if (it.answer && !editing) {
     const opt = opts.find(o => o.id === it.answer.option_id);
     node.append(el("div", {class:"given"},
       el("span", {class:"lbl"}, "Tu respuesta · " + fmt(it.answer.answered_at)),
       opt ? el("p", {}, el("b", {}, opt.label)) : null,
-      it.answer.text ? el("p", {style:"white-space:pre-wrap"}, it.answer.text) : null));
+      it.answer.text ? el("p", {style:"white-space:pre-wrap"}, it.answer.text) : null,
+      ratingLine(it) ? el("p", {}, ratingLine(it)) : null));
   }
   if (it.key_revealed && s !== "open") node.append(el("div", {class:"reveal"}, el("b", {}, "Clave: "), it.key_revealed));
 
@@ -341,6 +468,7 @@ function render() {
     view = shown.length ? shown.map(card) : [el("div", {class:"empty"}, "No hay decisiones en esta vista.")];
   }
   list.replaceChildren(...view.filter(Boolean));
+  if (lb) renderLB();   // the open lightbox follows live data (ratings, reference choice)
   if (focusId) { const f = document.getElementById(focusId); if (f) { f.focus(); if (sel != null && f.setSelectionRange) f.setSelectionRange(sel, sel); } }
 }
 function scrollTop() { requestAnimationFrame(() => $("#list").scrollIntoView({block:"start"})); }
@@ -348,9 +476,10 @@ function scrollTop() { requestAnimationFrame(() => $("#list").scrollIntoView({bl
 async function save(it, alsoNotify) {
   const d = drafts[it.id];
   const text = (d.text || "").trim();
-  if (!d.option_id && !text) { notes[it.id] = {cls:"err", msg:"Elige una opción o escribe un comentario antes de guardar."}; return render(); }
+  const ratings = Object.fromEntries(Object.entries(ratingsOf(it)).filter(([, v]) => v));
+  if (!d.option_id && !text && !Object.keys(ratings).length) { notes[it.id] = {cls:"err", msg:"Elige una opción, califica o escribe un comentario antes de guardar."}; return render(); }
   notes[it.id] = {cls:"", msg:"Guardando…"}; render();
-  const answer = {option_id: d.option_id || null, text, answered_at: new Date().toISOString()};
+  const answer = {option_id: d.option_id || null, text, ratings, answered_at: new Date().toISOString()};
   try {
     await db.doc("items/" + it.id).update({status:"answered", answer});
     d.editing = false;
@@ -367,7 +496,7 @@ async function notify(it) {
   const opt = (it.options || []).find(o => o.id === it.answer?.option_id);
   const n = issueNo(it);
   const text = [`[decision-inbox] Respondida: «${it.title}» (id ${it.id}${n ? ", #" + n : ""}${it.source_agent ? ", de " + it.source_agent : ""}).`,
-    opt ? "Opción: " + opt.label : null, it.answer?.text ? "Comentario: " + it.answer.text : null,
+    opt ? "Opción: " + opt.label : null, ratingLine(it) ? "Calificaciones: " + ratingLine(it) : null, it.answer?.text ? "Comentario: " + it.answer.text : null,
     "Léela con ArtifactData (colección items, status == answered) y márcala processed."].filter(Boolean).join("\n").slice(0, 3900);
   const keep = notes[it.id]?.cls === "ok" ? "Guardado. " : "";
   notes[it.id] = {cls:"", msg: keep + "Enviando aviso…"}; render();
