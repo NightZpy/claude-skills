@@ -41,7 +41,9 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `kind` | `text` · `choice` · `image` · `video` · `audio` · `blind_test` |
 | `title`, `context`, `question` | one question per item; split a bullet that asks two things |
 | `options` | `[{id, label, detail?}]`; put "Recomendado" in `detail`, never in the label |
-| `media` | `[{asset_id, url:"/_blob/<asset_id>", label, type:"image"\|"audio"\|"video"}]` |
+| `media` | `[{asset_id, url:"/_blob/<asset_id>", label, type:"image"\|"audio"\|"video", role?:"reference"\|"candidate"}]` |
+| `rate` | comparison items only: `{question, options:[{id,label}]}`, the per-candidate scale (default Bien / Regular / Mal) |
+| `ratings` | `{<candidate asset_id>: option_id}`, written by the page **the moment** the user rates, before any answer |
 | `section` | a key from `meta/config.sections` (importance bucket; the page filters by it) |
 | `priority` | number, lower first inside its section |
 | `issue` | issue number as a string; the page shows `issues/<n>` and links to GitHub |
@@ -49,7 +51,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `source_agent` | who asked, e.g. `project:session-name` |
 | `created_at` | ISO timestamp |
 | `status` | `open` → `answered` (page) → `processed` (agent); `withdrawn` if no longer needed |
-| `answer` | `{option_id, text, answered_at}`, written by the page; `null` while open |
+| `answer` | `{option_id, text, ratings, answered_at}`, written by the page; `null` while open. Any of option, text or ratings is enough |
 | `key_revealed` | blind tests only; `null` until the agent reveals after the verdict |
 | `notified_at` | set by the page when the user pressed "Avisar a Claude" |
 
@@ -82,12 +84,20 @@ Every measured number in `context` carries its date and environment, the same as
   if you are the one reporting results.
 - Name candidates neutrally (A/B, B1–B4) and check the media carry no giveaway: file tags,
   burned-in model names, telling filenames. Look at one image yourself.
-- Reference media (the original, the portrait) go in the same item; label them clearly as
-  references.
+- Reference media (the original, the portrait) go in the same item with `role:"reference"`; the
+  images being judged get `role:"candidate"`. That switches the card to **comparison mode**:
+  each candidate is shown beside the reference, with the `rate` buttons right under it, and the
+  user can switch the reference when there are several. Ask one overall question in `options`
+  (for example "which is best") and leave it optional. The per-candidate ratings are the main
+  verdict.
 - **After the answer:** confirm the label→file→asset mapping **from the upload log**, not from
   memory. Only then write `key_revealed` and set `processed`.
 
 ## 3. Reading answers (low-token recipe)
+
+For comparison items add `ratings: .answer.ratings` to the `jq` projection. It maps asset
+ids, which you translate to labels with the item's `media` list.
+
 
 ```
 ArtifactData {action:"query", url, collection:"items",
@@ -172,3 +182,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 - **Respondidas** / **Todas** list full cards. Each card shows its issue box (summary, "Abrir en
   GitHub") and a "Relacionadas (N)" toggle (same issue, or listed in `related`).
 - Audio and video players are cached, so a live update never cuts playback.
+- Tapping an image opens a full-screen **gallery**: arrows, swipe or ←/→ move between the item's
+  images. In comparison mode it shows reference and candidate together, stacked on a phone and
+  side by side on a wide screen, with the rating buttons at the bottom. Ratings save as soon as
+  they are tapped.
