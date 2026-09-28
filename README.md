@@ -19,7 +19,7 @@ so nothing loads that you don't want:
 
 | Plugin | Skills |
 |---|---|
-| `orchestration` | plan-big-execute-small · ask · advisor-tool |
+| `orchestration` | plan-big-execute-small · ask · advisor-tool · decision-inbox |
 | `dev-workflow` | review-policy · git-rebase-safety · issue-tracking |
 | `personal-ops` | life-os · mac-doctor · npm-supply-chain |
 | `design` | tutor · artifact-visual-system · excalidraw · diagram-conventions · proposal-artifact · redesign-existing-projects · web-design-guidelines · vercel-composition-patterns · vercel-react-best-practices |
@@ -93,6 +93,10 @@ layout exists to prevent.
 - **ask** — routes "how does this work" questions to a clean cheap subagent so the
   heavy doc/code reading never lands in the main session's context.
 - **replicate-behavior-report** — installs the behavior-report review system in a repo: the E2E behavior-story pipeline, the quality gates and the report generator, with `template/` (generator + runnable fixtures) and `scripts/` bundled.
+- **decision-inbox** — one private artifact per project where agents post questions,
+  choices, media reviews and blind tests; the human answers from a phone, one item at a
+  time, and agents read answers back with a low-token `ArtifactData` + `jq` recipe. Ships
+  the page template and `scripts/prepare-media.sh` (mp3→mp4 stream copy, key-file guard).
 - **advisor-tool** — the server-side advisor tool (`advisor_20260301`) for the
   Claude API: cheap executor consults a stronger advisor mid-generation.
 

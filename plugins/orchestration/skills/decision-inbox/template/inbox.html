@@ -1,0 +1,417 @@
+<title>Buzón de decisiones</title>
+<!-- Template from the decision-inbox skill. Project-specific values live in the db doc meta/config,
+     not here: {project, repo_url, sections:[[key,label],...]}. Replace the :root token block with the
+     project's own artifact design system if it has one. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Default tokens: fixed light theme, every surface declares its ground AND its ink.
+   Swap this block for the project's own tokens when it has an artifact design system. */
+:root, :root[data-theme="dark"], :root[data-theme="light"]{
+  color-scheme:light;
+  --ground:#ECEEF1; --surface:#FFFFFF; --surface-2:#F3F5F8; --sunk:#E0E4EA;
+  --ink:#12151A; --ink-2:#5A6573; --ink-3:#8B95A2;
+  --line:#CFD6DE; --line-strong:#A9B3BF;
+  --signal:#9C6A05; --signal-soft:#F7E9C9;
+  --tpl:#1F5A87; --tpl-soft:#DBE9F3;
+  --dsl:#456E22; --dsl-soft:#E0EDD2;
+  --alert:#8E2F1C; --alert-soft:#F8DFD8;
+}
+html{background:var(--ground); color:var(--ink)}
+*{box-sizing:border-box}
+html body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+  font-size:17px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.wrap{max-width:920px; margin:0 auto; padding:0 16px 96px}
+
+.hero{padding:44px 0 22px}
+.kicker{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--signal); margin:0 0 14px}
+h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spacing:-.035em; margin:0 0 14px; text-wrap:balance}
+.hero p{color:var(--ink-2); margin:0; max-width:52ch}
+
+.bar{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--ground); padding:10px 0; display:flex; gap:8px; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--line); margin-bottom:22px}
+.tab{font:600 14px Archivo,sans-serif; padding:8px 14px; border-radius:999px; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.tab .n{font-family:"JetBrains Mono",monospace; font-size:12px; margin-left:6px; opacity:.75}
+.status-line{margin-left:auto; font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-3)}
+
+.card{margin:0 0 20px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.card.answered{border-color:var(--dsl)}
+.card.processed{opacity:.72}
+.top{padding:24px 24px 6px}
+.meta{display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; margin:0 0 12px}
+.q{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--signal)}
+.chip{font-family:"JetBrains Mono",monospace; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line-strong); color:var(--ink-2); background:var(--surface-2)}
+.chip.open{border-color:var(--signal); color:var(--signal); background:var(--signal-soft)}
+.chip.answered{border-color:var(--dsl); color:var(--dsl); background:var(--dsl-soft)}
+.chip.processed{border-color:var(--tpl); color:var(--tpl); background:var(--tpl-soft)}
+.chip.blind{border-color:var(--alert); color:var(--alert); background:var(--alert-soft)}
+h2{font-weight:800; font-size:clamp(22px,4vw,30px); line-height:1.1; letter-spacing:-.022em; margin:0 0 12px; text-wrap:balance}
+.ctx{color:var(--ink-2); white-space:pre-wrap; margin:0 0 12px; max-width:68ch; font-size:16px}
+.question{font-weight:600; margin:0 0 6px; max-width:62ch}
+
+.media{display:grid; gap:12px; padding:10px 24px 6px; grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr))}
+.m{margin:0; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:10px}
+.m figcaption{font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:700; color:var(--ink); margin:0 0 8px}
+.m img{display:block; width:100%; height:auto; border-radius:4px; cursor:zoom-in; background:var(--sunk)}
+.m video{display:block; width:100%; max-height:70vh; border-radius:4px; background:#000}
+.m audio{display:block; width:100%}
+.m.missing{color:var(--alert); font-size:14px}
+
+.answer-box{padding:14px 24px 22px; display:grid; gap:12px}
+.opts{display:grid; gap:8px}
+.opt{display:flex; gap:10px; align-items:flex-start; text-align:left; width:100%; padding:12px 14px; border-radius:8px; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--ink); font:inherit; cursor:pointer}
+.opt:hover{border-color:var(--ink-2)}
+.opt[aria-checked="true"]{border-color:var(--tpl); background:var(--tpl-soft)}
+.opt .dot{flex:none; width:18px; height:18px; margin-top:3px; border-radius:50%; border:2px solid var(--line-strong); background:var(--surface)}
+.opt[aria-checked="true"] .dot{border-color:var(--tpl); background:radial-gradient(circle,var(--tpl) 45%,var(--surface) 50%)}
+.opt b{display:block; font-weight:600}
+.opt small{display:block; color:var(--ink-2); font-size:14px; line-height:1.4; margin-top:2px}
+label.lbl{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+textarea{width:100%; min-height:84px; resize:vertical; font:16px/1.45 Archivo,sans-serif; padding:10px 12px; border-radius:8px; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--ink)}
+.actions{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.btn{font:600 15px Archivo,sans-serif; padding:10px 16px; border-radius:8px; border:1.5px solid var(--ink); background:var(--ink); color:var(--surface); cursor:pointer}
+.btn.ghost{background:var(--surface); color:var(--ink); border-color:var(--line-strong)}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+.note{font-size:14px; color:var(--ink-2)}
+.note.err{color:var(--alert)}
+.note.ok{color:var(--dsl)}
+
+.given{margin:0 24px 16px; padding:14px 16px; border-radius:8px; background:var(--dsl-soft); color:var(--ink); border:1px solid var(--dsl)}
+.given .lbl{color:var(--dsl)}
+.given p{margin:4px 0 0}
+.reveal{margin:0 24px 16px; padding:14px 16px; border-radius:8px; background:var(--signal-soft); color:var(--ink); border:1px solid var(--signal); white-space:pre-wrap}
+.ref{display:block; font-family:"JetBrains Mono",monospace; font-size:10.5px; color:var(--ink-3); padding:0 24px 18px; word-break:break-all}
+
+.empty{background:var(--surface); color:var(--ink-2); border:1px dashed var(--line-strong); border-radius:10px; padding:28px; text-align:center}
+.warn{background:var(--alert-soft); color:var(--ink); border:1px solid var(--alert); border-radius:10px; padding:16px 18px; margin-bottom:20px}
+
+.lb{position:fixed; inset:0; z-index:20; background:rgba(18,21,26,.92); display:flex; align-items:center; justify-content:center; padding:16px; cursor:zoom-out}
+.lb img{max-width:100%; max-height:100%; object-fit:contain}
+
+footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-3); line-height:1.9}
+:focus-visible{outline:2px solid var(--signal); outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:560px){ .top,.answer-box{padding-left:16px;padding-right:16px} .media{padding-left:16px;padding-right:16px} .given,.reveal{margin-left:16px;margin-right:16px} .ref{padding-left:16px;padding-right:16px} }
+
+/* v2: gallery, sections, issue box, related */
+.bar2{display:flex; gap:6px; flex-wrap:wrap; margin:-10px 0 18px}
+.sec{font:600 13px Archivo,sans-serif; padding:6px 11px; border-radius:6px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink-2); cursor:pointer}
+.sec[aria-pressed="true"]{border-color:var(--signal); background:var(--signal-soft); color:var(--ink)}
+.sec .n{font-family:"JetBrains Mono",monospace; font-size:11px; margin-left:5px}
+.progress{display:flex; align-items:center; gap:10px; margin:0 0 12px; font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--ink-2)}
+.progress .track{flex:1; height:4px; background:var(--sunk); border-radius:2px; overflow:hidden}
+.progress .fill{height:100%; background:var(--dsl)}
+.nav{display:flex; gap:8px; justify-content:space-between; margin:-6px 0 22px}
+.queue{background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.queue h3{margin:0; padding:14px 18px 10px; font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); font-weight:400}
+.row{display:flex; gap:10px; align-items:center; width:100%; text-align:left; padding:12px 18px; border:0; border-top:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; cursor:pointer}
+.row:hover{background:var(--surface-2)}
+.row .t{flex:1; min-width:0; font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.row .k{font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-3); flex:none}
+.row.done .t{color:var(--ink-3); text-decoration:line-through; font-weight:400}
+.issue{margin:0 0 14px; padding:12px 14px; border-radius:8px; background:var(--tpl-soft); color:var(--ink); border:1px solid var(--tpl); max-width:68ch}
+.issue .h{display:flex; gap:8px; align-items:baseline; flex-wrap:wrap}
+.issue .num{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--tpl); font-size:13px}
+.issue .ti{font-family:"JetBrains Mono",monospace; font-size:11.5px; color:var(--ink-2); word-break:break-word}
+.issue p{margin:6px 0 0; font-size:15px}
+.issue a{display:inline-block; margin-top:6px; color:var(--tpl); font-weight:600; font-size:14px}
+.rel{margin:0 24px 16px; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.rel .row{padding:10px 14px}
+.rel .row:first-child{border-top:0}
+@media (max-width:560px){ .rel{margin-left:16px;margin-right:16px} .row{padding-left:14px;padding-right:14px} }
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker" id="kicker">Lo que espera tu respuesta</p>
+    <h1>Buzón de decisiones</h1>
+    <p>Los agentes dejan aquí sus preguntas, pruebas a ciegas y revisiones. Ves una a la vez, por importancia; al responder aparece la siguiente.</p>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Vista">
+    <button class="tab" data-f="open" aria-pressed="true">Abiertas<span class="n" id="n-open">–</span></button>
+    <button class="tab" data-f="answered" aria-pressed="false">Respondidas<span class="n" id="n-answered">–</span></button>
+    <button class="tab" data-f="all" aria-pressed="false">Todas<span class="n" id="n-all">–</span></button>
+    <span class="status-line" id="live">conectando…</span>
+  </div>
+  <div class="bar2" id="sections" role="toolbar" aria-label="Importancia"></div>
+
+  <div id="warn" class="warn" hidden></div>
+  <main id="list"><div class="empty">Cargando decisiones…</div></main>
+
+  <footer>
+    Colecciones <b>items</b> e <b>issues</b> · estados open → answered → processed · el agente marca processed al recoger tu respuesta.<br>
+    En las pruebas a ciegas la clave no está en esta página: el agente la añade después de tu veredicto.
+  </footer>
+</div>
+
+<script>
+const KIND = {text:"Pregunta", choice:"Elegir", image:"Imagen", video:"Vídeo", audio:"Audio", blind_test:"Prueba a ciegas"};
+const STATUS = {open:"abierta", answered:"respondida", processed:"procesada"};
+// Importance buckets, most urgent first.
+// Overridden by meta/config.sections.
+let SECTIONS = [["listen","Escuchar / mirar"],["review","Revisar ya"],["decide","Decidir"],["fyi","Para tu referencia"]];
+let SEC_RANK = Object.fromEntries(SECTIONS.map(([k], i) => [k, i]));
+let REPO = "";   // meta/config.repo_url, e.g. https://github.com/owner/repo
+let items = [], issues = {}, filter = "open", section = "all", currentId = null, db = null, comments = null;
+const drafts = {}, notes = {}, relOpen = {};
+const $ = (s, r = document) => r.querySelector(s);
+
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) n.append(k.nodeType ? k : String(k));
+  return n;
+}
+const fmt = iso => { try { return new Date(iso).toLocaleString("es", {day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); } catch { return iso || ""; } };
+const st = it => it.status || "open";
+const issueNo = it => it.issue ? String(it.issue).replace(/^#/, "") : null;
+const order = (a, b) => (SEC_RANK[a.section] ?? 9) - (SEC_RANK[b.section] ?? 9) || (a.priority ?? 50) - (b.priority ?? 50) || String(a.created_at).localeCompare(String(b.created_at));
+
+const mediaCache = new Map();   // keeps players alive across re-renders
+function renderMedia(it) {
+  const list = Array.isArray(it.media) ? it.media : [];
+  if (!list.length) return null;
+  const key = it.id + JSON.stringify(list);
+  if (!mediaCache.has(key)) mediaCache.set(key, el("div", {class:"media"}, list.map(m => {
+    const src = m.url || (m.asset_id ? "/_blob/" + m.asset_id : "");
+    const t = m.type || (it.kind === "audio" ? "audio" : it.kind === "video" ? "video" : "image");
+    let body;
+    if (!src) body = el("span", {}, "Archivo no disponible");
+    else if (t === "audio") body = el("audio", {controls:true, preload:"metadata", src});
+    else if (t === "video") body = el("video", {controls:true, playsinline:true, preload:"metadata", src});
+    else body = el("img", {src, alt:m.label || "imagen", loading:"lazy", onclick: () => zoom(src)});
+    if (src) body.addEventListener("error", () => body.replaceWith(el("span", {class:"m missing"}, "No se pudo cargar este archivo.")));
+    return el("figure", {class:"m"}, m.label ? el("figcaption", {}, m.label) : null, body);
+  })));
+  return mediaCache.get(key);
+}
+function zoom(src) {
+  const lb = el("div", {class:"lb", role:"dialog", "aria-label":"Imagen ampliada", tabindex:"-1", onclick: () => lb.remove()}, el("img", {src, alt:""}));
+  lb.addEventListener("keydown", e => { if (e.key === "Escape") lb.remove(); });
+  document.body.append(lb); lb.focus();
+}
+
+function related(it) {
+  const n = issueNo(it), ids = new Set(it.related || []);
+  return items.filter(o => o.id !== it.id && ((n && issueNo(o) === n) || ids.has(o.id) || (o.related || []).includes(it.id))).sort(order);
+}
+function issueBox(it) {
+  const n = issueNo(it); if (!n) return null;
+  const is = issues[n];
+  return el("div", {class:"issue"},
+    el("div", {class:"h"}, el("span", {class:"num"}, "#" + n), is?.title ? el("span", {class:"ti"}, is.title) : null),
+    is?.summary ? el("p", {}, is.summary) : null,
+    (is?.url || REPO) ? el("a", {href: is?.url || REPO.replace(/\/$/, "") + "/issues/" + n, target:"_blank", rel:"noopener"}, "Abrir en GitHub ↗") : null);
+}
+function rowFor(o, onPick) {
+  return el("button", {class:"row" + (st(o) !== "open" ? " done" : ""), type:"button", onclick: () => onPick(o)},
+    el("span", {class:"t"}, o.title), el("span", {class:"k"}, st(o) === "open" ? (KIND[o.kind] || o.kind) : STATUS[st(o)]));
+}
+function jump(o) {
+  if (st(o) === "open") { filter = "open"; section = "all"; currentId = o.id; }
+  else filter = "all";
+  syncTabs(); render();
+  requestAnimationFrame(() => document.getElementById("item-" + o.id)?.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"}));
+}
+
+function card(it) {
+  const s = st(it);
+  const d = drafts[it.id] || (drafts[it.id] = {option_id: it.answer?.option_id ?? null, text: it.answer?.text ?? ""});
+  const editing = s === "open" || d.editing;
+  const opts = Array.isArray(it.options) ? it.options : [];
+  const node = el("section", {class:`card ${s}`, id:"item-" + it.id});
+  const secName = (SECTIONS.find(([k]) => k === it.section) || [])[1];
+
+  node.append(el("div", {class:"top"},
+    el("div", {class:"meta"},
+      el("span", {class:"q"}, KIND[it.kind] || it.kind || "Pregunta"),
+      el("span", {class:"chip " + s}, STATUS[s] || s),
+      secName ? el("span", {class:"chip"}, secName) : null,
+      it.kind === "blind_test" ? el("span", {class:"chip blind"}, it.key_revealed ? "clave revelada" : "clave oculta") : null,
+      it.source_agent ? el("span", {class:"chip"}, it.source_agent) : null),
+    el("h2", {}, it.title || "(sin título)"),
+    issueBox(it),
+    it.context ? el("p", {class:"ctx"}, it.context) : null,
+    it.question ? el("p", {class:"question"}, it.question) : null));
+
+  const media = renderMedia(it);
+  if (media) node.append(media);
+
+  if (it.answer && !editing) {
+    const opt = opts.find(o => o.id === it.answer.option_id);
+    node.append(el("div", {class:"given"},
+      el("span", {class:"lbl"}, "Tu respuesta · " + fmt(it.answer.answered_at)),
+      opt ? el("p", {}, el("b", {}, opt.label)) : null,
+      it.answer.text ? el("p", {style:"white-space:pre-wrap"}, it.answer.text) : null));
+  }
+  if (it.key_revealed && s !== "open") node.append(el("div", {class:"reveal"}, el("b", {}, "Clave: "), it.key_revealed));
+
+  const box = el("div", {class:"answer-box"});
+  if (editing) {
+    if (opts.length) {
+      const g = el("div", {class:"opts", role:"radiogroup", "aria-label":"Opciones"});
+      opts.forEach(o => g.append(el("button", {class:"opt", type:"button", role:"radio", "aria-checked": String(d.option_id === o.id),
+        onclick: () => { d.option_id = d.option_id === o.id ? null : o.id; render(); }},
+        el("span", {class:"dot", "aria-hidden":"true"}), el("span", {}, el("b", {}, o.label), o.detail ? el("small", {}, o.detail) : null))));
+      box.append(g);
+    }
+    const tid = "c-" + it.id;
+    const ta = el("textarea", {id:tid, maxlength:"3000", placeholder: opts.length ? "Comentario (opcional)" : "Tu respuesta"});
+    ta.value = d.text; ta.addEventListener("input", () => { d.text = ta.value; });
+    box.append(el("label", {class:"lbl", for:tid}, "Comentario"), ta);
+  }
+  const acts = el("div", {class:"actions"});
+  if (editing) {
+    acts.append(el("button", {class:"btn", type:"button", disabled: !db, onclick: () => save(it, false)}, "Guardar respuesta"));
+    acts.append(el("button", {class:"btn ghost", type:"button", disabled: !db || !comments, title: comments ? "" : "Los avisos no están disponibles en esta vista", onclick: () => save(it, true)}, "Guardar y avisar a Claude"));
+    if (d.editing) acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = false; render(); }}, "Cancelar"));
+  } else {
+    acts.append(el("button", {class:"btn ghost", type:"button", onclick: () => { d.editing = true; render(); }}, "Cambiar respuesta"));
+    acts.append(el("button", {class:"btn ghost", type:"button", disabled: !comments, title: comments ? "" : "Los avisos no están disponibles en esta vista", onclick: () => notify(it)}, "Avisar a Claude"));
+  }
+  const rel = related(it);
+  if (rel.length) acts.append(el("button", {class:"btn ghost", type:"button", "aria-expanded": String(!!relOpen[it.id]), onclick: () => { relOpen[it.id] = !relOpen[it.id]; render(); }},
+    (relOpen[it.id] ? "Ocultar relacionadas" : "Relacionadas") + " (" + rel.length + ")"));
+  box.append(acts);
+  const n = notes[it.id];
+  if (n) box.append(el("p", {class:"note " + n.cls, role:"status"}, n.msg));
+  node.append(box);
+  if (rel.length && relOpen[it.id]) node.append(el("div", {class:"rel"}, rel.map(o => rowFor(o, jump))));
+  node.append(el("span", {class:"ref"}, [it.id, it.created_at ? "creada " + fmt(it.created_at) : null].filter(Boolean).join(" · ")));
+  return node;
+}
+
+function syncTabs() {
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-pressed", String(t.dataset.f === filter)));
+}
+function renderSections(pool) {
+  const box = $("#sections");
+  if (filter !== "open") { box.hidden = true; return; }
+  box.hidden = false;
+  const btn = (k, label, n) => el("button", {class:"sec", type:"button", "aria-pressed": String(section === k), onclick: () => { section = k; currentId = null; render(); }}, label, el("span", {class:"n"}, n));
+  box.replaceChildren(btn("all", "Todas", pool.length),
+    ...SECTIONS.map(([k, l]) => [k, l, pool.filter(i => i.section === k).length]).filter(x => x[2]).map(x => btn(...x)));
+}
+
+function render() {
+  const count = s => items.filter(i => st(i) === s).length;
+  $("#n-open").textContent = count("open");
+  $("#n-answered").textContent = count("answered") + count("processed");
+  $("#n-all").textContent = items.length;
+  const list = $("#list");
+  const focusId = document.activeElement?.id, sel = document.activeElement?.selectionStart;
+  let view;
+
+  if (filter === "open") {
+    const open = items.filter(i => st(i) === "open").sort(order);
+    renderSections(open);
+    const pool = section === "all" ? open : open.filter(i => i.section === section);
+    if (!pool.length) {
+      view = [el("div", {class:"empty"}, open.length ? "Nada pendiente en esta categoría." : "Nada pendiente. Todo respondido.")];
+    } else {
+      if (!pool.some(i => i.id === currentId)) currentId = pool[0].id;
+      const idx = pool.findIndex(i => i.id === currentId), cur = pool[idx];
+      const doneAll = items.length - open.length;
+      view = [
+        el("div", {class:"progress"}, el("span", {}, `${idx + 1} de ${pool.length}`),
+          el("span", {class:"track"}, el("span", {class:"fill", style:`width:${items.length ? Math.round(100 * doneAll / items.length) : 0}%`})),
+          el("span", {}, `${doneAll}/${items.length} respondidas`)),
+        card(cur),
+        el("div", {class:"nav"},
+          el("button", {class:"btn ghost", type:"button", disabled: idx === 0, onclick: () => { currentId = pool[idx - 1].id; render(); scrollTop(); }}, "← Anterior"),
+          el("button", {class:"btn ghost", type:"button", disabled: idx === pool.length - 1, onclick: () => { currentId = pool[idx + 1].id; render(); scrollTop(); }}, "Siguiente →")),
+        pool.length > 1 ? el("div", {class:"queue"}, el("h3", {}, "En cola"),
+          pool.filter(i => i.id !== cur.id).map(o => rowFor(o, o2 => { currentId = o2.id; render(); scrollTop(); }))) : null,
+      ];
+    }
+  } else {
+    renderSections([]);
+    const shown = items.filter(i => filter === "all" || st(i) !== "open").sort((a, b) => (st(a) === "open") - (st(b) === "open") || order(a, b));
+    view = shown.length ? shown.map(card) : [el("div", {class:"empty"}, "No hay decisiones en esta vista.")];
+  }
+  list.replaceChildren(...view.filter(Boolean));
+  if (focusId) { const f = document.getElementById(focusId); if (f) { f.focus(); if (sel != null && f.setSelectionRange) f.setSelectionRange(sel, sel); } }
+}
+function scrollTop() { requestAnimationFrame(() => $("#list").scrollIntoView({block:"start"})); }
+
+async function save(it, alsoNotify) {
+  const d = drafts[it.id];
+  const text = (d.text || "").trim();
+  if (!d.option_id && !text) { notes[it.id] = {cls:"err", msg:"Elige una opción o escribe un comentario antes de guardar."}; return render(); }
+  notes[it.id] = {cls:"", msg:"Guardando…"}; render();
+  const answer = {option_id: d.option_id || null, text, answered_at: new Date().toISOString()};
+  try {
+    await db.doc("items/" + it.id).update({status:"answered", answer});
+    d.editing = false;
+    notes[it.id] = {cls:"ok", msg:"Guardado."};
+  } catch (e) {
+    notes[it.id] = {cls:"err", msg: e?.code === "invalid_argument" ? "No tienes permiso para responder aquí (hace falta ser Colaborador o más)." : "No se pudo guardar (" + (e?.code || "error") + "). Tu texto sigue aquí; vuelve a intentarlo."};
+    return render();
+  }
+  if (alsoNotify) await notify({...it, answer});
+  else render();
+}
+
+async function notify(it) {
+  const opt = (it.options || []).find(o => o.id === it.answer?.option_id);
+  const n = issueNo(it);
+  const text = [`[decision-inbox] Respondida: «${it.title}» (id ${it.id}${n ? ", #" + n : ""}${it.source_agent ? ", de " + it.source_agent : ""}).`,
+    opt ? "Opción: " + opt.label : null, it.answer?.text ? "Comentario: " + it.answer.text : null,
+    "Léela con ArtifactData (colección items, status == answered) y márcala processed."].filter(Boolean).join("\n").slice(0, 3900);
+  const keep = notes[it.id]?.cls === "ok" ? "Guardado. " : "";
+  notes[it.id] = {cls:"", msg: keep + "Enviando aviso…"}; render();
+  try {
+    const target = document.getElementById("item-" + it.id) || document.querySelector("main");
+    const anchor = await comments.anchorFor(target);
+    let how = "";
+    try { how = await comments.canSendToClaude(); } catch { how = "off"; }
+    if (how === "available") {
+      await comments.sendToClaude({anchor, text});
+      notes[it.id] = {cls:"ok", msg: keep + "Aviso enviado a Claude."};
+    } else {
+      await comments.create({anchor, text});
+      const why = {writers_only:"solo los editores pueden enviarlo a Claude", no_session:"ahora mismo no hay ninguna sesión de Claude escuchando", off:"el envío a Claude no está disponible aquí"}[how] || "el envío a Claude no está disponible";
+      notes[it.id] = {cls:"", msg: keep + `Comentario publicado, pero no enviado a Claude: ${why}.`};
+    }
+    try { await db.doc("items/" + it.id).update({notified_at: new Date().toISOString()}); } catch {}
+  } catch (e) {
+    const m = {consent_required:"No diste permiso para comentar desde la página. El aviso no se envió.", forbidden:"Comentar desde la página está desactivado para ti.", rate_limited:"Demasiados avisos seguidos; espera un momento.", claude_unavailable:"No se pudo enviar a Claude; no se publicó nada."}[e?.code];
+    notes[it.id] = {cls:"err", msg: keep + (m || "No se pudo enviar el aviso (" + (e?.code || "error") + ").")};
+  }
+  render();
+}
+
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => { filter = b.dataset.f; syncTabs(); render(); }));
+
+(async () => {
+  const claude = window.claude;
+  if (!claude?.use) { $("#live").textContent = "sin conexión"; $("#list").replaceChildren(el("div", {class:"empty"}, "Esta vista no puede leer el buzón. Ábrelo en claude.ai.")); return; }
+  [db, comments] = await Promise.all([claude.use("db"), claude.use("comments").catch(() => null)]);
+  if (!db) { $("#live").textContent = "sin base de datos"; $("#list").replaceChildren(el("div", {class:"empty"}, "No se pudo abrir el buzón en esta vista.")); return; }
+  const fail = e => { $("#live").textContent = "desconectado"; const w = $("#warn"); w.hidden = false; w.textContent = "Se perdió la conexión con el buzón (" + (e?.code || "error") + "). Recarga la página."; };
+  db.doc("meta/config").onSnapshot(snap => {
+    const c = snap.data() || {};
+    if (Array.isArray(c.sections) && c.sections.length) { SECTIONS = c.sections; SEC_RANK = Object.fromEntries(SECTIONS.map(([k], i) => [k, i])); }
+    if (c.repo_url) REPO = c.repo_url;
+    if (c.project) $("#kicker").textContent = c.project + " · lo que espera tu respuesta";
+    render();
+  }, fail);
+  db.collection("issues").onSnapshot(snap => { issues = Object.fromEntries(snap.docs.map(d => [d.id, d.data()])); render(); }, fail);
+  db.collection("items").onSnapshot(snap => {
+    items = snap.docs.map(d => ({...d.data(), id: d.id}));
+    $("#live").textContent = "en vivo · " + new Date().toLocaleTimeString("es", {hour:"2-digit", minute:"2-digit"});
+    render();
+  }, fail);
+})();
+</script>
