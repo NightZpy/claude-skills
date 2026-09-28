@@ -18,8 +18,9 @@ watching session.
    "Decision inbox" (or "Buzón de decisiones" for an older, Spanish-configured one), or check the
    project's CLAUDE.md / memory for its URL. **One inbox per project**; never create a second one.
 2. **Create it from the session that will own it**: the director session that acts on the
-   answers, not a helper that only builds the page. On claude.ai the session that created the
-   artifact receives "Avisar a Claude" notices whether or not it watches (observed 2026-09-28).
+   answers, not a helper that only builds the page. Notices from "Avisar a Claude" have reached
+   the creating session, but not reliably (see §4), so ownership is about who acts, not a
+   delivery guarantee.
    To create: load the `artifact-capabilities` and `artifact-design` skills (the platform requires
    it), then publish `template/inbox.html` from this skill **unchanged in logic**:
    ```
@@ -183,11 +184,21 @@ jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), option: .answer.o
 - Then reply in the comment thread (`ArtifactComments reply`) in one line: how many resolved and
   how many with a status note. If another session owns an item, relay it to that session.
 
-**Observed (claude.ai, 2026-09-28):** after the session that built the inbox republished the page,
-a notice reached that builder session instead of the owner session with the armed watch. Earlier
-notices had reached the owner. So whichever session receives a notice for an item it does not
-own relays it, in one short cross-session message, to the `source_agent` session. Nothing is
-dropped because it landed in the wrong session.
+**Notice delivery is not reliable. Do not depend on it.** Observed on claude.ai, 2026-09-28:
+- one inbox delivered notices to its creating session with no watch;
+- another inbox delivered them to a session that had only republished it, not to the owner's armed
+  watch;
+- a third inbox, created by the owner session with an armed watch, never delivered them to that
+  session.
+
+The cause is unknown. So:
+- **The owner session also polls:** run the §3 query at every natural checkpoint (after finishing
+  a task, before starting the next, when idle). A notice only makes it sooner. It is never the
+  only path.
+- Whichever session receives a notice for an item it does not own relays it, in one short
+  cross-session message, to the `source_agent` session.
+- If notices stop arriving, publishing a fresh inbox from the owner session and migrating the data
+  has fixed it once. Try polling first: it costs nothing.
 
 ### Who receives the notices (handing the inbox over)
 
