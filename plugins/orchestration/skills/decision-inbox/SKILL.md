@@ -199,6 +199,10 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   also has two bulk buttons: "Avisar a Claude de N sin avisar" and "Pedir estado de N avisadas",
   each sending one comment that lists the ids.
 - Multi-choice items (`multi:true`) render checkboxes and enforce `max`.
+- Each answered card has its own follow-up button: "Avisar a Claude" while not yet notified,
+  "Pedir estado" once notified and still unresolved, and none once resolved.
+- When the user changes an answer, the page clears `resolution`, `agent_note`, `notified_at`
+  and `status_asked_at`: a new answer starts a new follow-up. Treat it as unseen.
 - **Respondidas** / **Todas** list full cards. Each card shows its issue box (summary, "Abrir en
   GitHub") and a "Relacionadas (N)" toggle (same issue, or listed in `related`).
 - Audio and video players are cached, so a live update never cuts playback.
