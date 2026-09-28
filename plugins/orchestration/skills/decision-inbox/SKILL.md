@@ -9,8 +9,8 @@ A private claude.ai Artifact backed by its shared database (`db`), asset store (
 comments (`comments`). Agents post **items**; the human answers them one at a time on the page,
 most urgent first; agents read the answers back with `ArtifactData` and mark them processed.
 
-Proven on a real project (2026-09-28): 15 real items, a blind audio test answered from the
-page, and the "Avisar a Claude" button reaching the watching session.
+Proven in real use: blind tests answered from a phone, and "Avisar a Claude" notices reaching the
+watching session.
 
 ## 0. Find or create the inbox
 
