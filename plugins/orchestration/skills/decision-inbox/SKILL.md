@@ -118,6 +118,27 @@ Every measured number in `context` carries its date and environment, the same as
    context window.
 3. Verify with one `ArtifactData {action:"list", collection:"items"}` and tell the user the link.
 
+### Visual comparisons: one item per compared unit (the default)
+
+Any comparison of images (a blind test, "which render is better", a before/after) uses this
+shape, and it is the shape the page is built for:
+
+- **One item per compared unit**: a scene, a frame, a screen. Twelve scenes make twelve items,
+  linked with the same `issue` or `related`, all in the same `section`.
+- In each item, the reference image(s) are separate `media` with `role:"reference"`, and every
+  version being judged is a separate `media` with `role:"candidate"`.
+- Add a `rate` (options, or `rate.scale` for a number), so each candidate is judged right next to
+  the reference. The page then offers "Side by side", the "Slide" wipe and the full-screen view
+  with Previous/Next.
+- **Never post a stitched image**: no contact sheet, grid, montage or strip of several scenes or
+  versions in one file. The user cannot enlarge one cell, cannot wipe between versions, and
+  cannot rate them separately. Observed: a blind test posted as 3 tall contact sheets (4×3 grids)
+  could not be inspected. Re-posted as 12 per-scene items, it worked.
+- Name candidates neutrally (A, B, C…) and **shuffle their order per item**, so position does not
+  give the source away. Keep the per-item mapping in the local key file.
+- The same rule holds for audio and video: one item per compared clip, with tracks as separate
+  media (§6 A/B player), never one file that concatenates the versions.
+
 ### Blind tests
 
 - The key **never** goes into the inbox: every field of every document is readable by anyone
