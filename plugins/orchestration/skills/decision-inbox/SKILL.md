@@ -118,6 +118,33 @@ Every measured number in `context` carries its date and environment, the same as
    context window.
 3. Verify with one `ArtifactData {action:"list", collection:"items"}` and tell the user the link.
 
+### Writing an item: short, structured, Markdown
+
+`context`, `question`, `resolution.text` and `agent_note.text` render as Markdown. Supported:
+`###` headings, `-` and `1.` lists, `**bold**`, `*italic*`, `` `code` ``, `> quote`, `| tables |`,
+```` ``` ```` code blocks, links, and `#123`, which links to the repo issue. Write for a phone, read in
+seconds:
+
+```markdown
+One-line summary: what this is and what you need. **The key fact in bold.**
+
+### What works
+- …
+
+### What does not / what is pending
+1. **Short title.** One or two lines; → #1489 if an issue tracks it.
+
+### What I propose
+- Option A: … (recommended, because …)
+```
+
+- Start with the one-line summary. Never open with background.
+- Keep it to about 12 lines. Put long evidence in the linked issue, not in the item.
+- One idea per bullet. Bold the number or fact the decision turns on, and keep its date and
+  environment stamp.
+- If the item only informs, say so in the summary ("For your reference, no decision needed") and
+  put it in the `fyi` section.
+
 ### Visual comparisons: one item per compared unit (the default)
 
 Any comparison of images (a blind test, "which render is better", a before/after) uses this

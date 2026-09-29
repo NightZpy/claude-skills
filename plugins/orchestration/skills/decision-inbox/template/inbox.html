@@ -51,7 +51,24 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .chip.processed{border-color:var(--tpl); color:var(--tpl); background:var(--tpl-soft)}
 .chip.blind{border-color:var(--alert); color:var(--alert); background:var(--alert-soft)}
 h2{font-weight:800; font-size:clamp(22px,4vw,30px); line-height:1.1; letter-spacing:-.022em; margin:0 0 12px; text-wrap:balance}
-.ctx{color:var(--ink-2); white-space:pre-wrap; margin:0 0 12px; max-width:68ch; font-size:16px}
+.ctx{color:var(--ink-2); margin:0 0 12px; max-width:68ch; font-size:16px}
+/* Markdown blocks inside context / question / resolution / agent note */
+.md > :first-child{margin-top:0} .md > :last-child{margin-bottom:0}
+.md p{margin:0 0 10px}
+.md h3, .md h4{font-weight:800; color:var(--ink); letter-spacing:-.01em; margin:16px 0 6px; line-height:1.25}
+.md h3{font-size:18px} .md h4{font-size:16px}
+.md ul, .md ol{margin:0 0 10px; padding-left:1.3em}
+.md li{margin:2px 0}
+.md li::marker{color:var(--ink-3)}
+.md strong{color:var(--ink); font-weight:600}
+.md code{font-family:"JetBrains Mono",monospace; font-size:.86em; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:4px; padding:0 4px}
+.md pre{font-family:"JetBrains Mono",monospace; font-size:13px; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:10px 12px; overflow-x:auto; margin:0 0 10px}
+.md blockquote{margin:0 0 10px; padding:6px 12px; border-left:3px solid var(--signal); background:var(--signal-soft); color:var(--ink)}
+.md a{color:var(--tpl); font-weight:600}
+.md .tbl{overflow-x:auto; margin:0 0 10px}
+.md table{border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums}
+.md th, .md td{border:1px solid var(--line); padding:4px 8px; text-align:left; vertical-align:top}
+.md th{background:var(--surface-2); color:var(--ink); font-weight:600}
 .question{font-weight:600; margin:0 0 6px; max-width:62ch}
 
 .media{display:grid; gap:12px; padding:10px 24px 6px; grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr))}
@@ -604,6 +621,77 @@ function related(it) {
   const n = issueNo(it), ids = new Set(it.related || []);
   return items.filter(o => o.id !== it.id && ((n && issueNo(o) === n) || ids.has(o.id) || (o.related || []).includes(it.id))).sort(order);
 }
+// Small, safe Markdown: nodes are built with the DOM (never innerHTML), so item text cannot inject markup.
+// Blocks: ### headings, - / 1. lists, > quotes, ``` code, | tables |, paragraphs (single newlines kept).
+// Inline: **bold**, *italic*, `code`, [text](https://…), bare https:// links, #123 → the repo's issue.
+function mdInline(text) {
+  const out = [], re = /(\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|`([^`]+)`|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+[^\s<.,;:!?)])|(^|[\s(])#(\d{2,6})\b)/g;
+  let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    if (m[2] != null) out.push(el("strong", {}, mdInline(m[2])));
+    else if (m[3] != null) out.push(el("em", {}, mdInline(m[3])));
+    else if (m[4] != null) out.push(el("code", {}, m[4]));
+    else if (m[5] != null) out.push(el("a", {href: m[6], target:"_blank", rel:"noopener"}, m[5]));
+    else if (m[7] != null) out.push(el("a", {href: m[7], target:"_blank", rel:"noopener"}, m[7]));
+    else {
+      out.push(m[8]);
+      const n = m[9], url = issues[n]?.url || (REPO ? REPO.replace(/\/$/, "") + "/issues/" + n : "");
+      out.push(url ? el("a", {href: url, target:"_blank", rel:"noopener"}, "#" + n) : "#" + n);
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+function md(text, cls) {
+  const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n"), blocks = [];
+  const withBreaks = ls => ls.flatMap((l, i) => i ? [el("br"), ...mdInline(l)] : mdInline(l));
+  for (let i = 0; i < lines.length;) {
+    const l = lines[i];
+    if (!l.trim()) { i++; continue; }
+    if (/^```/.test(l)) {
+      const code = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) code.push(lines[i++]);
+      i++; blocks.push(el("pre", {}, code.join("\n"))); continue;
+    }
+    const h = l.match(/^(#{1,4})\s+(.*)$/);
+    if (h) { blocks.push(el(h[1].length <= 2 ? "h3" : "h4", {}, mdInline(h[2]))); i++; continue; }
+    if (/^\s*\|.*\|\s*$/.test(l)) {
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) rows.push(lines[i++]);
+      const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+      const body = rows.filter(r => !/^\s*\|[\s:|-]+\|\s*$/.test(r)).map(cells);
+      const hasHead = rows.length > 1 && /^\s*\|[\s:|-]+\|\s*$/.test(rows[1]);
+      const head = hasHead ? body.shift() : null;
+      blocks.push(el("div", {class:"tbl"}, el("table", {},
+        head ? el("thead", {}, el("tr", {}, head.map(c => el("th", {}, mdInline(c))))) : null,
+        el("tbody", {}, body.map(r => el("tr", {}, r.map(c => el("td", {}, mdInline(c)))))))));
+      continue;
+    }
+    if (/^\s*>\s?/.test(l)) {
+      const q = [];
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) q.push(lines[i++].replace(/^\s*>\s?/, ""));
+      blocks.push(el("blockquote", {}, withBreaks(q))); continue;
+    }
+    const ul = /^\s*[-*•]\s+/, ol = /^\s*\d+[.)]\s+/;
+    if (ul.test(l) || ol.test(l)) {
+      const ordered = ol.test(l), re = ordered ? ol : ul, its = [];
+      while (i < lines.length && re.test(lines[i])) {
+        let item = lines[i++].replace(re, "");
+        while (i < lines.length && lines[i].trim() && /^\s{2,}\S/.test(lines[i]) && !ul.test(lines[i]) && !ol.test(lines[i])) item += "\n" + lines[i++].trim();
+        its.push(el("li", {}, withBreaks(item.split("\n"))));
+      }
+      blocks.push(el(ordered ? "ol" : "ul", {}, its)); continue;
+    }
+    const para = [];
+    while (i < lines.length && lines[i].trim() && !/^(```|#{1,4}\s|\s*\||\s*>|\s*[-*•]\s+|\s*\d+[.)]\s+)/.test(lines[i])) para.push(lines[i++]);
+    if (!para.length) para.push(lines[i++]);
+    blocks.push(el("p", {}, withBreaks(para)));
+  }
+  return el("div", {class: "md" + (cls ? " " + cls : "")}, blocks);
+}
+
 function issueBox(it) {
   const n = issueNo(it); if (!n) return null;
   const is = issues[n];
@@ -642,8 +730,8 @@ function card(it) {
       it.source_agent ? el("span", {class:"chip"}, it.source_agent) : null),
     el("h2", {}, it.title || t("untitled")),
     issueBox(it),
-    it.context ? el("p", {class:"ctx"}, it.context) : null,
-    it.question ? el("p", {class:"question"}, it.question) : null));
+    it.context ? md(it.context, "ctx") : null,
+    it.question ? md(it.question, "question") : null));
 
   const media = renderMedia(it);
   if (media) node.append(...media);
@@ -659,8 +747,8 @@ function card(it) {
       marksCountOf(it.answer.marks) ? el("p", {}, t("marks_line", {n: marksCountOf(it.answer.marks)})) : null));
   }
   const stamp = x => [x.by, x.at ? fmt(x.at) : null].filter(Boolean).join(" · ");
-  if (it.resolution?.text) node.append(el("div", {class:"resolution"}, el("span", {class:"lbl"}, t("resolved") + (stamp(it.resolution) ? " · " + stamp(it.resolution) : "")), el("p", {}, it.resolution.text)));
-  else if (it.agent_note?.text) node.append(el("div", {class:"agentnote"}, el("span", {class:"lbl"}, t("agent_status") + (stamp(it.agent_note) ? " · " + stamp(it.agent_note) : "")), el("p", {}, it.agent_note.text)));
+  if (it.resolution?.text) node.append(el("div", {class:"resolution"}, el("span", {class:"lbl"}, t("resolved") + (stamp(it.resolution) ? " · " + stamp(it.resolution) : "")), md(it.resolution.text)));
+  else if (it.agent_note?.text) node.append(el("div", {class:"agentnote"}, el("span", {class:"lbl"}, t("agent_status") + (stamp(it.agent_note) ? " · " + stamp(it.agent_note) : "")), md(it.agent_note.text)));
   if (it.key_revealed && s !== "open") node.append(el("div", {class:"reveal"}, el("b", {}, t("key")), it.key_revealed));
 
   const box = el("div", {class:"answer-box"});
