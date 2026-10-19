@@ -20,7 +20,7 @@ so nothing loads that you don't want:
 | Plugin | Skills |
 |---|---|
 | `orchestration` | plan-big-execute-small · ask · advisor-tool · decision-inbox |
-| `dev-workflow` | review-policy · git-rebase-safety · issue-tracking |
+| `dev-workflow` | review-policy · git-rebase-safety · issue-tracking · session-handoff |
 | `personal-ops` | life-os · mac-doctor · npm-supply-chain |
 | `design` | tutor · artifact-visual-system · excalidraw · diagram-conventions · proposal-artifact · redesign-existing-projects · web-design-guidelines · vercel-composition-patterns · vercel-react-best-practices |
 | `review-tools` | replicate-behavior-report · video-frame-review · docx-comments |
@@ -108,6 +108,8 @@ layout exists to prevent.
   survive, resolve conflicts deliberately, and diff the commit list afterwards.
 - **issue-tracking** — open, update and close tracking issues so they stay in sync
   with the work instead of reporting a state that stopped being true.
+- **session-handoff** — before clearing a session: archives the old `HANDOFF.md`,
+  writes a fresh one, and prints a short paste-ready prompt for a clean agent.
 
 **Diagrams & design**
 - **tutor** — teaching mode: explains anything picture-first, either as a

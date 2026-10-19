@@ -37,8 +37,8 @@
     },
     {
       "name": "dev-workflow",
-      "description": "Daily engineering discipline: review-policy (who reviews code and how), git-rebase-safety (never lose a commit), issue-tracking (open, update and close tracking issues in sync with the work).",
-      "version": "1.0.0",
+      "description": "Daily engineering discipline: review-policy (who reviews code and how), git-rebase-safety (never lose a commit), issue-tracking (open, update and close tracking issues in sync with the work), session-handoff (HANDOFF.md plus a paste-ready prompt for a clean session).",
+      "version": "1.1.0",
       "author": {
         "name": "NightZpy"
       },
