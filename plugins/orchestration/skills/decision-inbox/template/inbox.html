@@ -44,6 +44,10 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .card.processed{opacity:.72}
 .top{padding:24px 24px 6px}
 .meta{display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; margin:0 0 12px}
+/* Origin line: when and who, first thing on every card. */
+.origin{display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline; margin:0 0 10px; font:700 15px "JetBrains Mono",monospace; color:var(--ink)}
+.origin .who{color:var(--tpl)}
+.origin .ans{font-weight:400; font-size:13px; color:var(--ink-2)}
 .q{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--signal)}
 .chip{font-family:"JetBrains Mono",monospace; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line-strong); color:var(--ink-2); background:var(--surface-2)}
 .chip.open{border-color:var(--signal); color:var(--signal); background:var(--signal-soft)}
@@ -200,6 +204,12 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 
 .ab{display:grid; gap:10px; padding:10px 24px 6px}
 .ab-stage video{display:block; width:100%; max-height:60vh; border-radius:4px; background:#000}
+/* Maximise a video in place: same player, so time, marks and A/B state survive. */
+.maxed{position:fixed!important; inset:0; z-index:30; margin:0!important; border-radius:0!important; overflow:auto; background:#12151A!important; color:#fff!important; padding:calc(env(safe-area-inset-top,0px) + 10px) 12px calc(env(safe-area-inset-bottom,0px) + 10px)!important}
+.maxed figcaption, .maxed .mono, .maxed .ab-letter{color:#fff}
+.maxed video{max-height:calc(100vh - 150px)!important; height:calc(100vh - 150px); width:100%; object-fit:contain}
+.maxed .ab-stage video{max-height:calc(100vh - 210px)!important; height:calc(100vh - 210px)}
+.max-btn{margin-top:8px}
 .ab-switch{display:flex; flex-wrap:wrap; gap:6px; max-width:100%}
 .ab-transport{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .ab-transport input[type=range]{flex:1; min-width:120px}
@@ -394,6 +404,22 @@ function marksBox(it, key, mediaEl) {
 // data update (a rating, a new mark elsewhere) never recreates the player or resets currentTime.
 const mediaElByKey = new Map(), marksSlotByKey = new Map();
 
+// Maximise toggle: fixed full-window overlay on the same element; real fullscreen when the frame allows it.
+function maxButton(target) {
+  const b = el("button", {class:"seg max-btn", type:"button", "aria-pressed":"false"}, t("expand"));
+  const exit = () => { const box = target(); box?.classList.remove("maxed"); b.setAttribute("aria-pressed","false"); b.textContent = t("expand"); document.removeEventListener("keydown", esc); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); };
+  const esc = e => { if (e.key === "Escape") exit(); };
+  b.addEventListener("click", () => {
+    const box = target(); if (!box) return;
+    if (box.classList.contains("maxed")) return exit();
+    box.classList.add("maxed"); b.setAttribute("aria-pressed","true"); b.textContent = t("close");
+    document.addEventListener("keydown", esc);
+    box.requestFullscreen?.().catch(() => {});
+  });
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && target()?.classList.contains("maxed")) exit(); });
+  return b;
+}
+
 function renderMedia(it) {
   const cmp = compareOf(it);
   const abA = abGroup(it, "audio"), abV = abGroup(it, "video");
@@ -416,7 +442,7 @@ function renderMedia(it) {
         else body = el("img", {src, alt:m.label || t("img_alt"), loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"gallery", index: gallery.indexOf(m)})});
         if (src) body.addEventListener("error", () => body.replaceWith(el("span", {class:"m missing"}, t("load_fail"))));
         if (src && it.marks && (ty === "audio" || ty === "video")) { slot = el("div", {class:"marks-slot"}); marksSlotByKey.set(mk, slot); }
-        const expand = src && ty === "video" ? el("button", {class:"seg", type:"button", onclick: () => openLB({itemId: it.id, mode:"gallery", index: gallery.indexOf(m)})}, t("expand")) : null;
+        const expand = src && ty === "video" ? maxButton(() => expand.closest("figure")) : null;
         return el("figure", {class:"m"}, m.label ? el("figcaption", {}, m.label) : null, body, expand, slot);
       })));
     }
@@ -485,7 +511,7 @@ function buildABPlayer(tracks, kind) {
   const box = el("div", {class:"ab"},
     kind === "video" ? el("div", {class:"ab-stage"}, mediaEls) : mediaEls,
     switchWrap,
-    el("div", {class:"ab-transport"}, playBtn, seek, timeLbl),
+    el("div", {class:"ab-transport"}, playBtn, seek, timeLbl, kind === "video" ? maxButton(() => playBtn.closest(".ab")) : null),
     ratesWrap, marksSlot);
   return {
     box,
@@ -720,6 +746,10 @@ function card(it) {
   const secName = (sections().find(([k]) => k === it.section) || [])[1];
 
   node.append(el("div", {class:"top"},
+    el("div", {class:"origin"},
+      it.created_at ? el("span", {class:"when"}, fmt(it.created_at)) : null,
+      it.source_agent ? el("span", {class:"who"}, it.source_agent) : null,
+      it.answer?.answered_at ? el("span", {class:"ans"}, t("your_answer", {at: fmt(it.answer.answered_at)})) : null),
     el("div", {class:"meta"},
       el("span", {class:"q"}, kindName(it.kind)),
       el("span", {class:"chip " + s}, statusName(s)),
@@ -727,7 +757,7 @@ function card(it) {
       followOf(it) === "unsent" ? el("span", {class:"chip unsent"}, t("chip_unsent")) : null,
       followOf(it) === "waiting" ? el("span", {class:"chip waiting"}, freshNote(it) ? t("chip_noted") : it.status_asked_at ? t("chip_asked") : t("chip_sent")) : null,
       it.kind === "blind_test" ? el("span", {class:"chip blind"}, it.key_revealed ? t("key_revealed") : t("key_hidden")) : null,
-      it.source_agent ? el("span", {class:"chip"}, it.source_agent) : null),
+      null),
     el("h2", {}, it.title || t("untitled")),
     issueBox(it),
     it.context ? md(it.context, "ctx") : null,
@@ -794,7 +824,7 @@ function card(it) {
   if (n) box.append(el("p", {class:"note " + n.cls, role:"status"}, n.msg));
   node.append(box);
   if (rel.length && relOpen[it.id]) node.append(el("div", {class:"rel"}, rel.map(o => rowFor(o, jump))));
-  node.append(el("span", {class:"ref"}, [it.id, it.created_at ? t("created", {at: fmt(it.created_at)}) : null].filter(Boolean).join(" · ")));
+  node.append(el("span", {class:"ref"}, it.id));   // date and origin are on the card's first line
   return node;
 }
 
