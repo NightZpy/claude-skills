@@ -82,7 +82,8 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `rate` | comparison items only: `{question, options:[{id,label}]}`, the per-candidate scale (default Bien / Regular / Mal) |
 | `ratings` | `{<candidate asset_id>: option_id}`, written by the page **the moment** the user rates, before any answer |
 | `section` | a key from `meta/config.sections` (importance bucket; the page filters by it) |
-| `priority` | number, lower first inside its section |
+| `priority` | **0–3, set deliberately** (the page shows P0–P3, filters and sorts by it; values above 3 show as P3). Decide it the way work is triaged: **P0** = it blocks work right now, yours or another session's (nothing can proceed until answered); **P1** = it blocks a next step soon (you can work around it for a while) or holds money/a release; **P2** = normal: needed, but nothing waits on it; **P3** = whenever / for reference. When it blocks another session, name it in `blocks` and raise the priority accordingly |
+| `blocks` | optional list of what waits on the answer, e.g. `["video-harness:ui", "merge feat/x"]`; shown on the card next to the priority |
 | `issue` | issue number as a string; the page shows `issues/<n>` and links to GitHub |
 | `related` | extra item ids to link beyond "same issue" |
 | `source_agent` | who asked, e.g. `project:session-name` |
