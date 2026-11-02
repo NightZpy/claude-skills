@@ -95,8 +95,9 @@ layout exists to prevent.
 - **replicate-behavior-report** — installs the behavior-report review system in a repo: the E2E behavior-story pipeline, the quality gates and the report generator, with `template/` (generator + runnable fixtures) and `scripts/` bundled.
 - **decision-inbox** — one private artifact per project where agents post questions,
   choices, media reviews and blind tests; the human answers from a phone, one item at a
-  time, and agents read answers back with a low-token `ArtifactData` + `jq` recipe. Ships
-  the page template and `scripts/prepare-media.sh` (mp3→mp4 stream copy, key-file guard).
+  time (P0–P3 priorities, time-ago, filters, annotated screenshots on time marks), and
+  agents read answers back with a low-token `ArtifactData` + `jq` recipe. Ships the page
+  template and `scripts/prepare-media.sh`. See its [README](plugins/orchestration/skills/decision-inbox/README.md).
 - **advisor-tool** — the server-side advisor tool (`advisor_20260301`) for the
   Claude API: cheap executor consults a stronger advisor mid-generation.
 
