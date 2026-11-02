@@ -94,7 +94,8 @@ h2{font-weight:800; font-size:clamp(22px,4vw,30px); line-height:1.1; letter-spac
 .opt[aria-checked="true"] .dot{border-color:var(--tpl); background:radial-gradient(circle,var(--tpl) 45%,var(--surface) 50%)}
 .opt b{display:block; font-weight:600}
 .opt small{display:block; color:var(--ink-2); font-size:14px; line-height:1.4; margin-top:2px}
-label.lbl{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+[hidden]{display:none!important}   /* flex/grid rules must not override the hidden attribute */
+.lbl{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
 textarea{width:100%; min-height:84px; resize:vertical; font:16px/1.45 Archivo,sans-serif; padding:10px 12px; border-radius:8px; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--ink)}
 .actions{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
 .btn{font:600 15px Archivo,sans-serif; padding:10px 16px; border-radius:8px; border:1.5px solid var(--ink); background:var(--ink); color:var(--surface); cursor:pointer}
@@ -232,7 +233,6 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 
 /* Projects, sessions strip, session detail sheet, session filter. */
 #proj{margin:0 0 12px}
-#proj[hidden], #sessions[hidden], #sessf[hidden]{display:none}
 #sessf select{max-width:100%; min-width:0}
 .ss{margin:0 0 18px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:10px; overflow:hidden}
 .ss-head{display:flex; gap:8px; align-items:center; width:100%; padding:10px 14px; border:0; background:var(--surface); color:var(--ink-2); font:11px "JetBrains Mono",monospace; letter-spacing:.14em; text-transform:uppercase; text-align:left; cursor:pointer}
@@ -259,7 +259,6 @@ dialog.sheet::backdrop{background:rgba(18,21,26,.55)}
 .sheet .in{padding:18px 18px 22px; display:grid; gap:12px}
 .sheet .sh-h{display:flex; gap:10px; align-items:center}
 .sheet h2{margin:0; font-size:20px; flex:1; min-width:0; overflow-wrap:anywhere}
-.sheet .kv .lbl{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
 .sheet .kv p, .sheet .kv ul{margin:2px 0 0; font-size:15px}
 .sheet .kv ul{padding-left:1.2em}
 .sheet .rel{margin:4px 0 0}
