@@ -204,28 +204,37 @@ written by the page:
 | `images` | `[{id, url, note}]`, ≤4, annotated PNGs (same path as mark screenshots) |
 | `video` | `{id, url}`, one mp4/webm clip, ≤60 s and ≤20 MiB |
 | `created_at` | ISO |
-| `status` | `new` (page) → `relayed` (main) → `answered` (owner session) → `done` |
+| `reply_to` | optional id of the note this one answers (the user pressed "Responder" under a session reply). The page attaches deeper replies to the root and shows the conversation as one unit |
+| `status` | `new` (page) → `relayed` (main) → `answered` (owner session) → `done` (owner session when resolved, or the user with "Marcar leída") |
 | `reply` | `{text, at, by}`, written by the owner session |
 
 On save the page posts a notice (same path as "Avisar a Claude"):
-`[decision-inbox] Session note for <session> (id <id>): <first 200 chars | voice note>.` /
+`[decision-inbox] Session note for <session> (id <id>)[ (reply to <parent id>)]: <first 200 chars | voice note>.` /
 `project: <id>` / `Read collection notes, relay to the session, set status relayed.` If sending is
 unavailable the note is still saved.
 
 - **Main** polls `notes where status == "new"` at its checkpoints (notices are not reliable, §4).
   For each note it relays the text, the transcript and the media links to the `session` in one
-  cross-session message. When there is `audio` and no `transcript`, it fetches the asset
+  cross-session message. For a note with `reply_to`, include the parent note's text and the
+  session's earlier `reply` (follow `reply_to` to the root), so the session gets the whole
+  exchange, not a bare follow-up. When there is `audio` and no `transcript`, it fetches the asset
   (`Artifact {action:"read", url, path:"<asset id>"}`) and transcribes it first. Then it sets
   `status:"relayed"` with `if_version`.
 - **The owning session** acts on it and writes `reply:{text, at, by}` plus `status:"answered"`
   in one `update`. It sets `status:"done"` once the point is resolved (in the same write when the
   reply already resolves it).
 - The page shows the newest 5 notes per session in the sheet ("Ver más" for the rest), each with
-  its status and reply. Notes are collapsed to one summary line except the newest (tap toggles;
-  players load only when expanded). The strip row shows `✎n` for notes still `new`/`relayed`
+  its status and reply. Conversations (root + replies, nested one level) are collapsed to one
+  summary line (latest message, size) except the one with the user's newest message; an unread
+  reply gets a dot, not expansion. Tap toggles; manual expansion lasts until the sheet closes;
+  players load only when expanded. The strip row shows `✎n` for notes still `new`/`relayed`
   without a reply, and a green `●` when a reply arrived that this viewer has not opened yet
   (seen state per browser: `inbox.seenReplies`, noteId → `reply.at`; a newer `reply.at` is unread
-  again). Always write a fresh `reply.at` when you reply, or the user is not told.
+  again; `done` notes never count). Always write a fresh `reply.at` when you reply, or the user
+  is not told.
+- **Done by the user:** "Marcar leída" (per answered note) and "Marcar todas leídas" (2+ unread)
+  mark the reply seen and write `status:"done"`. Treat a `done` note as closed: do not reopen it;
+  if the point is still open, the user replies with a new note (`reply_to`).
 - **Microphone:** there is no microphone capability to declare; publish with the usual
   `capabilities:{db:{}, assets:{}, comments:{}}`. The page asks the browser for the mic when the
   user taps "Grabar voz". When the browser or the host frame refuses, or there is no
