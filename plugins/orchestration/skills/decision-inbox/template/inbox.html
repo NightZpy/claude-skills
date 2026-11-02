@@ -237,9 +237,11 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 .ss{margin:0 0 18px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:10px; overflow:hidden}
 .ss-head{display:flex; gap:8px; align-items:center; width:100%; padding:10px 14px; border:0; background:var(--surface); color:var(--ink-2); font:11px "JetBrains Mono",monospace; letter-spacing:.14em; text-transform:uppercase; text-align:left; cursor:pointer}
 .ss-head .chev{margin-left:auto}
-.ss-proj{padding:8px 14px 4px; border-top:1px solid var(--line); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.ss-proj b{font-weight:700}
-.ss-proj span{color:var(--ink-2)}
+.ss-proj{display:flex; flex-wrap:wrap; gap:2px 6px; align-items:baseline; width:100%; padding:8px 14px 4px; border:0; border-top:1px solid var(--line); background:var(--surface); color:var(--ink); font:13px Archivo,sans-serif; text-align:left; white-space:nowrap; cursor:pointer}
+.ss-proj b{font-weight:700; flex:none}
+.ss-proj .goal{order:4; flex:1 1 100%; min-width:0; padding-left:14px; overflow:hidden; text-overflow:ellipsis; color:var(--ink-2)}
+.ss-proj .cnt{flex:none; margin-left:auto; font:11px "JetBrains Mono",monospace; color:var(--ink-2)}
+.ss-proj .chev{flex:none; color:var(--ink-3)}
 .srow{display:grid; grid-template-columns:10px minmax(56px,max-content) 1fr auto auto; gap:8px; align-items:center; width:100%; padding:8px 14px; border:0; border-top:1px solid var(--line); background:var(--surface); color:var(--ink); font:14px Archivo,sans-serif; text-align:left; cursor:pointer}
 .srow:hover{background:var(--surface-2)}
 .srow .nm{font:700 13px "JetBrains Mono",monospace; max-width:9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
@@ -1006,10 +1008,11 @@ function renderFollow(box) {
 
 // ---- Priority (P0 blocks work now … P3 whenever), filter by priority, sort by importance / newest / oldest.
 const prioOf = it => { const p = Number(it.priority); return Number.isFinite(p) ? Math.max(0, Math.min(3, Math.round(p))) : 3; };
-let prioFilter = "all", sortBy = "importance", projFilter = "all", sessFilter = "", stripOpen = true, idleOpen = false;
+let prioFilter = "all", sortBy = "importance", projFilter = "all", sessFilter = "", stripOpen = true, idleOpen = false, projCollapsed = {};
 try {
   prioFilter = localStorage.getItem("inbox.prio") || "all"; sortBy = localStorage.getItem("inbox.sort") || "importance";
   projFilter = localStorage.getItem("inbox.project") || "all"; sessFilter = localStorage.getItem("inbox.session") || ""; stripOpen = localStorage.getItem("inbox.strip") !== "0";
+  projCollapsed = JSON.parse(localStorage.getItem("inbox.projCollapsed") || "{}") || {};
 } catch {}
 const remember = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const prioPass = it => prioFilter === "all" || String(prioOf(it)) === prioFilter;
@@ -1104,8 +1107,16 @@ function renderSessions() {
     // Drop the prefix every name in the group shares ("video-harness:maps" → "maps"); the sheet shows the full name.
     const pre = list[0].name.includes(":") ? list[0].name.split(":")[0] + ":" : "";
     const short = n => pre && list.every(s => s.name.startsWith(pre)) ? n.slice(pre.length) : n;
-    if ((multi || p.goal) && p.id !== "_") out.push(el("div", {class:"ss-proj", title: p.goal || ""}, el("b", {}, p.label || p.id), p.goal ? el("span", {}, " · " + cap(p.goal, 100)) : null));
-    out.push(...list.map(s => sessRow(s, short)));
+    const head = (multi || p.goal) && p.id !== "_", shut = head && !!projCollapsed[p.id];
+    if (head) {
+      // Collapsible project group; the header keeps label, goal and counts while its rows are hidden.
+      const nb = list.filter(s => s.st === "blocked").length, nu = list.filter(s => s.waiting_on === "user").length;
+      out.push(el("button", {class:"ss-proj", type:"button", title: p.goal || "", "aria-expanded": String(!shut),
+        onclick: () => { projCollapsed = {...projCollapsed, [p.id]: !shut}; remember("inbox.projCollapsed", JSON.stringify(projCollapsed)); renderSessions(); }},
+        el("span", {class:"chev"}, shut ? "▸" : "▾"), el("b", {}, p.label || p.id), p.goal ? el("span", {class:"goal"}, cap(p.goal, 100)) : null,
+        el("span", {class:"cnt"}, [list.length, nb ? t("n_blocked", {n: nb}) : "", nu ? "⏳" + t("you") + " " + nu : ""].filter(Boolean).join(" · "))));
+    }
+    if (!shut) out.push(...list.map(s => sessRow(s, short)));
   }
   if (idle.length) out.push(el("button", {class:"ss-more", type:"button", onclick: () => { idleOpen = !idleOpen; renderSessions(); }}, idleOpen ? t("idle_hide") : t("idle_more", {n: idle.length})));
   box.replaceChildren(...out);

@@ -436,7 +436,8 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   `goal` or else `doing`, badges `⏳waiting_on` / `⚙executors` / `✉open decisions`, age), sorted
   blocked → waiting → working → stale, newest first, grouped by project with the project's
   `goal`. Idle sessions collapse under "+N inactivas". The header (total and blocked count)
-  collapses the strip (`inbox.strip`). Wide screens also show `doing` after the goal.
+  collapses the strip (`inbox.strip`). Tapping a project header collapses that group; the header keeps the
+  label, goal, session count and blocked / waiting-on-you counts (`inbox.projCollapsed`). Wide screens also show `doing` after the goal.
 - **Tapping a session** opens a detail sheet: goal, what is missing, doing, next, waiting on,
   blocks, branches, executors, pending, done, and its decisions (tap one to open its card).
   "Ver solo sus decisiones" filters the items to that session.
