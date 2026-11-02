@@ -145,6 +145,13 @@ One-line summary: what this is and what you need. **The key fact in bold.**
   environment stamp.
 - If the item only informs, say so in the summary ("For your reference, no decision needed") and
   put it in the `fyi` section.
+- **Link everything the user may need to open.** When the decision depends on something the
+  user should look at (a PR, an artifact, a dashboard, a doc, a Linear issue, a run or a log),
+  put its full URL in the item as a Markdown link, so the user goes straight there from the
+  card: `[PR #24094](https://github.com/…/pull/24094)`, `[Experimento JEV](https://claude.ai/artifact/…)`.
+  One link per thing, next to the bullet it supports, or under a closing `### Links` heading
+  when there are several. Never write "see the PR" or "check the artifact" without the URL, and
+  never leave it only in the chat or in a message to another session.
 
 ### Visual comparisons: one item per compared unit (the default)
 
