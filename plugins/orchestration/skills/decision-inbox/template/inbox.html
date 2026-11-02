@@ -44,6 +44,10 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .card.processed{opacity:.72}
 .top{padding:24px 24px 6px}
 .meta{display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; margin:0 0 12px}
+/* Origin line: when and who, first thing on every card. */
+.origin{display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline; margin:0 0 10px; font:700 15px "JetBrains Mono",monospace; color:var(--ink)}
+.origin .who{color:var(--tpl)}
+.origin .ans{font-weight:400; font-size:13px; color:var(--ink-2)}
 .q{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--signal)}
 .chip{font-family:"JetBrains Mono",monospace; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line-strong); color:var(--ink-2); background:var(--surface-2)}
 .chip.open{border-color:var(--signal); color:var(--signal); background:var(--signal-soft)}
@@ -200,6 +204,12 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 
 .ab{display:grid; gap:10px; padding:10px 24px 6px}
 .ab-stage video{display:block; width:100%; max-height:60vh; border-radius:4px; background:#000}
+/* Maximise a video in place: same player, so time, marks and A/B state survive. */
+.maxed{position:fixed!important; inset:0; z-index:30; margin:0!important; border-radius:0!important; overflow:auto; background:#12151A!important; color:#fff!important; padding:calc(env(safe-area-inset-top,0px) + 10px) 12px calc(env(safe-area-inset-bottom,0px) + 10px)!important}
+.maxed figcaption, .maxed .mono, .maxed .ab-letter{color:#fff}
+.maxed video{max-height:calc(100vh - 150px)!important; height:calc(100vh - 150px); width:100%; object-fit:contain}
+.maxed .ab-stage video{max-height:calc(100vh - 210px)!important; height:calc(100vh - 210px)}
+.max-btn{margin-top:8px}
 .ab-switch{display:flex; flex-wrap:wrap; gap:6px; max-width:100%}
 .ab-transport{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .ab-transport input[type=range]{flex:1; min-width:120px}
@@ -212,6 +222,21 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 .mark-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .mark-time{font:600 13px "JetBrains Mono",monospace; padding:4px 8px; border-radius:6px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer}
 .mark-note{flex:1; min-width:120px; min-height:32px; font-size:14px; padding:4px 8px}
+/* Mark screenshots: capture a frame or upload an image, draw on it, keep a note. */
+.mark-shots{display:flex; gap:6px; flex-wrap:wrap; width:100%}
+.mark-shot{margin:0; display:grid; gap:2px; max-width:140px}
+.mark-shot img{width:140px; height:auto; border-radius:4px; cursor:zoom-in; border:1px solid var(--line)}
+.mark-shot figcaption{font-size:12px; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.ann{position:fixed; inset:0; z-index:40; background:rgba(18,21,26,.94); color:#fff; display:grid; grid-template-rows:auto 1fr auto; gap:8px; padding:calc(env(safe-area-inset-top,0px) + 10px) 10px calc(env(safe-area-inset-bottom,0px) + 10px)}
+.ann-tools, .ann-foot{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.ann .seg{border-color:#5A6573; background:transparent; color:#fff}
+.ann .seg[aria-pressed="true"]{background:#fff; color:#12151A; border-color:#fff}
+.ann-stage{min-height:0; display:grid; place-items:center; overflow:auto}
+.ann-stage canvas, .ann-stage img{max-width:100%; max-height:100%; touch-action:none; background:#000}
+.ann-stage canvas{cursor:crosshair}
+.ann-foot textarea{flex:1; min-width:200px; min-height:44px; background:#fff; color:#12151A}
+.ann-note{max-width:80ch; white-space:pre-wrap}
+
 @media (max-width:560px){ .ab{padding-left:16px;padding-right:16px} }
 </style>
 
@@ -243,8 +268,8 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 // UI text. meta/config.lang picks a bundled language; meta/config.strings overrides any key
 // (a full set for any other language). Notices sent to Claude stay in English: they are the
 // page-to-agent protocol, not UI.
-const I18N = {es: {"title": "Buzón de decisiones", "kicker": "Lo que espera tu respuesta", "kicker_project": "{project} · lo que espera tu respuesta", "intro": "Los agentes dejan aquí sus preguntas, pruebas a ciegas y revisiones. Ves una a la vez, por importancia; al responder aparece la siguiente.", "view": "Vista", "tab_open": "Abiertas", "tab_answered": "Respondidas", "tab_all": "Todas", "connecting": "conectando…", "importance": "Importancia", "loading": "Cargando decisiones…", "footer_states": "Estados: abierta → respondida → resuelta. El agente la marca resuelta cuando actúa sobre tu respuesta y escribe qué hizo.", "footer_blind": "En las pruebas a ciegas la clave no está en esta página: el agente la añade después de tu veredicto.", "kind_text": "Pregunta", "kind_choice": "Elegir", "kind_image": "Imagen", "kind_video": "Vídeo", "kind_audio": "Audio", "kind_blind_test": "Prueba a ciegas", "status_open": "abierta", "status_answered": "respondida", "status_processed": "resuelta", "status_withdrawn": "retirada", "follow_all": "Todas", "follow_unsent": "Sin avisar", "follow_waiting": "Avisadas, sin resolver", "follow_resolved": "Resueltas", "sec_listen": "Escuchar / mirar", "sec_review": "Revisar ya", "sec_decide": "Decidir", "sec_fyi": "Para tu referencia", "rate_q": "¿Cómo queda frente a la referencia?", "rate_good": "Bien", "rate_partial": "Regular", "rate_bad": "Mal", "file_missing": "Archivo no disponible", "load_fail": "No se pudo cargar este archivo.", "img_alt": "imagen", "rate_aria": "Calificar {x}", "compare_with": "Comparar con:", "reference": "Referencia", "reference_n": "Referencia {n}", "candidate_n": "Candidata {n}", "rated": "{q} · {done} de {n} calificadas", "rating_fail": "No se pudo guardar la calificación ({code}).", "lb_compare": "Comparar con la referencia", "lb_gallery": "Galería", "i_of_n": "{i} de {n}", "close": "Cerrar", "prev": "Anterior", "next": "Siguiente", "open_gh": "Abrir en GitHub ↗", "untitled": "(sin título)", "chip_unsent": "sin avisar", "chip_asked": "estado pedido", "chip_sent": "avisada", "chip_noted": "estado recibido", "ask_again": "Pedir estado otra vez", "key_revealed": "clave revelada", "key_hidden": "clave oculta", "your_answer": "Tu respuesta · {at}", "resolved": "Resuelta", "agent_status": "Estado del agente", "key": "Clave: ", "multi_hint": "Puedes marcar varias", "min_n": ", mínimo {n}", "max_n": ", máximo {n}", "options": "Opciones", "max_err": "Máximo {n}. Desmarca una antes de elegir otra.", "comment_opt": "Comentario (opcional)", "answer_ph": "Tu respuesta", "comment": "Comentario", "save": "Guardar respuesta", "save_notify": "Guardar y avisar a Claude", "no_comments": "Los avisos no están disponibles en esta vista", "cancel": "Cancelar", "change": "Cambiar respuesta", "notify": "Avisar a Claude", "ask_status": "Pedir estado", "related": "Relacionadas ({n})", "hide_related": "Ocultar relacionadas ({n})", "created": "creada {at}", "bulk_notify": "Avisar a Claude de {n} sin avisar", "nothing_unsent": "Nada sin avisar", "bulk_status": "Pedir estado de {n} avisadas", "none_waiting": "Ninguna esperando", "empty_section": "Nada pendiente en esta categoría.", "empty_all": "Nada pendiente. Todo respondido.", "answered_n": "{done}/{n} respondidas", "prev_arrow": "← Anterior", "next_arrow": "Siguiente →", "queue": "En cola", "empty_view": "No hay decisiones en esta vista.", "min_err": "Marca al menos {n}.", "need_answer": "Elige una opción, califica o escribe un comentario antes de guardar.", "saving": "Guardando…", "saved": "Guardado.", "no_perm": "No tienes permiso para responder aquí (hace falta ser Colaborador o más).", "save_fail": "No se pudo guardar ({code}). Tu texto sigue aquí; vuelve a intentarlo.", "sent_claude": "Aviso enviado a Claude.", "why_writers": "solo los editores pueden enviarlo a Claude", "why_nosession": "ahora mismo no hay ninguna sesión de Claude escuchando", "why_off": "el envío a Claude no está disponible aquí", "why_default": "el envío a Claude no está disponible", "posted_not_sent": "Comentario publicado, pero no enviado a Claude: {why}.", "fail_consent": "No diste permiso para comentar desde la página. El aviso no se envió.", "fail_forbidden": "Comentar desde la página está desactivado para ti.", "fail_rate": "Demasiados avisos seguidos; espera un momento.", "fail_claude": "No se pudo enviar a Claude; no se publicó nada.", "fail_generic": "No se pudo enviar el aviso ({code}).", "sending_notice": "Enviando aviso…", "asking": "Pidiendo estado…", "sending": "Enviando…", "offline": "sin conexión", "no_view": "Esta vista no puede leer el buzón. Ábrelo en claude.ai.", "no_db": "sin base de datos", "no_db_msg": "No se pudo abrir el buzón en esta vista.", "disconnected": "desconectado", "lost": "Se perdió la conexión con el buzón ({code}). Recarga la página.", "live": "en vivo · {time}", "kind_ui_review": "Revisión de UI", "scale_label": "Puntuación", "scale_aria": "Elegir puntuación", "ab_play": "Reproducir", "ab_pause": "Pausa", "ab_switch": "Elegir pista", "ab_seek": "Posición", "cmp_mode_aria": "Modo de comparación", "cmp_side": "Lado a lado", "cmp_wipe": "Deslizar", "wipe_aria": "Posición del deslizador", "mark_moment": "Marcar momento", "mark_tramo_start": "Marcar tramo", "mark_tramo_end": "Fin del tramo", "mark_note_ph": "Nota (opcional)", "mark_delete_aria": "Eliminar marca", "mark_score_aria": "Puntuar marca", "score_line": "Puntuación: {v}/{max}", "marks_line": "Marcas: {n}", "expand": "Ampliar"},
-  en: {"title": "Decision inbox", "kicker": "Waiting for your answer", "kicker_project": "{project} · waiting for your answer", "intro": "Agents leave their questions, blind tests and reviews here. You see one at a time, most important first; answering brings up the next.", "view": "View", "tab_open": "Open", "tab_answered": "Answered", "tab_all": "All", "connecting": "connecting…", "importance": "Importance", "loading": "Loading decisions…", "footer_states": "States: open → answered → resolved. The agent resolves an item once it acts on your answer and writes what it did.", "footer_blind": "In blind tests the key is not on this page: the agent adds it after your verdict.", "kind_text": "Question", "kind_choice": "Choose", "kind_image": "Image", "kind_video": "Video", "kind_audio": "Audio", "kind_blind_test": "Blind test", "status_open": "open", "status_answered": "answered", "status_processed": "resolved", "status_withdrawn": "withdrawn", "follow_all": "All", "follow_unsent": "Not sent", "follow_waiting": "Sent, unresolved", "follow_resolved": "Resolved", "sec_listen": "Listen / watch", "sec_review": "Review now", "sec_decide": "Decide", "sec_fyi": "For your reference", "rate_q": "How does it compare with the reference?", "rate_good": "Good", "rate_partial": "Fair", "rate_bad": "Poor", "file_missing": "File not available", "load_fail": "This file could not be loaded.", "img_alt": "image", "rate_aria": "Rate {x}", "compare_with": "Compare with:", "reference": "Reference", "reference_n": "Reference {n}", "candidate_n": "Candidate {n}", "rated": "{q} · {done} of {n} rated", "rating_fail": "The rating could not be saved ({code}).", "lb_compare": "Compare with the reference", "lb_gallery": "Gallery", "i_of_n": "{i} of {n}", "close": "Close", "prev": "Previous", "next": "Next", "open_gh": "Open on GitHub ↗", "untitled": "(untitled)", "chip_unsent": "not sent", "chip_asked": "status requested", "chip_sent": "sent", "chip_noted": "status received", "ask_again": "Ask for status again", "key_revealed": "key revealed", "key_hidden": "key hidden", "your_answer": "Your answer · {at}", "resolved": "Resolved", "agent_status": "Agent status", "key": "Key: ", "multi_hint": "You can pick several", "min_n": ", at least {n}", "max_n": ", at most {n}", "options": "Options", "max_err": "At most {n}. Untick one before picking another.", "comment_opt": "Comment (optional)", "answer_ph": "Your answer", "comment": "Comment", "save": "Save answer", "save_notify": "Save and notify Claude", "no_comments": "Notices are not available in this view", "cancel": "Cancel", "change": "Change answer", "notify": "Notify Claude", "ask_status": "Ask for status", "related": "Related ({n})", "hide_related": "Hide related ({n})", "created": "created {at}", "bulk_notify": "Notify Claude of {n} not sent", "nothing_unsent": "Nothing to send", "bulk_status": "Ask status of {n} sent", "none_waiting": "None waiting", "empty_section": "Nothing pending in this category.", "empty_all": "Nothing pending. All answered.", "answered_n": "{done}/{n} answered", "prev_arrow": "← Previous", "next_arrow": "Next →", "queue": "Up next", "empty_view": "No decisions in this view.", "min_err": "Pick at least {n}.", "need_answer": "Pick an option, rate, or write a comment before saving.", "saving": "Saving…", "saved": "Saved.", "no_perm": "You can't answer here (you need Contributor access or higher).", "save_fail": "Could not save ({code}). Your text is still here; try again.", "sent_claude": "Notice sent to Claude.", "why_writers": "only editors can send it to Claude", "why_nosession": "no Claude session is listening right now", "why_off": "sending to Claude is not available here", "why_default": "sending to Claude is not available", "posted_not_sent": "Comment posted but not sent to Claude: {why}.", "fail_consent": "You did not allow commenting from the page. The notice was not sent.", "fail_forbidden": "Commenting from the page is turned off for you.", "fail_rate": "Too many notices in a row; wait a moment.", "fail_claude": "Could not send to Claude; nothing was posted.", "fail_generic": "The notice could not be sent ({code}).", "sending_notice": "Sending notice…", "asking": "Asking for status…", "sending": "Sending…", "offline": "offline", "no_view": "This view cannot read the inbox. Open it on claude.ai.", "no_db": "no database", "no_db_msg": "The inbox could not be opened in this view.", "disconnected": "disconnected", "lost": "Lost the connection to the inbox ({code}). Reload the page.", "live": "live · {time}", "kind_ui_review": "UI review", "scale_label": "Score", "scale_aria": "Pick a score", "ab_play": "Play", "ab_pause": "Pause", "ab_switch": "Choose track", "ab_seek": "Seek", "cmp_mode_aria": "Compare mode", "cmp_side": "Side by side", "cmp_wipe": "Slide", "wipe_aria": "Slider position", "mark_moment": "Mark moment", "mark_tramo_start": "Mark range", "mark_tramo_end": "End range", "mark_note_ph": "Note (optional)", "mark_delete_aria": "Delete mark", "mark_score_aria": "Score mark", "score_line": "Score: {v}/{max}", "marks_line": "Marks: {n}", "expand": "Expand"}};
+const I18N = {es: {"title": "Buzón de decisiones", "kicker": "Lo que espera tu respuesta", "kicker_project": "{project} · lo que espera tu respuesta", "intro": "Los agentes dejan aquí sus preguntas, pruebas a ciegas y revisiones. Ves una a la vez, por importancia; al responder aparece la siguiente.", "view": "Vista", "tab_open": "Abiertas", "tab_answered": "Respondidas", "tab_all": "Todas", "connecting": "conectando…", "importance": "Importancia", "loading": "Cargando decisiones…", "footer_states": "Estados: abierta → respondida → resuelta. El agente la marca resuelta cuando actúa sobre tu respuesta y escribe qué hizo.", "footer_blind": "En las pruebas a ciegas la clave no está en esta página: el agente la añade después de tu veredicto.", "kind_text": "Pregunta", "kind_choice": "Elegir", "kind_image": "Imagen", "kind_video": "Vídeo", "kind_audio": "Audio", "kind_blind_test": "Prueba a ciegas", "status_open": "abierta", "status_answered": "respondida", "status_processed": "resuelta", "status_withdrawn": "retirada", "follow_all": "Todas", "follow_unsent": "Sin avisar", "follow_waiting": "Avisadas, sin resolver", "follow_resolved": "Resueltas", "sec_listen": "Escuchar / mirar", "sec_review": "Revisar ya", "sec_decide": "Decidir", "sec_fyi": "Para tu referencia", "rate_q": "¿Cómo queda frente a la referencia?", "rate_good": "Bien", "rate_partial": "Regular", "rate_bad": "Mal", "file_missing": "Archivo no disponible", "load_fail": "No se pudo cargar este archivo.", "img_alt": "imagen", "rate_aria": "Calificar {x}", "compare_with": "Comparar con:", "reference": "Referencia", "reference_n": "Referencia {n}", "candidate_n": "Candidata {n}", "rated": "{q} · {done} de {n} calificadas", "rating_fail": "No se pudo guardar la calificación ({code}).", "lb_compare": "Comparar con la referencia", "lb_gallery": "Galería", "i_of_n": "{i} de {n}", "close": "Cerrar", "prev": "Anterior", "next": "Siguiente", "open_gh": "Abrir en GitHub ↗", "untitled": "(sin título)", "chip_unsent": "sin avisar", "chip_asked": "estado pedido", "chip_sent": "avisada", "chip_noted": "estado recibido", "ask_again": "Pedir estado otra vez", "key_revealed": "clave revelada", "key_hidden": "clave oculta", "your_answer": "Tu respuesta · {at}", "resolved": "Resuelta", "agent_status": "Estado del agente", "key": "Clave: ", "multi_hint": "Puedes marcar varias", "min_n": ", mínimo {n}", "max_n": ", máximo {n}", "options": "Opciones", "max_err": "Máximo {n}. Desmarca una antes de elegir otra.", "comment_opt": "Comentario (opcional)", "answer_ph": "Tu respuesta", "comment": "Comentario", "save": "Guardar respuesta", "save_notify": "Guardar y avisar a Claude", "no_comments": "Los avisos no están disponibles en esta vista", "cancel": "Cancelar", "change": "Cambiar respuesta", "notify": "Avisar a Claude", "ask_status": "Pedir estado", "related": "Relacionadas ({n})", "hide_related": "Ocultar relacionadas ({n})", "created": "creada {at}", "bulk_notify": "Avisar a Claude de {n} sin avisar", "nothing_unsent": "Nada sin avisar", "bulk_status": "Pedir estado de {n} avisadas", "none_waiting": "Ninguna esperando", "empty_section": "Nada pendiente en esta categoría.", "empty_all": "Nada pendiente. Todo respondido.", "answered_n": "{done}/{n} respondidas", "prev_arrow": "← Anterior", "next_arrow": "Siguiente →", "queue": "En cola", "empty_view": "No hay decisiones en esta vista.", "min_err": "Marca al menos {n}.", "need_answer": "Elige una opción, califica o escribe un comentario antes de guardar.", "saving": "Guardando…", "saved": "Guardado.", "no_perm": "No tienes permiso para responder aquí (hace falta ser Colaborador o más).", "save_fail": "No se pudo guardar ({code}). Tu texto sigue aquí; vuelve a intentarlo.", "sent_claude": "Aviso enviado a Claude.", "why_writers": "solo los editores pueden enviarlo a Claude", "why_nosession": "ahora mismo no hay ninguna sesión de Claude escuchando", "why_off": "el envío a Claude no está disponible aquí", "why_default": "el envío a Claude no está disponible", "posted_not_sent": "Comentario publicado, pero no enviado a Claude: {why}.", "fail_consent": "No diste permiso para comentar desde la página. El aviso no se envió.", "fail_forbidden": "Comentar desde la página está desactivado para ti.", "fail_rate": "Demasiados avisos seguidos; espera un momento.", "fail_claude": "No se pudo enviar a Claude; no se publicó nada.", "fail_generic": "No se pudo enviar el aviso ({code}).", "sending_notice": "Enviando aviso…", "asking": "Pidiendo estado…", "sending": "Enviando…", "offline": "sin conexión", "no_view": "Esta vista no puede leer el buzón. Ábrelo en claude.ai.", "no_db": "sin base de datos", "no_db_msg": "No se pudo abrir el buzón en esta vista.", "disconnected": "desconectado", "lost": "Se perdió la conexión con el buzón ({code}). Recarga la página.", "live": "en vivo · {time}", "kind_ui_review": "Revisión de UI", "scale_label": "Puntuación", "scale_aria": "Elegir puntuación", "ab_play": "Reproducir", "ab_pause": "Pausa", "ab_switch": "Elegir pista", "ab_seek": "Posición", "cmp_mode_aria": "Modo de comparación", "cmp_side": "Lado a lado", "cmp_wipe": "Deslizar", "wipe_aria": "Posición del deslizador", "mark_moment": "Marcar momento", "mark_tramo_start": "Marcar tramo", "mark_tramo_end": "Fin del tramo", "mark_note_ph": "Nota (opcional)", "mark_delete_aria": "Eliminar marca", "mark_score_aria": "Puntuar marca", "score_line": "Puntuación: {v}/{max}", "marks_line": "Marcas: {n}", "expand": "Ampliar", "shot_frame": "Captura del momento", "shot_upload": "Subir imagen", "ann_line": "Línea", "ann_arrow": "Flecha", "ann_rect": "Cuadro", "ann_free": "Libre", "ann_undo": "Deshacer", "ann_save": "Guardar imagen", "ann_note_ph": "Comentario sobre la imagen (opcional)", "ann_uploading": "Subiendo…"},
+  en: {"title": "Decision inbox", "kicker": "Waiting for your answer", "kicker_project": "{project} · waiting for your answer", "intro": "Agents leave their questions, blind tests and reviews here. You see one at a time, most important first; answering brings up the next.", "view": "View", "tab_open": "Open", "tab_answered": "Answered", "tab_all": "All", "connecting": "connecting…", "importance": "Importance", "loading": "Loading decisions…", "footer_states": "States: open → answered → resolved. The agent resolves an item once it acts on your answer and writes what it did.", "footer_blind": "In blind tests the key is not on this page: the agent adds it after your verdict.", "kind_text": "Question", "kind_choice": "Choose", "kind_image": "Image", "kind_video": "Video", "kind_audio": "Audio", "kind_blind_test": "Blind test", "status_open": "open", "status_answered": "answered", "status_processed": "resolved", "status_withdrawn": "withdrawn", "follow_all": "All", "follow_unsent": "Not sent", "follow_waiting": "Sent, unresolved", "follow_resolved": "Resolved", "sec_listen": "Listen / watch", "sec_review": "Review now", "sec_decide": "Decide", "sec_fyi": "For your reference", "rate_q": "How does it compare with the reference?", "rate_good": "Good", "rate_partial": "Fair", "rate_bad": "Poor", "file_missing": "File not available", "load_fail": "This file could not be loaded.", "img_alt": "image", "rate_aria": "Rate {x}", "compare_with": "Compare with:", "reference": "Reference", "reference_n": "Reference {n}", "candidate_n": "Candidate {n}", "rated": "{q} · {done} of {n} rated", "rating_fail": "The rating could not be saved ({code}).", "lb_compare": "Compare with the reference", "lb_gallery": "Gallery", "i_of_n": "{i} of {n}", "close": "Close", "prev": "Previous", "next": "Next", "open_gh": "Open on GitHub ↗", "untitled": "(untitled)", "chip_unsent": "not sent", "chip_asked": "status requested", "chip_sent": "sent", "chip_noted": "status received", "ask_again": "Ask for status again", "key_revealed": "key revealed", "key_hidden": "key hidden", "your_answer": "Your answer · {at}", "resolved": "Resolved", "agent_status": "Agent status", "key": "Key: ", "multi_hint": "You can pick several", "min_n": ", at least {n}", "max_n": ", at most {n}", "options": "Options", "max_err": "At most {n}. Untick one before picking another.", "comment_opt": "Comment (optional)", "answer_ph": "Your answer", "comment": "Comment", "save": "Save answer", "save_notify": "Save and notify Claude", "no_comments": "Notices are not available in this view", "cancel": "Cancel", "change": "Change answer", "notify": "Notify Claude", "ask_status": "Ask for status", "related": "Related ({n})", "hide_related": "Hide related ({n})", "created": "created {at}", "bulk_notify": "Notify Claude of {n} not sent", "nothing_unsent": "Nothing to send", "bulk_status": "Ask status of {n} sent", "none_waiting": "None waiting", "empty_section": "Nothing pending in this category.", "empty_all": "Nothing pending. All answered.", "answered_n": "{done}/{n} answered", "prev_arrow": "← Previous", "next_arrow": "Next →", "queue": "Up next", "empty_view": "No decisions in this view.", "min_err": "Pick at least {n}.", "need_answer": "Pick an option, rate, or write a comment before saving.", "saving": "Saving…", "saved": "Saved.", "no_perm": "You can't answer here (you need Contributor access or higher).", "save_fail": "Could not save ({code}). Your text is still here; try again.", "sent_claude": "Notice sent to Claude.", "why_writers": "only editors can send it to Claude", "why_nosession": "no Claude session is listening right now", "why_off": "sending to Claude is not available here", "why_default": "sending to Claude is not available", "posted_not_sent": "Comment posted but not sent to Claude: {why}.", "fail_consent": "You did not allow commenting from the page. The notice was not sent.", "fail_forbidden": "Commenting from the page is turned off for you.", "fail_rate": "Too many notices in a row; wait a moment.", "fail_claude": "Could not send to Claude; nothing was posted.", "fail_generic": "The notice could not be sent ({code}).", "sending_notice": "Sending notice…", "asking": "Asking for status…", "sending": "Sending…", "offline": "offline", "no_view": "This view cannot read the inbox. Open it on claude.ai.", "no_db": "no database", "no_db_msg": "The inbox could not be opened in this view.", "disconnected": "disconnected", "lost": "Lost the connection to the inbox ({code}). Reload the page.", "live": "live · {time}", "kind_ui_review": "UI review", "scale_label": "Score", "scale_aria": "Pick a score", "ab_play": "Play", "ab_pause": "Pause", "ab_switch": "Choose track", "ab_seek": "Seek", "cmp_mode_aria": "Compare mode", "cmp_side": "Side by side", "cmp_wipe": "Slide", "wipe_aria": "Slider position", "mark_moment": "Mark moment", "mark_tramo_start": "Mark range", "mark_tramo_end": "End range", "mark_note_ph": "Note (optional)", "mark_delete_aria": "Delete mark", "mark_score_aria": "Score mark", "score_line": "Score: {v}/{max}", "marks_line": "Marks: {n}", "expand": "Expand", "shot_frame": "Capture frame", "shot_upload": "Upload image", "ann_line": "Line", "ann_arrow": "Arrow", "ann_rect": "Box", "ann_free": "Freehand", "ann_undo": "Undo", "ann_save": "Save image", "ann_note_ph": "Comment on the image (optional)", "ann_uploading": "Uploading…"}};
 let LANG = "en", STRINGS = {};   // meta/config.lang overrides this default
 const t = (k, v = {}) => String(STRINGS[k] ?? (I18N[LANG] || I18N.en)[k] ?? I18N.en[k] ?? k).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? "");
 const kindName = k => t("kind_" + k) === "kind_" + k ? (k || t("kind_text")) : t("kind_" + k);
@@ -370,6 +395,82 @@ function updateMarkField(it, key, id, field, value) {
   saveMarks(it, key, marksOf(it, key).map(m => m.id === id ? {...m, [field]: value} : m));
 }
 const deleteMark = (it, key, id) => saveMarks(it, key, marksOf(it, key).filter(m => m.id !== id));
+
+// ---- Mark screenshots: capture the current frame or upload an image, draw lines/arrows/boxes, add a note.
+let assetsNS = null;   // null when this viewer cannot upload (reader view): the buttons stay hidden
+const ANN_COLORS = ["#ff3b30", "#ffd60a", "#30d158"];
+function openAnnotator(source, onSave) {
+  const maxW = 1920, sc = Math.min(1, maxW / (source.width || source.videoWidth));
+  const W = Math.round((source.width || source.videoWidth) * sc), H = Math.round((source.height || source.videoHeight) * sc);
+  const base = document.createElement("canvas"); base.width = W; base.height = H; base.getContext("2d").drawImage(source, 0, 0, W, H);
+  const cv = el("canvas", {width: W, height: H}), ctx = cv.getContext("2d");
+  const shapes = []; let tool = "arrow", color = ANN_COLORS[0], cur = null;
+  const lw = Math.max(3, Math.round(W / 320));
+  function arrowHead(a, b) { const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), L = lw * 5; ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(b[0] - L * Math.cos(ang - .45), b[1] - L * Math.sin(ang - .45)); ctx.moveTo(b[0], b[1]); ctx.lineTo(b[0] - L * Math.cos(ang + .45), b[1] - L * Math.sin(ang + .45)); ctx.stroke(); }
+  function drawShape(s) {
+    ctx.strokeStyle = s.color; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.lineJoin = "round"; const [a] = s.pts, b = s.pts[s.pts.length - 1];
+    ctx.beginPath();
+    if (s.type === "rect") ctx.strokeRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+    else if (s.type === "free") { ctx.moveTo(a[0], a[1]); s.pts.forEach(p => ctx.lineTo(p[0], p[1])); ctx.stroke(); }
+    else { ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); if (s.type === "arrow") arrowHead(a, b); }
+  }
+  const redraw = () => { ctx.clearRect(0, 0, W, H); ctx.drawImage(base, 0, 0); shapes.forEach(drawShape); if (cur) drawShape(cur); };
+  const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+  cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); cur = {type: tool, color, pts: [pt(e)]}; });
+  cv.addEventListener("pointermove", e => { if (!cur) return; const p = pt(e); if (cur.type === "free") cur.pts.push(p); else cur.pts[1] = p; redraw(); });
+  cv.addEventListener("pointerup", () => { if (cur && cur.pts.length > 1) shapes.push(cur); cur = null; redraw(); });
+  const toolBtn = (id, label) => el("button", {class:"seg", type:"button", "aria-pressed": String(tool === id), onclick: e => { tool = id; e.target.parentNode.querySelectorAll("[data-tool]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tool === id))); }, "data-tool": id}, label);
+  const colorBtn = c => el("button", {class:"seg", type:"button", style:`color:${c}`, "aria-label": c, onclick: () => { color = c; }}, "●");
+  const note = el("textarea", {placeholder: t("ann_note_ph")}), msg = el("span", {class:"note"});
+  const close = () => box.remove();
+  const save = el("button", {class:"btn", type:"button", onclick: () => {
+    save.disabled = true; msg.textContent = t("ann_uploading");
+    cv.toBlob(async blob => {
+      try { await onSave(blob, note.value.trim()); close(); }
+      catch (e) { save.disabled = false; msg.textContent = t("save_fail", {code: e?.code || "error"}); }
+    }, "image/png");
+  }}, t("ann_save"));
+  const box = el("div", {class:"ann", role:"dialog", "aria-modal":"true"},
+    el("div", {class:"ann-tools"}, toolBtn("arrow", t("ann_arrow")), toolBtn("line", t("ann_line")), toolBtn("rect", t("ann_rect")), toolBtn("free", t("ann_free")),
+      ANN_COLORS.map(colorBtn),
+      el("button", {class:"seg", type:"button", onclick: () => { shapes.pop(); redraw(); }}, t("ann_undo")),
+      el("button", {class:"lb-btn", type:"button", style:"margin-left:auto", onclick: close}, t("close"))),
+    el("div", {class:"ann-stage"}, cv),
+    el("div", {class:"ann-foot"}, note, save, msg));
+  box.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+  redraw(); document.body.append(box); note.focus();
+}
+function viewShot(s) {
+  const close = () => box.remove();
+  const box = el("div", {class:"ann", role:"dialog", "aria-modal":"true", tabindex:"-1"},
+    el("div", {class:"ann-tools"}, el("button", {class:"lb-btn", type:"button", style:"margin-left:auto", onclick: close}, t("close"))),
+    el("div", {class:"ann-stage"}, el("img", {src: s.url || "/_blob/" + s.id, alt: s.note || ""})),
+    el("div", {class:"ann-foot"}, s.note ? el("p", {class:"ann-note"}, s.note) : null));
+  box.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+  document.body.append(box); box.focus();
+}
+async function addShot(it, key, m, blob, note) {
+  const r = await assetsNS.upload(blob, {type: "image/png"});
+  updateMarkField(it, key, m.id, "images", [...(m.images || []), {id: r.id, url: r.url, note, at: new Date().toISOString()}]);
+}
+function shotControls(it, key, m, mediaEl) {
+  const shots = (m.images || []).map(s => el("figure", {class:"mark-shot"},
+    el("img", {src: s.url || "/_blob/" + s.id, alt: s.note || "", loading:"lazy", onclick: () => viewShot(s)}),
+    s.note ? el("figcaption", {title: s.note}, s.note) : null));
+  if (!assetsNS) return shots.length ? el("div", {class:"mark-shots"}, shots) : null;
+  const save = (blob, note) => addShot(it, key, m, blob, note);
+  const frameBtn = mediaEl.tagName === "VIDEO" ? el("button", {class:"btn ghost", type:"button", onclick: () => {
+    mediaEl.pause(); if (m.t != null) mediaEl.currentTime = m.t;
+    const go = () => openAnnotator(mediaEl, save);
+    if (m.t != null && Math.abs(mediaEl.currentTime - m.t) > .05) mediaEl.addEventListener("seeked", go, {once: true}); else go();
+  }}, t("shot_frame")) : null;
+  const file = el("input", {type:"file", accept:"image/*", hidden:true, onchange: async e => {
+    const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+    openAnnotator(await createImageBitmap(f), save);
+  }});
+  const upBtn = el("button", {class:"btn ghost", type:"button", onclick: () => file.click()}, t("shot_upload"));
+  return el("div", {class:"mark-shots"}, shots, frameBtn, upBtn, file);
+}
 function markRow(it, key, m, mediaEl) {
   const label = m.start != null ? fmtMark(m.start) + "–" + fmtMark(m.end) : fmtMark(m.t);
   const ta = el("textarea", {class:"mark-note", rows:"1", placeholder: t("mark_note_ph")});
@@ -378,7 +479,8 @@ function markRow(it, key, m, mediaEl) {
     el("button", {class:"mark-time", type:"button", onclick: () => { mediaEl.currentTime = m.start ?? m.t; if (m.start != null) mediaEl.play(); }}, label),
     ta,
     it.mark_scale ? scaleButtons(it.mark_scale, m.score ?? null, v => updateMarkField(it, key, m.id, "score", v), t("mark_score_aria")) : null,
-    el("button", {class:"btn ghost", type:"button", "aria-label": t("mark_delete_aria"), onclick: () => deleteMark(it, key, m.id)}, "×"));
+    el("button", {class:"btn ghost", type:"button", "aria-label": t("mark_delete_aria"), onclick: () => deleteMark(it, key, m.id)}, "×"),
+    shotControls(it, key, m, mediaEl));
 }
 function marksBox(it, key, mediaEl) {
   if (!it.marks) return null;
@@ -393,6 +495,22 @@ function marksBox(it, key, mediaEl) {
 // Persistent audio/video elements and their marks slots, keyed by "<itemId>:<mediaKey>" so a live
 // data update (a rating, a new mark elsewhere) never recreates the player or resets currentTime.
 const mediaElByKey = new Map(), marksSlotByKey = new Map();
+
+// Maximise toggle: fixed full-window overlay on the same element; real fullscreen when the frame allows it.
+function maxButton(target) {
+  const b = el("button", {class:"seg max-btn", type:"button", "aria-pressed":"false"}, t("expand"));
+  const exit = () => { const box = target(); box?.classList.remove("maxed"); b.setAttribute("aria-pressed","false"); b.textContent = t("expand"); document.removeEventListener("keydown", esc); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); };
+  const esc = e => { if (e.key === "Escape") exit(); };
+  b.addEventListener("click", () => {
+    const box = target(); if (!box) return;
+    if (box.classList.contains("maxed")) return exit();
+    box.classList.add("maxed"); b.setAttribute("aria-pressed","true"); b.textContent = t("close");
+    document.addEventListener("keydown", esc);
+    box.requestFullscreen?.().catch(() => {});
+  });
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && target()?.classList.contains("maxed")) exit(); });
+  return b;
+}
 
 function renderMedia(it) {
   const cmp = compareOf(it);
@@ -416,7 +534,7 @@ function renderMedia(it) {
         else body = el("img", {src, alt:m.label || t("img_alt"), loading:"lazy", onclick: () => openLB({itemId: it.id, mode:"gallery", index: gallery.indexOf(m)})});
         if (src) body.addEventListener("error", () => body.replaceWith(el("span", {class:"m missing"}, t("load_fail"))));
         if (src && it.marks && (ty === "audio" || ty === "video")) { slot = el("div", {class:"marks-slot"}); marksSlotByKey.set(mk, slot); }
-        const expand = src && ty === "video" ? el("button", {class:"seg", type:"button", onclick: () => openLB({itemId: it.id, mode:"gallery", index: gallery.indexOf(m)})}, t("expand")) : null;
+        const expand = src && ty === "video" ? maxButton(() => expand.closest("figure")) : null;
         return el("figure", {class:"m"}, m.label ? el("figcaption", {}, m.label) : null, body, expand, slot);
       })));
     }
@@ -485,7 +603,7 @@ function buildABPlayer(tracks, kind) {
   const box = el("div", {class:"ab"},
     kind === "video" ? el("div", {class:"ab-stage"}, mediaEls) : mediaEls,
     switchWrap,
-    el("div", {class:"ab-transport"}, playBtn, seek, timeLbl),
+    el("div", {class:"ab-transport"}, playBtn, seek, timeLbl, kind === "video" ? maxButton(() => playBtn.closest(".ab")) : null),
     ratesWrap, marksSlot);
   return {
     box,
@@ -720,6 +838,10 @@ function card(it) {
   const secName = (sections().find(([k]) => k === it.section) || [])[1];
 
   node.append(el("div", {class:"top"},
+    el("div", {class:"origin"},
+      it.created_at ? el("span", {class:"when"}, fmt(it.created_at)) : null,
+      it.source_agent ? el("span", {class:"who"}, it.source_agent) : null,
+      it.answer?.answered_at ? el("span", {class:"ans"}, t("your_answer", {at: fmt(it.answer.answered_at)})) : null),
     el("div", {class:"meta"},
       el("span", {class:"q"}, kindName(it.kind)),
       el("span", {class:"chip " + s}, statusName(s)),
@@ -727,7 +849,7 @@ function card(it) {
       followOf(it) === "unsent" ? el("span", {class:"chip unsent"}, t("chip_unsent")) : null,
       followOf(it) === "waiting" ? el("span", {class:"chip waiting"}, freshNote(it) ? t("chip_noted") : it.status_asked_at ? t("chip_asked") : t("chip_sent")) : null,
       it.kind === "blind_test" ? el("span", {class:"chip blind"}, it.key_revealed ? t("key_revealed") : t("key_hidden")) : null,
-      it.source_agent ? el("span", {class:"chip"}, it.source_agent) : null),
+      null),
     el("h2", {}, it.title || t("untitled")),
     issueBox(it),
     it.context ? md(it.context, "ctx") : null,
@@ -794,7 +916,7 @@ function card(it) {
   if (n) box.append(el("p", {class:"note " + n.cls, role:"status"}, n.msg));
   node.append(box);
   if (rel.length && relOpen[it.id]) node.append(el("div", {class:"rel"}, rel.map(o => rowFor(o, jump))));
-  node.append(el("span", {class:"ref"}, [it.id, it.created_at ? t("created", {at: fmt(it.created_at)}) : null].filter(Boolean).join(" · ")));
+  node.append(el("span", {class:"ref"}, it.id));   // date and origin are on the card's first line
   return node;
 }
 
@@ -966,6 +1088,7 @@ document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () =>
   if (!claude?.use) { applyStatic(); $("#live").textContent = t("offline"); $("#list").replaceChildren(el("div", {class:"empty"}, t("no_view"))); return; }
   applyStatic();
   [db, comments] = await Promise.all([claude.use("db"), claude.use("comments").catch(() => null)]);
+  claude.use("assets").then(a => { assetsNS = a; if (a) render(); }).catch(() => {});
   if (!db) { $("#live").textContent = t("no_db"); $("#list").replaceChildren(el("div", {class:"empty"}, t("no_db_msg"))); return; }
   const fail = e => { $("#live").textContent = t("disconnected"); const w = $("#warn"); w.hidden = false; w.textContent = t("lost", {code: e?.code || "error"}); };
   db.doc("meta/config").onSnapshot(snap => {
