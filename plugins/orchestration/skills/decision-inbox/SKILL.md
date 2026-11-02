@@ -221,7 +221,11 @@ unavailable the note is still saved.
   in one `update`. It sets `status:"done"` once the point is resolved (in the same write when the
   reply already resolves it).
 - The page shows the newest 5 notes per session in the sheet ("Ver más" for the rest), each with
-  its status and reply. The strip row shows `✎n` for notes still `new`/`relayed` without a reply.
+  its status and reply. Notes are collapsed to one summary line except the newest (tap toggles;
+  players load only when expanded). The strip row shows `✎n` for notes still `new`/`relayed`
+  without a reply, and a green `●` when a reply arrived that this viewer has not opened yet
+  (seen state per browser: `inbox.seenReplies`, noteId → `reply.at`; a newer `reply.at` is unread
+  again). Always write a fresh `reply.at` when you reply, or the user is not told.
 - **Microphone:** there is no microphone capability to declare; publish with the usual
   `capabilities:{db:{}, assets:{}, comments:{}}`. The page asks the browser for the mic when the
   user taps "Grabar voz". When the browser or the host frame refuses, or there is no
