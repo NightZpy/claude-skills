@@ -159,7 +159,7 @@ equals `name` and whose status is `open` or `answered`.
   Claude session gets no row of its own.
 - **The main session reconciles** at its checkpoints with `ListAgents`: `seen_at` for live
   sessions; `state:"idle"`, `doing:""`, `executors:[]` for ended ones; a minimal doc (`name`,
-  `project`, `state`, `doing:"(sin reporte)"`) for a live session that has none. It never edits a
+  `project`, `state`, `doing:"(sin reporte)"`, `seen_at:"<ISO now>"`) for a live session that has none. It never edits a
   live session's `doing`, `next`, `goal` or `remaining`. It deletes a doc that has been idle for
   7 days.
 

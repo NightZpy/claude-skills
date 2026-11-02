@@ -1,6 +1,6 @@
 <title>Decision inbox</title>
 <!-- Template from the decision-inbox skill. Project-specific values live in the db doc meta/config,
-     not here: {project, repo_url, sections:[[key,label],...]}. Replace the :root token block with the
+     not here: {project, repo_url, projects:[{id,label,repo_url,goal}], lang, strings, sections:[[key,label],...]}. Replace the :root token block with the
      project's own artifact design system if it has one. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1079,7 +1079,7 @@ function sessRow(s, short) {
   return el("button", {class:"srow", type:"button", title: s.name, onclick: () => openSheet(s)},
     el("span", {class:"sdot " + s.st, "aria-label": t("st_" + s.st)}),
     el("span", {class:"nm"}, short(s.name)),
-    el("span", {class:"dg"}, s.st === "stale" ? t("no_signal", {x: age(seenAt(s))}) : cap(s.goal || s.doing, 100),
+    el("span", {class:"dg"}, s.st === "stale" ? t("no_signal", {x: seenAt(s) ? age(seenAt(s)) : ""}).trim() : cap(s.goal || s.doing, 100),
       s.goal && s.doing && s.st !== "stale" ? el("span", {class:"now"}, " — " + cap(s.doing, 90)) : null),
     el("span", {class:"badges"}, w ? el("span", {class:"badge"}, "⏳" + cap(w, 12)) : null, ex ? el("span", {class:"badge"}, "⚙" + ex) : null,
       own.length ? el("span", {class:"badge" + (own.some(i => prioOf(i) <= 1) ? " hot" : "")}, "✉" + own.length) : null),
@@ -1120,7 +1120,7 @@ function openSheet(s) {
   dlg.replaceChildren(el("div", {class:"in"},
     el("div", {class:"sh-h"}, el("span", {class:"sdot " + s.st}), el("h2", {}, s.name), el("button", {class:"btn ghost", type:"button", onclick: () => dlg.close()}, t("close"))),
     el("p", {class:"note"}, repo ? el("a", {href: repo, target:"_blank", rel:"noopener"}, p?.label || projOf(s)) : p?.label || projOf(s),
-      " · " + t("st_" + s.st) + " · " + t("updated", {x: ago(new Date(seenAt(s)).toISOString())})),
+      " · " + t("st_" + s.st) + (seenAt(s) ? " · " + t("updated", {x: ago(new Date(seenAt(s)).toISOString())}) : "")),
     kv("goal", cap(s.goal, 100)), ul("remaining", caps(s.remaining, 4, 80)),
     kv("doing", cap(s.doing, 90)), kv("s_next", cap(s.next, 90)), kv("waiting_on", cap(s.waiting_on === "user" ? t("you") : s.waiting_on, 40)),
     kv("blocks_l", caps(s.blocks, 3, 40).join(", ")), ul("branches", caps(s.branches, 3, 50)), ul("executors", exec),
