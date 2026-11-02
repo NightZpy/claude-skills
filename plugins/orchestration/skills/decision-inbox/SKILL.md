@@ -293,6 +293,7 @@ All opt-in per item — items without these fields render exactly as before.
 | (toggle, no field) | any comparison item | the card and its lightbox both offer "Side by side" / "Slide" (before/after wipe with a draggable divider) for the same reference+candidate pair |
 | `ab: true` (or a candidate role on ≥2 same-type tracks) | audio or video media | a shared-transport A/B(/C/…) player: one play/seek bar, a lettered switch that swaps tracks without losing playback position. Works with any number of tracks ≥2 |
 | `marks: true`, optional `mark_scale: {min,max,step}` | audio/video media | "Mark moment" / "Mark tramo" buttons under the player; each mark can carry a note and, with `mark_scale`, a score |
+| (with `marks`, writer views) | audio/video media | each mark offers "Capture frame" (video) and "Upload image"; the annotator draws arrows, lines, boxes or freehand plus a note and stores a PNG in the asset store, recorded on the mark as `images[] {id, url, note, at}`. Fetch one with `Artifact {action:"read", url, path:"<asset id>"}` |
 
 **When to reach for these:** `scale`/`rate.scale` when Good/Fair/Poor is too coarse (numeric
 severity, a 1-10 preference). Gallery gif/video when a UI review needs a short screen recording
@@ -306,7 +307,7 @@ reviewer needs to flag specific timestamps in a take rather than rating the whol
 
 - `answer.score`: the number picked on `item.scale`.
 - `ratings[<media key>]`: a number when the item's `rate` uses `scale`, same as any other rating.
-- `marks_data: {<media key>: [{id, t, note, score?, at} | {id, start, end, note, score?, at}]}`:
+- `marks_data: {<media key>: [{id, t, note, score?, images?, at} | {id, start, end, note, score?, images?, at}]}`:
   written immediately as the user adds/edits/deletes marks (same "saved before the answer"
   pattern as `ratings`).
 - `answer.marks`: a copy of `marks_data` taken at save time, so a single `.answer` read carries
@@ -330,6 +331,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 
 ## Page behaviour (template/inbox.html), for reference
 
+- Every card opens with an origin line: priority badge (P0–P3), time-ago of `created_at` (exact date on hover), `source_agent`, the answer time and `blocks`. A priority filter (All, P0–P3) and a sort toggle (importance, newest, oldest) sit under the section chips; the choice is remembered per browser.
 - **Abiertas** shows one item at a time (a gallery), ordered by section, then priority, then age.
   It has a progress bar, Previous/Next, a compact "En cola" list, and section filter chips with
   counts. Saving moves on to the next open item.
