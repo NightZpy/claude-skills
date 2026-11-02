@@ -219,7 +219,7 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line); font
 
 .marks{margin-top:8px; display:grid; gap:6px}
 .marks-actions{display:flex; gap:8px; flex-wrap:wrap}
-.marks-list{list-style:none; margin:0; padding:0; display:grid; gap:6px}
+.marks-list{list-style:none; margin:0; padding:0 4px 0 0; display:grid; gap:6px; max-height:40vh; overflow-y:auto; overscroll-behavior:contain}   /* the player stays in view while marks scroll */
 .mark-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .mark-time{font:600 13px "JetBrains Mono",monospace; padding:4px 8px; border-radius:6px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer}
 .mark-note{flex:1; min-width:120px; min-height:32px; font-size:14px; padding:4px 8px}
@@ -454,18 +454,24 @@ function fmtMark(s) {
   const m = Math.floor(s / 60), sec = s - m * 60;
   return m + ":" + (Number.isInteger(sec) ? String(sec).padStart(2, "0") : sec.toFixed(1).padStart(4, "0"));
 }
-async function saveMarks(it, key, list) {
+// A mark just made is listed first, with focus in its note, until its note loses focus (then the list sorts by time).
+let freshMark = null, pointerDown = false;
+document.addEventListener("pointerdown", () => { pointerDown = true; }, true);
+document.addEventListener("pointerup", () => { pointerDown = false; }, true);
+async function saveMarks(it, key, list, focusNew) {
   try {
     await db.doc("items/" + it.id).update({marks_data: {[key]: list}});
     it.marks_data = {...(it.marks_data || {}), [key]: list};   // optimistic, so the list refreshes before the next snapshot
     render();
+    if (focusNew) document.getElementById("mn-" + focusNew)?.focus({preventScroll: true});
   } catch (e) { notes[it.id] = {cls:"err", msg: t("save_fail", {code: e?.code || "error"})}; render(); }
 }
 const newMarkId = () => "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 function addMoment(it, key, mediaEl) {
   const mark = {id: newMarkId(), t: mediaEl.currentTime || 0, note: "", at: new Date().toISOString()};
   if (it.mark_scale) mark.score = null;
-  saveMarks(it, key, [...marksOf(it, key), mark]);
+  freshMark = mark.id;
+  saveMarks(it, key, [...marksOf(it, key), mark], mark.id);
 }
 function tramoTap(it, key, mediaEl) {
   const pk = it.id + ":" + key, start = marksPending[pk];
@@ -474,7 +480,8 @@ function tramoTap(it, key, mediaEl) {
   const end = mediaEl.currentTime || 0;
   const mark = {id: newMarkId(), start: Math.min(start, end), end: Math.max(start, end), note: "", at: new Date().toISOString()};
   if (it.mark_scale) mark.score = null;
-  saveMarks(it, key, [...marksOf(it, key), mark]);
+  freshMark = mark.id;
+  saveMarks(it, key, [...marksOf(it, key), mark], mark.id);
 }
 function updateMarkField(it, key, id, field, value) {
   saveMarks(it, key, marksOf(it, key).map(m => m.id === id ? {...m, [field]: value} : m));
@@ -558,8 +565,15 @@ function shotControls(it, key, m, mediaEl) {
 }
 function markRow(it, key, m, mediaEl) {
   const label = m.start != null ? fmtMark(m.start) + "–" + fmtMark(m.end) : fmtMark(m.t);
-  const ta = el("textarea", {class:"mark-note", rows:"1", placeholder: t("mark_note_ph")});
+  const ta = el("textarea", {class:"mark-note", id:"mn-" + m.id, rows:"1", placeholder: t("mark_note_ph")});
   ta.value = m.note || ""; ta.addEventListener("change", () => updateMarkField(it, key, m.id, "note", ta.value));
+  // A re-render replaces the textarea and restores focus by id, which also fires blur: only a real focus move counts.
+  // The re-sort waits for a pressed pointer to be released, so it never replaces the button being clicked.
+  ta.addEventListener("blur", () => setTimeout(() => {
+    if (freshMark !== m.id || document.activeElement?.id === ta.id) return;
+    freshMark = null;
+    if (pointerDown) document.addEventListener("pointerup", () => setTimeout(render), {once: true}); else render();
+  }));
   return el("li", {class:"mark-row"},
     el("button", {class:"mark-time", type:"button", onclick: () => { mediaEl.currentTime = m.start ?? m.t; if (m.start != null) mediaEl.play(); }}, label),
     ta,
@@ -569,13 +583,19 @@ function markRow(it, key, m, mediaEl) {
 }
 function marksBox(it, key, mediaEl) {
   if (!it.marks) return null;
-  const list = [...marksOf(it, key)].sort((a, b) => (a.t ?? a.start) - (b.t ?? b.start));
+  const list = [...marksOf(it, key)].sort((a, b) => (b.id === freshMark) - (a.id === freshMark) || (a.t ?? a.start) - (b.t ?? b.start));
   const pending = marksPending[it.id + ":" + key] != null;
   return el("div", {class:"marks"},
     el("div", {class:"marks-actions"},
       el("button", {class:"btn ghost", type:"button", onclick: () => addMoment(it, key, mediaEl)}, t("mark_moment")),
       el("button", {class:"btn ghost", type:"button", "aria-pressed": String(pending), onclick: () => tramoTap(it, key, mediaEl)}, pending ? t("mark_tramo_end") : t("mark_tramo_start"))),
     list.length ? el("ul", {class:"marks-list"}, list.map(m => markRow(it, key, m, mediaEl))) : null);
+}
+// Refill a marks slot keeping the list's own scroll; a fresh mark (listed first) scrolls the list to its top.
+function fillMarks(slot, box) {
+  const y = slot.querySelector(".marks-list")?.scrollTop || 0;
+  slot.replaceChildren(box || "");
+  const ul = slot.querySelector(".marks-list"); if (ul) ul.scrollTop = freshMark ? 0 : y;
 }
 // Persistent audio/video elements and their marks slots, keyed by "<itemId>:<mediaKey>" so a live
 // data update (a rating, a new mark elsewhere) never recreates the player or resets currentTime.
@@ -627,7 +647,7 @@ function renderMedia(it) {
     // The figure/player above is cached (never recreated); the marks list below it is refreshed every render.
     list.forEach(m => {
       const mk = it.id + ":" + keyOf(m), slot = marksSlotByKey.get(mk), mediaEl = mediaElByKey.get(mk);
-      if (slot && mediaEl) slot.replaceChildren(marksBox(it, keyOf(m), mediaEl) || "");
+      if (slot && mediaEl) fillMarks(slot, marksBox(it, keyOf(m), mediaEl));
     });
   }
   return out.length ? out : null;
@@ -664,7 +684,7 @@ function buildABPlayer(tracks, kind) {
   }
   function refreshMarks() {
     if (!currentIt?.marks) return marksSlot.replaceChildren();
-    marksSlot.replaceChildren(marksBox(currentIt, keyOf(tracks[state.active]), active()) || "");
+    fillMarks(marksSlot, marksBox(currentIt, keyOf(tracks[state.active]), active()));
   }
   mediaEls.forEach((m, i) => {
     m.addEventListener("timeupdate", () => { if (state.active === i) syncSeek(); });
@@ -911,7 +931,7 @@ function jump(o) {
   if (st(o) === "open") { filter = "open"; section = "all"; currentId = o.id; }
   else filter = "all";
   syncTabs(); render();
-  requestAnimationFrame(() => document.getElementById("item-" + o.id)?.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"}));
+  requestAnimationFrame(() => scrollToEl(document.getElementById("item-" + o.id), !matchMedia("(prefers-reduced-motion: reduce)").matches));
 }
 
 function card(it) {
@@ -1179,7 +1199,7 @@ function fillSheet() {
     own.length ? el("div", {class:"actions"}, el("button", {class:"btn ghost", type:"button", onclick: () => { dlg.close(); setSess(s.name); scrollTop(); }}, t("only_its"))) : null,
     noteThread(s), noteBox(s)));
   dlg.scrollTop = top;
-  if (fid) { const f = document.getElementById(fid); if (f) { f.focus(); if (sel != null && f.setSelectionRange) f.setSelectionRange(sel, sel); } }
+  if (fid) { const f = document.getElementById(fid); if (f) { f.focus({preventScroll: true}); if (sel != null && f.setSelectionRange) f.setSelectionRange(sel, sel); } }
 }
 
 // ---- Session notes: the user writes to a session at any time (text, a voice note, up to 4 images, one short video).
@@ -1358,6 +1378,7 @@ function noteBox(s, parent) {
     d.msg ? el("p", {class:"note " + d.msg.cls, role:"status"}, d.msg.msg) : null);
 }
 function render() {
+  const y0 = scrollY;   // a re-render never moves the page; navigation (scrollTop, jump) scrolls afterwards, in a frame
   renderProj(); renderSessions(); renderSessFilter();
   const count = s => items.filter(i => st(i) === s).length;
   $("#n-open").textContent = count("open");
@@ -1401,9 +1422,12 @@ function render() {
   }
   list.replaceChildren(...view.filter(Boolean));
   if (lb) renderLB();   // the open lightbox follows live data (ratings, reference choice)
-  if (focusId) { const f = document.getElementById(focusId); if (f) { f.focus(); if (sel != null && f.setSelectionRange) f.setSelectionRange(sel, sel); } }
+  if (focusId) { const f = document.getElementById(focusId); if (f) { f.focus({preventScroll: true}); if (sel != null && f.setSelectionRange) f.setSelectionRange(sel, sel); } }
+  if (scrollY !== y0) scrollTo(0, y0);
 }
-function scrollTop() { requestAnimationFrame(() => $("#list").scrollIntoView({block:"start"})); }
+// Navigation scroll: bring `n` just below the sticky tab bar (its height changes when it wraps on a phone).
+const scrollToEl = (n, smooth) => { if (n) scrollTo({top: n.getBoundingClientRect().top + scrollY - $(".bar").offsetHeight - 8, behavior: smooth ? "smooth" : "auto"}); };
+function scrollTop() { requestAnimationFrame(() => scrollToEl($("#list"))); }
 
 async function save(it, alsoNotify) {
   const d = drafts[it.id];
