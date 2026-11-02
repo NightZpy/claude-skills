@@ -188,6 +188,45 @@ A long task stays fresh because main keeps bumping `seen_at`. `idle` sessions co
 fields. Budget about one write per state change; more than 6 writes an hour from one session is
 a smell. Write the text in the inbox's language (`meta/config.lang`).
 
+## 1c. Session notes (the user writes to a session)
+
+From a session's detail sheet the user can leave a **note** at any time (a disagreement, an
+idea, a question) without waiting for an item. Collection **`notes`**, doc id `n<time><rand>`,
+written by the page:
+
+| field | notes |
+|---|---|
+| `session` | the exact session `name` |
+| `project` | the session's project |
+| `text` | ≤2000 chars; may be `""` when the note is voice or media only |
+| `transcript` | live browser transcript of the voice note; **absent** when the browser has no speech recognition |
+| `audio` | `{id, url, mime, duration_s}`; recorded in the page (webm/opus, or mp4 on Safari), ≤3 min, stored as a `video/webm` / `video/mp4` asset |
+| `images` | `[{id, url, note}]`, ≤4, annotated PNGs (same path as mark screenshots) |
+| `video` | `{id, url}`, one mp4/webm clip, ≤60 s and ≤20 MiB |
+| `created_at` | ISO |
+| `status` | `new` (page) → `relayed` (main) → `answered` (owner session) → `done` |
+| `reply` | `{text, at, by}`, written by the owner session |
+
+On save the page posts a notice (same path as "Avisar a Claude"):
+`[decision-inbox] Session note for <session> (id <id>): <first 200 chars | voice note>.` /
+`project: <id>` / `Read collection notes, relay to the session, set status relayed.` If sending is
+unavailable the note is still saved.
+
+- **Main** polls `notes where status == "new"` at its checkpoints (notices are not reliable, §4).
+  For each note it relays the text, the transcript and the media links to the `session` in one
+  cross-session message. When there is `audio` and no `transcript`, it fetches the asset
+  (`Artifact {action:"read", url, path:"<asset id>"}`) and transcribes it first. Then it sets
+  `status:"relayed"` with `if_version`.
+- **The owning session** acts on it and writes `reply:{text, at, by}` plus `status:"answered"`
+  in one `update`. It sets `status:"done"` once the point is resolved (in the same write when the
+  reply already resolves it).
+- The page shows the newest 5 notes per session in the sheet ("Ver más" for the rest), each with
+  its status and reply. The strip row shows `✎n` for notes still `new`/`relayed` without a reply.
+- **Microphone:** there is no microphone capability to declare; publish with the usual
+  `capabilities:{db:{}, assets:{}, comments:{}}`. The page asks the browser for the mic when the
+  user taps "Grabar voz". When the browser or the host frame refuses, or there is no
+  MediaRecorder, the page says so and text, images and video still work.
+
 ## 2. Posting items
 
 1. **Media first.** The asset store accepts png/jpg/gif/webp/svg/mp4/webm/pdf, **not mp3/wav**,
@@ -441,6 +480,8 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 - **Tapping a session** opens a detail sheet: goal, what is missing, doing, next, waiting on,
   blocks, branches, executors, pending, done, and its decisions (tap one to open its card).
   "Ver solo sus decisiones" filters the items to that session.
+- **Session notes** (§1c): the sheet ends with the session's note thread and a composer (text,
+  "Grabar voz" with a live transcript when available, up to 4 annotated images, one short video).
 - **Session filter** ("Sesión" select under the priority bar, plus a × chip while active): shows
   only items whose `source_agent` is that session. It combines with the project filter, scopes the
   items only (not the strip) and is remembered per browser (`inbox.session`).
