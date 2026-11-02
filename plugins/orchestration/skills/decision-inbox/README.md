@@ -2,7 +2,7 @@
 
 **One page where your Claude agents leave their questions, and you answer them when you can — from your desk or your phone.**
 
-When several Claude Code sessions work for you at once, their questions pile up in a dozen chats and wait there, blocking work. This skill gives each project a single private claude.ai Artifact, the *decision inbox*. Agents post every question, choice, review or approval there as an item. You answer one item at a time, most urgent first. The agents read your answers back and mark each item resolved with what they did.
+When several Claude Code sessions work for you at once, their questions pile up in a dozen chats and wait there, blocking work. This skill gives you a single private claude.ai Artifact, the *decision inbox*, shared by all your projects. Agents post every question, choice, review or approval there as an item. You answer one item at a time, most urgent first. The agents read your answers back and mark each item resolved with what they did.
 
 ```
 agent ──post item──▶  inbox page  ◀──answer── you (phone or desktop)
@@ -13,6 +13,7 @@ agent ◀──read answer── (shared db) ──"Notify Claude"──▶ watc
 
 - **One item per decision**, with context in Markdown, options (single or multiple choice), a free-text comment, and a recommended option.
 - **Who and when, first:** every card opens with how long ago it was posted ("2 hours ago"), the session that posted it, its priority (P0–P3) and what it blocks.
+- **All projects, one page:** project chips filter everything; a sessions strip shows what each session is doing, its goal, what it waits on and what is still missing (tap one for details); a session filter shows only that session's items.
 - **Triage built in:** P0 = blocks work now, P1 = blocks a next step soon or holds money or a release, P2 = normal, P3 = whenever. Filter by priority and sort by importance, newest or oldest.
 - **Media reviews:**
   - images, GIFs, video and audio in a swipeable gallery;
@@ -39,7 +40,7 @@ The skill is `orchestration:decision-inbox`. It needs Claude Code with Artifacts
 
 ## Use
 
-1. Ask any session: *"create a decision inbox for this project"*. The skill publishes `template/inbox.html` as a private Artifact with the `db`, `assets` and `comments` capabilities, then writes the project config. Put the URL in your project's `CLAUDE.md` so every session finds the same inbox.
+1. Ask any session: *"create a decision inbox for this project"* (if you already have one, the skill registers the project in it instead). The skill publishes `template/inbox.html` as a private Artifact with the `db`, `assets` and `comments` capabilities, then writes the project config. Put the URL in your project's `CLAUDE.md` so every session finds the same inbox.
 2. From then on, agents post questions to the inbox instead of asking in chat. In chat they write one line saying where it waits.
 3. Answer on the page. Press **Notify Claude** (per item or in bulk), or let the agents poll the inbox.
 4. Agents read answers with a low-token recipe (`ArtifactData` query plus `jq`), act, and write a `resolution`.

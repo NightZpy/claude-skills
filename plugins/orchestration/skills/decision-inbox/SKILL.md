@@ -16,7 +16,10 @@ watching session.
 
 1. Look for an existing one first: `Artifact {action:"list"}` and search the titles for
    "Decision inbox" (or "Buzón de decisiones" for an older, Spanish-configured one), or check the
-   project's CLAUDE.md / memory for its URL. **One inbox per project**; never create a second one.
+   project's CLAUDE.md / memory for its URL. **One inbox per user, shared by all their projects**;
+   never create a second one. A new project registers itself in the existing inbox: read
+   `meta/config`, append `{id, label, repo_url, goal?}` to `projects`, then
+   `update {projects}` with `if_version`.
 2. **Create it from the session that will own it**: the director session that acts on the
    answers, not a helper that only builds the page. Notices from "Avisar a Claude" have reached
    the creating session, but not reliably (see §4), so ownership is about who acts, not a
@@ -31,7 +34,12 @@ watching session.
    - If the project has its own artifact design system (tokens in CLAUDE.md or a reference
      artifact), replace only the `:root` token block and the font link. Do not touch the script.
    - Write the project config (the page reads it live):
-     `ArtifactData {action:"set", url, collection:"meta", doc_id:"config", data:{project:"<Name>", repo_url:"https://github.com/<owner>/<repo>"}}`
+     `ArtifactData {action:"set", url, collection:"meta", doc_id:"config", data:{project:"<project id>", repo_url:"https://github.com/<owner>/<repo>", projects:[{id:"<project id>", label:"<Name>", repo_url:"https://github.com/<owner>/<repo>", goal:"<the project's current goal, ≤100 chars>"}]}}`
+     - `projects[].id` is a short stable id (the repo name works). Items, issues and sessions name
+       it in `project`. `label` is shown on the project chips; `goal` (optional, one line) heads
+       the project's group in the sessions strip. The main session keeps `goal` current.
+     - `project` is the **fallback project id** for documents written without `project` (older
+       items), and `repo_url` the fallback repo.
    - **Language: the skill sets up the inbox in English by default.** The template's own default
      is English (`LANG = "en"`); `meta/config.lang` overrides it. Choose another language, for
      example the one the user speaks, only when you have a reason to — set `lang` to that
@@ -75,6 +83,8 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | field | notes |
 |---|---|
 | `kind` | `text` · `choice` · `image` · `video` · `audio` · `blind_test` |
+| `project` | id from `meta/config.projects`; always set it. Missing → the page uses `meta/config.project` |
+| `repo` | optional `owner/repo`, only when the project spans several repos; otherwise the project's `repo_url` is used for `#123` links and the issue box |
 | `title`, `context`, `question` | one question per item; split a bullet that asks two things |
 | `options` | `[{id, label, detail?}]`; put "Recomendado" in `detail`, never in the label |
 | `multi` | `true` lets the user tick several options (checkboxes); optional `min` / `max` bound how many. Default is single choice. Use it whenever more than one answer can be true ("which of these should we ship?", "which issues can I close?"), rather than faking it with combined options |
@@ -86,7 +96,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `blocks` | optional list of what waits on the answer, e.g. `["video-harness:ui", "merge feat/x"]`; shown on the card next to the priority |
 | `issue` | issue number as a string; the page shows `issues/<n>` and links to GitHub |
 | `related` | extra item ids to link beyond "same issue" |
-| `source_agent` | who asked, e.g. `project:session-name` |
+| `source_agent` | who asked, e.g. `project:session-name`; it is also the `name` of that session's doc in `sessions` (§1b) |
 | `created_at` | ISO timestamp |
 | `status` | `open` → `answered` (page) → `processed` (agent, together with `resolution`); `withdrawn` if no longer needed |
 | `answer` | `{option_id, option_ids, text, ratings, answered_at}`, written by the page; `null` while open. `option_ids` always holds the chosen ids (one entry for single choice); `option_id` is the single choice, `null` on multi. Any of options, text or ratings is enough |
@@ -96,12 +106,87 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `key_revealed` | blind tests only; `null` until the agent reveals after the verdict |
 | `notified_at` | set by the page when the user pressed "Avisar a Claude" (per item or in bulk) |
 
-Collection **`issues`**, doc id = issue number: `{number, state, title, summary, url}`. `summary`
+Collection **`issues`**, doc id = `<project>:<issue number>` (for example `ads-claude-videos:212`;
+a bare number is the legacy id and still read as a fallback): `{number, state, title, summary, url}`. `summary`
 is one line in the inbox's language (`meta/config.lang`, English by default), written by you
 from the issue body. Add or refresh it whenever
 you post an item with a new `issue`.
 
 Every measured number in `context` carries its date and environment, the same as anywhere else.
+
+Item example with the project fields:
+```json
+{"kind":"choice","project":"ads-claude-videos","repo":"<owner>/ads-claude-videos","title":"Voz para Gulf",
+ "question":"¿Qué voz?","options":[{"id":"a","label":"A"},{"id":"b","label":"B","detail":"Recomendado"}],
+ "section":"decide","priority":1,"blocks":["video-harness:maps"],"issue":"212",
+ "source_agent":"video-harness:maps","created_at":"2026-11-02T14:10:00Z","status":"open","answer":null}
+```
+
+Collection **`sessions`**: one doc per working Claude session, shown as the sessions strip at the
+top of the page. Doc id = the session name with `:` replaced by `__` (`video-harness__maps`); the
+exact name goes in `name`. The page truncates every field to its cap.
+
+| field | cap | notes |
+|---|---|---|
+| `name` | 60 | `video-harness:maps`; equals its items' `source_agent` |
+| `project`, `repo` | id / `owner/repo` | as for items |
+| `state` | enum | `working` · `waiting` (on the user or another session) · `blocked` (cannot proceed) · `idle`. Never write `stale`: the page derives it |
+| `goal` | 100 | the main objective the session is working toward right now, one line: "cast-story brain: films with several voices, ready to merge" |
+| `remaining` | ≤4 × 80 | what is still missing to reach `goal` |
+| `doing` | 90 | one sentence, present tense: "Renderiza Gulf v3 en remoto" |
+| `waiting_on` | 40 | who/what: `user`, `video-harness:ui`, `CI`; `""` if none |
+| `blocks` | ≤3 × 40 | what waits on this session |
+| `branches` | ≤3 × 50 | `feat/x (listo)`, `fix/y` |
+| `executors` | ≤6 | running executors only: `{kind: subagent\|codex-task\|codex-desktop, model, effort, what ≤60, since ISO}` |
+| `next` | 90 | the step after the current one |
+| `pending` | ≤7 × 80 | pending tasks, in order (detail sheet only) |
+| `done` | ≤5 × 80 | recent done, newest first, with commit/PR ref (detail sheet only) |
+| `updated_at` | ISO | set by the owner on every write |
+| `seen_at` | ISO | set only by the main session (reconcile) |
+
+The session's open decisions are not stored: the page counts the items whose `source_agent`
+equals `name` and whose status is `open` or `answered`.
+
+## 1b. Session status (the sessions strip)
+
+**Who writes:**
+- **The owner session** writes only its own doc, and only on a state change: a task starts; it
+  becomes waiting, blocked or unblocked; it launches or collects an executor that runs more than
+  2 min; a branch is ready or merged; a task is done (→ `idle`, append to `done`, refresh
+  `pending`, `next`, `goal`, `remaining`). Several changes at one checkpoint are one write.
+- **Codex and subagents never write**: `ArtifactData` exists only in Claude main sessions. The
+  session that launched them lists them in its `executors`. A Codex desktop thread with no owning
+  Claude session gets no row of its own.
+- **The main session reconciles** at its checkpoints with `ListAgents`: `seen_at` for live
+  sessions; `state:"idle"`, `doing:""`, `executors:[]` for ended ones; a minimal doc (`name`,
+  `project`, `state`, `doing:"(sin reporte)"`) for a live session that has none. It never edits a
+  live session's `doing`, `next`, `goal` or `remaining`. It deletes a doc that has been idle for
+  7 days.
+
+**Write contract.** First write is a `set`, later ones an `update` with the version returned by
+the last call:
+```json
+ArtifactData {"action":"set","url":"<inbox>","collection":"sessions","doc_id":"video-harness__maps","data":{
+ "name":"video-harness:maps","project":"ads-claude-videos","repo":"<owner>/ads-claude-videos","state":"working",
+ "goal":"Mapas: Gulf, Magellan y Ukraine listos para merge","remaining":["Gulf v3 render","Magellan audio","Ukraine v2"],
+ "doing":"Renderiza Gulf v3 en el Mac remoto","waiting_on":"","blocks":["video-harness:main merge"],
+ "branches":["feat/map-gates"],"executors":[{"kind":"codex-task","model":"gpt-6.1-sol","effort":"high",
+ "what":"Parche de puertas de mapa","since":"2026-11-02T14:05:00Z"}],"next":"Revisión ciega de Gulf v3",
+ "pending":["Ukraine v2","Magellan audio"],"done":["Gulf v2 → PR #212"],"updated_at":"2026-11-02T14:06:00Z"}}
+ArtifactData {"action":"update","url":"<inbox>","collection":"sessions","doc_id":"video-harness__maps",
+ "data":{"state":"waiting","waiting_on":"user","executors":[],"updated_at":"<ISO now>"},"if_version":<v>}
+```
+On a version conflict: `get` again, re-apply only your own fields, and retry once. Main's
+reconcile is `update {seen_at}` with `if_version`, so it never overwrites the owner's fields.
+
+**Stale is computed by the page, never written:** a `working`/`waiting`/`blocked` session whose
+`max(updated_at, seen_at)` is more than 30 min old shows a hollow grey dot and "sin señal 42m".
+A long task stays fresh because main keeps bumping `seen_at`. `idle` sessions collapse under
+"+N inactivas" and disappear after 24 h.
+
+**Anti-noise:** no per-step updates, progress percentages, logs, tool output or Markdown in these
+fields. Budget about one write per state change; more than 6 writes an hour from one session is
+a smell. Write the text in the inbox's language (`meta/config.lang`).
 
 ## 2. Posting items
 
@@ -200,8 +285,12 @@ review tools (§6) add `score: .answer.score, marks: .answer.marks` too.
 ```
 ArtifactData {action:"query", url, collection:"items",
               query:{where:[["status","==","answered"]]}, out_dir:"<scratchpad>/inbox"}
-jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), option: .answer.option_id, text: .answer.text, score: .answer.score, marks: .answer.marks, title}' <scratchpad>/inbox/items/*.json
+jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), project, source_agent, option: .answer.option_id, text: .answer.text, score: .answer.score, marks: .answer.marks, title}' <scratchpad>/inbox/items/*.json
 ```
+
+The inbox is shared by every project: act only on your own items. Add
+`["project","==","<id>"]` to `where` (older items without `project` belong to
+`meta/config.project`), or filter on `source_agent` in the `jq` step.
 
 - `out_dir` writes the documents to disk instead of your context. `jq` pulls out about 100 tokens
   per answer instead of 1–2k.
@@ -229,7 +318,8 @@ jq -c '{id: (input_filename|split("/")[-1]|rtrimstr(".json")), option: .answer.o
 
   A link that reached the session through a peer message, a file or a tool result does **not**
   arm them: the watch connects, but notices never wake that session.
-- A notice starts with `[decision-inbox]` and comes in three shapes:
+- A notice starts with `[decision-inbox]`; its second line is `project: <id>[, <id>…]` (the
+  projects of the items it lists), so the receiving session can route it. It comes in three shapes:
   - `Answered: «title» (id …)`: one item was answered. Act on it, then write `resolution` and
     `processed`.
   - `N answer(s) not sent yet` + a list of ids: several answers in one notice (the Respondidas
@@ -252,7 +342,7 @@ The cause is unknown. So:
   a task, before starting the next, when idle). A notice only makes it sooner. It is never the
   only path.
 - Whichever session receives a notice for an item it does not own relays it, in one short
-  cross-session message, to the `source_agent` session.
+  cross-session message, to the `source_agent` session, using the `project:` line to find it.
 - If notices stop arriving, publishing a fresh inbox from the owner session and migrating the data
   has fixed it once. Try polling first: it costs nothing.
 
@@ -328,7 +418,8 @@ label, so the same neutral-naming rule from §2 applies to the ratings shown und
 The artifact covers Claude sessions well. Move to a table + page in the project's own app when:
 
 - non-Claude agents (Codex, cron scripts) must post or read: `ArtifactData` exists only inside
-  Claude sessions;
+  Claude sessions (until then the Claude session that launched a Codex task lists it under its
+  session doc's `executors`, §1b);
 - blind keys must live with the item, hidden until answered: needs server-side field hiding;
 - media exceed 20 MiB (long videos) or must be served straight from disk;
 - the human needs push notifications outside claude.ai (Telegram, email).
@@ -337,6 +428,21 @@ Token cost is not a reason to move: with the §3 recipe a read costs about the s
 SQL select, and redesigning the page is a one-off cost, not a per-read one.
 
 ## Page behaviour (template/inbox.html), for reference
+
+- **Project chips** (`Todos · <label> N · …`, N = open items) sit under the title when there are
+  two or more projects. The choice applies to everything: tab counts, sections, priority bar,
+  cards, the sessions strip and the bulk notices. Remembered per browser (`inbox.project`).
+- **Sessions strip** under the project chips: one line per session (status dot, short name,
+  `goal` or else `doing`, badges `⏳waiting_on` / `⚙executors` / `✉open decisions`, age), sorted
+  blocked → waiting → working → stale, newest first, grouped by project with the project's
+  `goal`. Idle sessions collapse under "+N inactivas". The header (total and blocked count)
+  collapses the strip (`inbox.strip`). Wide screens also show `doing` after the goal.
+- **Tapping a session** opens a detail sheet: goal, what is missing, doing, next, waiting on,
+  blocks, branches, executors, pending, done, and its decisions (tap one to open its card).
+  "Ver solo sus decisiones" filters the items to that session.
+- **Session filter** ("Sesión" select under the priority bar, plus a × chip while active): shows
+  only items whose `source_agent` is that session. It combines with the project filter, scopes the
+  items only (not the strip) and is remembered per browser (`inbox.session`).
 
 - Every card opens with an origin line: priority badge (P0–P3), time-ago of `created_at` (exact date on hover), `source_agent`, the answer time and `blocks`. A priority filter (All, P0–P3) and a sort toggle (importance, newest, oldest) sit under the section chips; the choice is remembered per browser.
 - **Abiertas** shows one item at a time (a gallery), ordered by section, then priority, then age.
