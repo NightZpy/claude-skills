@@ -1318,7 +1318,7 @@ function noteThread(s) {
     noteErr[m.id] ? el("p", {class:"note err", role:"status"}, noteErr[m.id]) : null,
     replyOpen[m.id] ? noteBox(s, m.id) : null];
   const msg = (m, head = true) => el("div", {class:"msg" + (m.status === "done" ? " done" : ""), id:"msg-" + m.id},
-    head && el("div", {class:"nt-sum"}, el("span", {class:"chip " + (NOTE_CHIP[m.status] || "open")}, t("note_st_" + (m.status || "new"))), el("span", {class:"note"}, ago(m.created_at))),
+    !head ? null : el("div", {class:"nt-sum"}, el("span", {class:"chip " + (NOTE_CHIP[m.status] || "open")}, t("note_st_" + (m.status || "new"))), el("span", {class:"note"}, ago(m.created_at))),
     ...msgBody(m));
   return el("div", {class:"kv"}, el("span", {class:"lbl"}, t("notes_l")),
     unreadAll.length >= 2 ? el("button", {class:"seg", type:"button", id:"mark-all", onclick: () => markRead(unreadAll)}, t("mark_all_read", {n: unreadAll.length})) : null,
@@ -1327,7 +1327,7 @@ function noteThread(s) {
         c.unread ? el("span", {class:"udot", "aria-label": t("replies_new", {n: c.msgs.filter(replyNew).length})}) : null,
         el("span", {class:"chip " + (NOTE_CHIP[c.latest.m.status] || "open")}, t("note_st_" + (c.latest.m.status || "new"))), el("span", {class:"note"}, ago(new Date(c.latest.at).toISOString())),
         el("span", {class:"pv"}, c.latest.text), c.msgs.length > 1 ? el("span", {class:"rp"}, "×" + c.msgs.length) : null),
-      ...(isOpen(c) ? [msg(c.msgs[0], c.msgs.length > 1), c.msgs.length > 1 ? el("div", {class:"nt-replies"}, c.msgs.slice(1).map(msg)) : null] : [])))),
+      ...(isOpen(c) ? [msg(c.msgs[0], c.msgs.length > 1), c.msgs.length > 1 ? el("div", {class:"nt-replies"}, c.msgs.slice(1).map(m => msg(m))) : null] : [])))),
     convs.length > 5 && !notesMore[s.name] ? el("button", {class:"btn ghost", type:"button", onclick: () => { notesMore[s.name] = true; fillSheet(); }}, t("see_more", {n: convs.length - 5})) : null);
 }
 function noteBox(s, parent) {
