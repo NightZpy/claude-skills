@@ -981,7 +981,7 @@ function renderPrioBar(pool) {
     onclick: () => { prioFilter = k; remember("inbox.prio", k); currentId = null; render(); }}, label, el("span", {class:"n"}, n(k)));
   const sortBtn = (k, label) => el("button", {class:"sec", type:"button", "aria-pressed": String(sortBy === k),
     onclick: () => { sortBy = k; remember("inbox.sort", k); render(); }}, label);
-  bar.replaceChildren(el("span", {class:"lbl"}, t("prio_label")), chip("all", t("tab_all")), ["0", "1", "2", "3"].map(k => chip(k, "P" + k)),
+  bar.replaceChildren(el("span", {class:"lbl"}, t("prio_label")), chip("all", t("tab_all")), ...["0", "1", "2", "3"].map(k => chip(k, "P" + k)),
     el("span", {class:"sep"}), el("span", {class:"lbl"}, t("sort_label")), sortBtn("importance", t("sort_importance")), sortBtn("new", t("sort_new")), sortBtn("old", t("sort_old")));
 }
 function render() {
