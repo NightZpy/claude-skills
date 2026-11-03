@@ -4,8 +4,8 @@
     "name": "NightZpy"
   },
   "metadata": {
-    "description": "Hand-authored Claude Code skills, split into five installable plugins so you only load what you use.",
-    "version": "1.10.0"
+    "description": "Hand-authored Claude Code skills, split into six installable plugins so you only load what you use.",
+    "version": "1.11.0"
   },
   "plugins": [
     {
@@ -52,6 +52,15 @@
         "name": "NightZpy"
       },
       "source": "./plugins/review-tools"
+    },
+    {
+      "name": "context-watch",
+      "description": "Tells a session how full its context window is (percent of the model window, configurable): warns it to wrap up, past the limit lets running work finish and starts nothing new until it hands off, and feeds the handoff back after /clear.",
+      "version": "1.0.0",
+      "author": {
+        "name": "NightZpy"
+      },
+      "source": "./plugins/context-watch"
     }
   ]
 }
