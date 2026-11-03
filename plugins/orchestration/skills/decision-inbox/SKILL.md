@@ -248,6 +248,20 @@ unavailable the note is still saved.
    - it downsizes images to 1600 px JPEG and strips metadata;
    - it **refuses blind-test key files** (`KEY*`, `.key-*`) and anything over the cap.
 
+   **Heavy media goes to Drive.** Use Drive when a file is over the cap, when compressing it
+   to fit would visibly cost quality, when the compression itself would take long, or when the
+   asset store is full ("Asset storage … is full"). In those cases:
+   - put the full-quality file on the user's Google Drive (the project's Drive folder; a synced
+     local folder works, then get its share link with the Drive connector's file search);
+   - in the item, put the link in `context` as a Markdown link
+     (`[Ver video completo (Drive)](https://drive.google.com/file/d/<id>/view)`);
+   - when it can be cheap, also upload a small preview to the asset store as the item's
+     `media`: a short clip of the part to judge, or a still or contact sheet. The user then
+     sees something inline and opens Drive for the full file. Say in `context` which one is
+     the preview.
+   Never skip the review because a file is large, and never silently degrade the only copy
+   the user sees.
+
    Then upload everything in one call:
    `Artifact {action:"publish", url, asset:true, file_paths:[…]}`. Keep the upload result: it is
    your only record of which file became which asset id.
