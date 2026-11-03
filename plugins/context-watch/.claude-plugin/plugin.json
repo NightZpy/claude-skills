@@ -1,0 +1,10 @@
+{
+  "name": "context-watch",
+  "version": "1.0.0",
+  "description": "Tells a session how full its context window is (percent of the model window, configurable): warns it to wrap up, past the limit lets running work finish and starts nothing new until it hands off, and feeds the handoff back after /clear.",
+  "author": {
+    "name": "NightZpy"
+  },
+  "homepage": "https://github.com/NightZpy/claude-skills",
+  "license": "MIT"
+}

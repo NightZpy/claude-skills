@@ -14,7 +14,7 @@ Packaging them as a plugin removes the second copy entirely.
 /plugin marketplace add NightZpy/claude-skills
 ```
 
-Then install only the plugins you actually use — the collection is split into five
+Then install only the plugins you actually use — the collection is split into six
 so nothing loads that you don't want:
 
 | Plugin | Skills |
@@ -24,6 +24,7 @@ so nothing loads that you don't want:
 | `personal-ops` | life-os · mac-doctor · npm-supply-chain |
 | `design` | tutor · artifact-visual-system · excalidraw · diagram-conventions · proposal-artifact · redesign-existing-projects · web-design-guidelines · vercel-composition-patterns · vercel-react-best-practices |
 | `review-tools` | replicate-behavior-report · video-frame-review · docx-comments |
+| `context-watch` | no skills: hooks that watch context size (see below) |
 
 ```
 /plugin install orchestration@claude-skills
@@ -39,6 +40,40 @@ Updating, on any machine:
 /plugin marketplace update claude-skills
 /plugin update orchestration
 ```
+
+## context-watch (hooks, no skills)
+
+Every turn resends the whole context, and quality drops long before the window is full. `context-watch`
+lets a session see how full its window is and hand off in time:
+
+- **PostToolUse**: past `CONTEXT_WATCH_WARN_PCT` (default 60) of the model's window it tells the session once
+  to wrap up the current subtask. Past `CONTEXT_WATCH_LIMIT_PCT` (default 75) it lets the running work finish,
+  starts nothing new, and then writes a handoff and asks you to run `/clear`.
+- **UserPromptSubmit**: past the limit, a new prompt is answered by writing the handoff (or, if it exists,
+  asking for `/clear`) instead of starting new work.
+- **SessionStart** (`clear`): the new session gets the handoff injected and resumes from it. Each handoff is
+  used once and must be under 24 h old.
+
+**Window size.** Hooks do not receive it; only the status line JSON does (`context_window.context_window_size`).
+For the exact size per model, point your status line at the bridge, or pipe your own status line's input
+through it:
+
+```json
+"statusLine": { "type": "command", "command": "node ~/.claude/plugins/cache/claude-skills/context-watch/<version>/scripts/context-watch.mjs bridge" }
+```
+
+Without the bridge it uses `CONTEXT_WATCH_WINDOW`, else 200k, switching to 1M once usage passes 200k.
+Set the variables in the `env` block of `settings.json`.
+
+**Why 60 / 75.** No study gives one percentage where every model degrades. Chroma's
+[Context Rot](https://www.trychroma.com/research/context-rot) (18 models, 2025) shows performance falling
+steadily with input length; [NoLiMa](https://arxiv.org/abs/2502.05167) (ICML 2025) found 11 of 13 models at
+half their short-context score by 32k tokens. Other context monitors settle in the same range: warnings at
+60–70% and handoff around 75–85%. Auto-compact fires at the window minus about 13k tokens, so 75% leaves room
+for the handoff itself.
+
+State and handoffs live in `$CLAUDE_CONFIG_DIR/context-watch/` (default `~/.claude/context-watch/`), one
+handoff per working folder.
 
 ## Layout
 
