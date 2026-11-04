@@ -41,6 +41,9 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .qwrap{position:relative}
 .qpop{display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:10; width:min(440px, calc(100vw - 32px)); max-height:60vh; overflow-y:auto; box-shadow:0 10px 28px rgba(18,21,26,.18)}
 .qwrap:hover .qpop, .qwrap:focus-within .qpop, .qwrap.open .qpop{display:block}
+/* An invisible bridge over the 6px gap, so moving the pointer from the tab to the list keeps it open. */
+.qwrap::after{content:""; position:absolute; left:0; right:0; top:100%; height:8px; display:none}
+.qwrap:hover::after, .qwrap.open::after{display:block}
 .qpop .row[aria-current="true"]{background:var(--tpl-soft)}
 /* Replies: what agents wrote back on items. One tab in the sticky bar (only when something is unread),
    a list to jump to each item, and a conversation with a reply box on the card. */
@@ -1072,6 +1075,15 @@ function issueBox(it) {
     is?.summary ? el("p", {}, is.summary) : null,
     (is?.url || repo) ? el("a", {href: is?.url || repo.replace(/\/$/, "") + "/issues/" + n, target:"_blank", rel:"noopener"}, t("open_gh")) : null);
 }
+// Popovers open under their tab; shift one left when it would run past the right edge (tabs wrap on a phone).
+function placePop(w) {
+  const p = w.querySelector(".qpop"); if (!p) return;
+  p.style.left = "0px";
+  const r = p.getBoundingClientRect(); if (!r.width) return;   // hidden: nothing to place
+  const over = r.right - (document.documentElement.clientWidth - 16);
+  if (over > 0) p.style.left = Math.max(-over, 16 - r.left) + "px";
+}
+for (const id of ["#qjump", "#rjump"]) { const w = $(id); if (w) for (const ev of ["mouseenter", "focusin", "click"]) w.addEventListener(ev, () => placePop(w)); }
 function renderQueueJump(pool, cur) {
   const w = $("#qjump"); if (!w) return;
   w.hidden = pool.length < 2;
