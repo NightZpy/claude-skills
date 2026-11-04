@@ -308,7 +308,8 @@ One-line summary: what this is and what you need. **The key fact in bold.**
 
 Use it whenever the user must read a long text and may want to change it themselves: a script, a
 post, a prompt, release notes, a brief. The page shows the text (rendered with the same Markdown as
-`context`), an **Edit** toggle that turns it into a plain textarea, and three outcomes, each with an
+`context`, bracketed `[NOTE: …]` paragraphs shown as small stage directions); the user taps a paragraph
+(text between blank lines) to edit just that one in place, so the rest stays formatted. Three outcomes, each with an
 optional note: **Approve as is** · **Send my version** · **Reject**. Do not paste the text into
 `context`: `context` says what it is and what you need; the text goes in `draft`.
 
@@ -552,7 +553,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   also has two bulk buttons: "Avisar a Claude de N sin avisar" and "Pedir estado de N avisadas",
   each sending one comment that lists the ids.
 - Multi-choice items (`multi:true`) render checkboxes and enforce `max`.
-- `edit` items show the text with Read / Edit toggles above the outcomes; the in-progress text autosaves to `edit_draft`.
+- `edit` items show the formatted text; tapping a paragraph edits it in place; the in-progress text autosaves to `edit_draft`.
 - Each answered card has its own follow-up button: "Avisar a Claude" while not yet notified,
   "Pedir estado" once notified and still unresolved, and none once resolved.
 - When the user changes an answer, the page clears `resolution`, `agent_note`, `notified_at`
