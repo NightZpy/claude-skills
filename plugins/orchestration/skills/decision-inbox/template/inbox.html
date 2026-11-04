@@ -59,11 +59,11 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
    Only on wide screens; narrower ones keep the popover. */
 .rpanel{display:none}
 .pinbtn{display:none}
-@media (min-width:1180px){
+@media (min-width:900px){
   .pinbtn{display:block}
-  body.rpin{padding-right:340px}
+  body.rpin{padding-right:316px}
   body.rpin #rjump{display:none}
-  body.rpin .rpanel{display:flex; flex-direction:column; position:fixed; top:0; right:0; bottom:0; width:320px; z-index:6; background:var(--surface); border-left:1px solid var(--line); padding:calc(env(safe-area-inset-top,0px) + 14px) 0 calc(env(safe-area-inset-bottom,0px) + 14px)}
+  body.rpin .rpanel{display:flex; flex-direction:column; position:fixed; top:0; right:0; bottom:0; width:300px; z-index:6; background:var(--surface); border-left:1px solid var(--line); padding:calc(env(safe-area-inset-top,0px) + 14px) 0 calc(env(safe-area-inset-bottom,0px) + 14px)}
   .rpanel .rph{display:flex; align-items:center; gap:8px; padding:0 18px 10px}
   .rpanel .rph .lbl{flex:1; color:var(--tpl)}
   .rpanel .rpl{flex:1; overflow-y:auto}
@@ -1183,7 +1183,7 @@ let lastUnread = 0, lastPick = null;
 const openedNow = new Set();   // items opened from the pinned panel this visit: they stay listed (dimmed) so the user keeps their place
 let pinned = false;
 try { pinned = localStorage.getItem("inbox.repliesPinned") === "1"; } catch {}
-const WIDE = matchMedia("(min-width:1180px)");
+const WIDE = matchMedia("(min-width:900px)");
 WIDE.addEventListener?.("change", () => render());
 function setPinned(on) { pinned = on; remember("inbox.repliesPinned", on ? "1" : "0"); document.body.classList.toggle("rpin", on); render(); }
 function renderRepliesJump() {

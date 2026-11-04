@@ -575,7 +575,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 - The reply box takes images too: drag them onto it, paste them, or "Añadir imagen" (annotator). They upload to
   assets and travel in the message as `media:[{asset_id, url:"/_blob/<id>", type:"image", note?}]`; the notice
   lists the asset ids. Read them with `Artifact {action:"read", url, path:<asset_id>}`.
-- "Fijar a la derecha" (wide screens, ≥1180 px) pins the replies list as a side panel that stays open; items
+- "Fijar a la derecha" (screens ≥900 px wide) pins the replies list as a side panel that stays open; items
   opened from it stay listed, dimmed, with the current one marked, so the user keeps their place. The choice is
   remembered per browser; narrower screens keep the popover.
 - **Project chips** (`Todos · <label> N · …`, N = open items) sit under the title when there are
