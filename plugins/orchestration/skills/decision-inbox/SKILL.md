@@ -82,7 +82,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 
 | field | notes |
 |---|---|
-| `kind` | `text` · `choice` · `image` · `video` · `audio` · `blind_test` |
+| `kind` | `text` · `choice` · `image` · `video` · `audio` · `blind_test` · `ui_review` · `edit` (§2b) |
 | `project` | id from `meta/config.projects`; always set it. Missing → the page uses `meta/config.project` |
 | `repo` | optional `owner/repo`, only when the project spans several repos; otherwise the project's `repo_url` is used for `#123` links and the issue box |
 | `title`, `context`, `question` | one question per item; split a bullet that asks two things |
@@ -99,7 +99,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `source_agent` | who asked, e.g. `project:session-name`; it is also the `name` of that session's doc in `sessions` (§1b) |
 | `created_at` | ISO timestamp |
 | `status` | `open` → `answered` (page) → `processed` (agent, together with `resolution`); `withdrawn` if no longer needed |
-| `answer` | `{option_id, option_ids, text, ratings, answered_at}`, written by the page; `null` while open. `option_ids` always holds the chosen ids (one entry for single choice); `option_id` is the single choice, `null` on multi. Any of options, text or ratings is enough |
+| `answer` | `{option_id, option_ids, text, ratings, answered_at}` (plus `edited_text` on `edit` items, §2b), written by the page; `null` while open. `option_ids` always holds the chosen ids (one entry for single choice); `option_id` is the single choice, `null` on multi. Any of options, text or ratings is enough |
 | `resolution` | `{text, at, by}`, written by the agent **when it closes the item**: what it did or decided (implemented X in commit Y, asked a follow-up decision Z, dropped it because…). Shown to the user as "Resuelta" |
 | `agent_note` | `{text, at, by}`, a progress update when the item is not resolved yet, especially when the user asked for status. Shown as "Estado del agente". `at` must be the real current ISO time: a note newer than the last request marks the item "estado recibido" and takes it out of the bulk "Pedir estado" count |
 | `status_asked_at` | set by the page when the user pressed "Pedir estado" |
@@ -303,6 +303,37 @@ One-line summary: what this is and what you need. **The key fact in bold.**
   One link per thing, next to the bullet it supports, or under a closing `### Links` heading
   when there are several. Never write "see the PR" or "check the artifact" without the URL, and
   never leave it only in the chat or in a message to another session.
+
+### 2b. Text to review or rewrite: `kind:"edit"`
+
+Use it whenever the user must read a long text and may want to change it themselves: a script, a
+post, a prompt, release notes, a brief. The page shows the text (rendered with the same Markdown as
+`context`), an **Edit** toggle that turns it into a plain textarea, and three outcomes, each with an
+optional note: **Approve as is** · **Send my version** · **Reject**. Do not paste the text into
+`context`: `context` says what it is and what you need; the text goes in `draft`.
+
+| field | notes |
+|---|---|
+| `draft` | the original text, one top-level string (Markdown or plain). Agents may `str_replace` it while the item is open |
+| `edit_draft` | `{text, at}`, written by the page ~1 s after the user stops typing (and on leaving the editor), so a closed tab loses nothing. Not an answer; ignore it until the item is `answered` |
+| `options` | not used: the outcomes are fixed |
+
+Answer: `{option_id: "approve"|"edited"|"reject", option_ids, text: <note>, edited_text, answered_at}`.
+`edited_text` is the user's **full** text when `option_id` is `edited`, else `null`. The page
+refuses "Send my version" when the text equals `draft`.
+
+Reading it back: add `edited: .answer.edited_text` to the §3 `jq` projection, or write it to a
+file (`jq -r .answer.edited_text <file> > <path>`) rather than into your context when it is long.
+`edited_text` is the user's version: relay it **verbatim** to the `source_agent` (or use it as the
+new text), never a summary or a "cleaned-up" copy. A new round is a new item (or the same item
+reset to `open` with the new `draft`, `answer:null` and `edit_draft` deleted).
+
+```json
+{"kind":"edit","project":"ads-claude-videos","title":"Guion v1 — revísalo y edítalo",
+ "context":"Borrador del guion, ~2.600 palabras.","question":"¿Lo apruebas, lo editas o lo rechazas?",
+ "draft":"# Título\n\n## 0. Hook\n…","section":"review","priority":1,
+ "source_agent":"video-harness:the-way","created_at":"2026-11-03T16:27:59Z","status":"open","answer":null}
+```
 
 ### Visual comparisons: one item per compared unit (the default)
 
@@ -521,6 +552,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   also has two bulk buttons: "Avisar a Claude de N sin avisar" and "Pedir estado de N avisadas",
   each sending one comment that lists the ids.
 - Multi-choice items (`multi:true`) render checkboxes and enforce `max`.
+- `edit` items show the text with Read / Edit toggles above the outcomes; the in-progress text autosaves to `edit_draft`.
 - Each answered card has its own follow-up button: "Avisar a Claude" while not yet notified,
   "Pedir estado" once notified and still unresolved, and none once resolved.
 - When the user changes an answer, the page clears `resolution`, `agent_note`, `notified_at`
