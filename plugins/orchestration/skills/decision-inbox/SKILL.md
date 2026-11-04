@@ -566,7 +566,13 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 
 ## Page behaviour (template/inbox.html), for reference
 
-- **Respuestas** (sticky bar, only while something is unread): a count of items whose newest agent
+- **Two layouts of the same data**, switched with "Correo / Clásica" under the title and remembered per
+  browser (`inbox.view`). **Correo** (the default) is a mail client: the folders on the left (Abiertas,
+  Respondidas, Todas, Respuestas, plus the section, priority, session and project filters and the sessions
+  list), the items of the chosen folder in the middle, and the chosen item's full card in a reading pane on
+  the right. On a phone the folders and the list come first, and tapping an item opens it with a "← Lista"
+  back button. **Clásica** is the single column described below. Every tool works the same in both.
+- **Respuestas** (always in the bar, with its count, even at 0, so the layout does not jump): a count of items whose newest agent
   message (`agent_note`, `resolution`, `thread`) is newer than the user's last word and than what this
   browser marked seen; it pulses once when the count grows. The list jumps to the card; the card shows
   a "respuesta nueva" chip, the conversation and a reply box that appends to `thread`, sets
@@ -575,7 +581,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 - The reply box takes images too: drag them onto it, paste them, or "Añadir imagen" (annotator). They upload to
   assets and travel in the message as `media:[{asset_id, url:"/_blob/<id>", type:"image", note?}]`; the notice
   lists the asset ids. Read them with `Artifact {action:"read", url, path:<asset_id>}`.
-- "Fijar a la derecha" (screens ≥900 px wide) pins the replies list as a side panel that stays open; items
+- "Fijar a la derecha" (a pin button next to Respuestas, on screens ≥900 px wide) pins the replies list as a side panel that stays open; items
   opened from it stay listed, dimmed, with the current one marked, so the user keeps their place. The choice is
   remembered per browser; narrower screens keep the popover.
 - **Project chips** (`Todos · <label> N · …`, N = open items) sit under the title when there are
