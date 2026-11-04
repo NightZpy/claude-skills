@@ -481,6 +481,8 @@ async function saveEditDraft(it) {
   catch (e) { editStatus(it, t("edit_save_fail", {code: e?.code || "error"})); }
 }
 function docBox(it, d, editing) {
+  // Until the user types, follow the item: it may have become "edit" or had its draft replaced after this tab loaded.
+  if (!d.touched) d.doc = String(it.edit_draft?.text ?? it.answer?.edited_text ?? it.draft ?? "");
   const changed = d.doc !== String(it.draft ?? "");
   let mode = docMode[it.id] || "read";
   if (mode === "edit" && !editing) mode = "read";
@@ -490,7 +492,7 @@ function docBox(it, d, editing) {
     body = el("textarea", {class:"doc-ed", id:"doc-" + it.id, spellcheck:"true", "aria-label": t("doc_edit")});
     body.value = d.doc;
     body.addEventListener("input", () => {
-      d.doc = body.value; autoH(body); editStatus(it, t("edit_saving"));
+      d.doc = body.value; d.touched = true; autoH(body); editStatus(it, t("edit_saving"));
       clearTimeout(editTimer[it.id]); editTimer[it.id] = setTimeout(() => saveEditDraft(it), 1200);
     });
     // While the editor has focus, render() leaves the list alone (a snapshot must not rebuild it under the caret);
