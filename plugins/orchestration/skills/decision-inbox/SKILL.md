@@ -104,7 +104,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `blocks` | optional list of what waits on the answer, e.g. `["video-harness:ui", "merge feat/x"]`; shown on the card next to the priority |
 | `issue` | issue number as a string; the page shows `issues/<n>` and links to GitHub |
 | `related` | extra item ids to link beyond "same issue" |
-| `source_agent` | who asked, e.g. `project:session-name`; it is also the `name` of that session's doc in `sessions` (§1b) |
+| `source_agent` | who asked: `<project>:<session title>`, the title **exactly as the user sees it in the app's session list** (e.g. `connectly:alerts:refactor`), never a task nickname, a workstream label or a subagent's name. It is also the `name` of that session's doc in `sessions` (§1b). Subagents never post items or write `sessions` docs: they report to their parent session, which posts under its own name |
 | `created_at` | ISO timestamp |
 | `status` | `open` → `answered` (page) → `processed` (agent, together with `resolution`); `withdrawn` if no longer needed |
 | `answer` | `{option_id, option_ids, text, ratings, answered_at}` (plus `edited_text` on `edit` items, §2b), written by the page; `null` while open. `option_ids` always holds the chosen ids (one entry for single choice); `option_id` is the single choice, `null` on multi. Any of options, text or ratings is enough |
