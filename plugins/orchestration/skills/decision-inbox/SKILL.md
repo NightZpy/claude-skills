@@ -578,6 +578,11 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   the right. On wide screens the folders are a rail of icons that opens over the list on hover or
   focus; "Fijar barra" keeps it open as a column (remembered per browser, `inbox.navPinned`). On a phone the folders and the list come first, and tapping an item opens it with a "← Lista"
   back button. **Clásica** is the single column described below. Every tool works the same in both.
+- **Search** (above the list in both layouts; `/` focuses it, Esc clears it): client-side over the loaded items,
+  nothing is written. Free words must all appear in the title, context, question, answer, agent note, resolution,
+  thread, id or issue (case and accents ignored), and are highlighted in the list. Operators: `from:<session>`,
+  `is:unread|open|answered|done|withdrawn`, `label:<section or project>`, `p0`…`p3`, `id:<id>`, `#123` / `issue:123`.
+  "All folders" (remembered per browser, `inbox.qAll`) searches every item; otherwise only the current folder.
 - **Respuestas** (always in the bar, with its count, even at 0, so the layout does not jump): a count of items whose newest agent
   message (`agent_note`, `resolution`, `thread`) is newer than the user's last word and than what this
   browser marked seen; it pulses once when the count grows. The list jumps to the card; the card shows
