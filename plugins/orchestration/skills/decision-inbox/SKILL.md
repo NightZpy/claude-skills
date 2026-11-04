@@ -110,7 +110,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `answer` | `{option_id, option_ids, text, ratings, answered_at}` (plus `edited_text` on `edit` items, §2b), written by the page; `null` while open. `option_ids` always holds the chosen ids (one entry for single choice); `option_id` is the single choice, `null` on multi. Any of options, text or ratings is enough |
 | `resolution` | `{text, at, by}`, written by the agent **when it closes the item**: what it did or decided (implemented X in commit Y, asked a follow-up decision Z, dropped it because…). Shown to the user as "Resuelta" |
 | `agent_note` | `{text, at, by}`, a progress update when the item is not resolved yet, especially when the user asked for status. Shown as "Estado del agente". `at` must be the real current ISO time: a note newer than the last request marks the item "estado recibido" and takes it out of the bulk "Pedir estado" count |
-| `thread` | `[{by:"agent"\|"user", text, at, who?}]`, the conversation on the item after the first answer. **Answer the user here**: when they ask something in `answer.text` or reply on the card, append `{by:"agent", text, at:<ISO now>, who:<your session name>}` (read the doc, append, write with `if_version`). Never overwrite earlier messages. Text renders as Markdown |
+| `thread` | `[{by:"agent"\|"user", text, at, who?, media?}]`, the conversation on the item after the first answer. **Answer the user here**: when they ask something in `answer.text` or reply on the card, append `{by:"agent", text, at:<ISO now>, who:<your session name>}` (read the doc, append, write with `if_version`). Never overwrite earlier messages. Text renders as Markdown |
 | `reply_pending_at` | set by the page when the user replies on the card; clear it (`{"__delete__": true}`) when you append your answer |
 | `status_asked_at` | set by the page when the user pressed "Pedir estado" |
 | `key_revealed` | blind tests only; `null` until the agent reveals after the verdict |
@@ -572,6 +572,12 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   a "respuesta nueva" chip, the conversation and a reply box that appends to `thread`, sets
   `reply_pending_at` and posts one `[decision-inbox] Reply on «…»` notice. Seen state is per browser;
   on a first visit replies older than 48 h start as seen.
+- The reply box takes images too: drag them onto it, paste them, or "Añadir imagen" (annotator). They upload to
+  assets and travel in the message as `media:[{asset_id, url:"/_blob/<id>", type:"image", note?}]`; the notice
+  lists the asset ids. Read them with `Artifact {action:"read", url, path:<asset_id>}`.
+- "Fijar a la derecha" (wide screens, ≥1180 px) pins the replies list as a side panel that stays open; items
+  opened from it stay listed, dimmed, with the current one marked, so the user keeps their place. The choice is
+  remembered per browser; narrower screens keep the popover.
 - **Project chips** (`Todos · <label> N · …`, N = open items) sit under the title when there are
   two or more projects. The choice applies to everything: tab counts, sections, priority bar,
   cards, the sessions strip and the bulk notices. Remembered per browser (`inbox.project`).
