@@ -319,6 +319,9 @@ dialog.sheet::backdrop{background:rgba(18,21,26,.55)}
 .doc-view{background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:16px 18px; font-size:17px; line-height:1.6; overflow-wrap:anywhere}
 .doc-view.md p{margin:0 0 12px}
 .doc-view.md h3{font-size:21px; margin-top:22px}
+.doc-view p.dir{font-size:13.5px; line-height:1.45; color:var(--ink-3); margin:-4px 0 12px 14px; padding-left:10px; border-left:2px solid var(--line)}
+.doc-view .src{font-size:11px; color:var(--ink-3); opacity:.7}
+.doc-view hr.doc-hr{border:0; border-top:1px solid var(--line); margin:22px 0}
 textarea.doc-ed{min-height:60vh; resize:none; overflow:hidden; font:16px/1.6 Archivo,sans-serif; padding:14px 16px}
 @media (max-width:560px){ .doc{padding-left:16px; padding-right:16px} .doc-view{padding:12px 14px} }
 </style>
@@ -480,6 +483,17 @@ async function saveEditDraft(it) {
   try { await db.doc("items/" + it.id).update({edit_draft: {text: d.doc, at}}); d.savedAt = at; editStatus(it, t("edit_saved", {at: fmt(at)})); }
   catch (e) { editStatus(it, t("edit_save_fail", {code: e?.code || "error"})); }
 }
+// Reading view: the text itself stands out; bracketed lines ([NOTE: …]) read as small stage directions,
+// "(T§n)"-style source refs fade, and a lone "---" becomes a rule.
+function readable(view) {
+  view.querySelectorAll("p").forEach(p => {
+    const s = p.textContent.trim();
+    if (s === "---") return p.replaceWith(el("hr", {class:"doc-hr"}));
+    if (/^\[[^\]]+\]$/.test(s)) p.classList.add("dir");
+    p.innerHTML = p.innerHTML.replace(/\s?\(T§[\d.,\s§T]+\)/g, m => `<span class="src">${m}</span>`);
+  });
+  return view;
+}
 function docBox(it, d, editing) {
   // Until the user types, follow the item: it may have become "edit" or had its draft replaced after this tab loaded.
   if (!d.touched) d.doc = String(it.edit_draft?.text ?? it.answer?.edited_text ?? it.draft ?? "");
@@ -503,7 +517,7 @@ function docBox(it, d, editing) {
       if (pointerDown) document.addEventListener("pointerup", () => setTimeout(render), {once: true}); else render();
     }));
     requestAnimationFrame(() => autoH(body));
-  } else body = md(d.doc, "doc-view", repoOf(it));
+  } else body = readable(md(d.doc, "doc-view", repoOf(it)));
   return el("div", {class:"doc"},
     el("div", {class:"doc-bar"}, tab("read", t("doc_read")), editing ? tab("edit", t("doc_edit")) : null,
       el("span", {class:"note", id:"ds-" + it.id}, [changed ? t("doc_yours") : t("doc_original"), d.savedAt || it.edit_draft?.at ? t("edit_saved", {at: fmt(d.savedAt || it.edit_draft.at)}) : ""].filter(Boolean).join(" · "))),
