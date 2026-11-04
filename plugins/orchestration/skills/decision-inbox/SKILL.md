@@ -578,6 +578,14 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   the right. On wide screens the folders are a rail of icons that opens over the list on hover or
   focus; "Fijar barra" keeps it open as a column (remembered per browser, `inbox.navPinned`). On a phone the folders and the list come first, and tapping an item opens it with a "← Lista"
   back button. **Clásica** is the single column described below. Every tool works the same in both.
+- **Mail words (Correo only; Clásica keeps its own).** Each item reads as a message: `source_agent` is the sender
+  (avatar with initials), the thread is the conversation ("Re: …"), `blocks` is a red "Blocking: …" banner, `issue`
+  is a "Linked issue", media are "Attachments". Folders are views over the same data: Inbox (open), Unread replies,
+  Important (P0–P1 not done or withdrawn), Starred (a star the user sets, per browser, `inbox.stars`), Outbox · not sent
+  (answered, Claude not told; "Send all"), Sent · awaiting (told, unresolved; "Follow up on all"), Archive · done
+  (processed), Trash · withdrawn and All mail. Sections and projects show as labels; sessions are "Senders". Actions:
+  Save reply, Send to Claude, Send, Follow up, Mark as read, Related threads. Search adds `is:starred`, `is:important`
+  and `in:<folder>`.
 - **Search** (above the list in both layouts; `/` focuses it, Esc clears it): client-side over the loaded items,
   nothing is written. Free words must all appear in the title, context, question, answer, agent note, resolution,
   thread, id or issue (case and accents ignored), and are highlighted in the list. Operators: `from:<session>`,
