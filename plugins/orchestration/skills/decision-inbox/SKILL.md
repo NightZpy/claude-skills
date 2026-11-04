@@ -570,7 +570,8 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   browser (`inbox.view`). **Correo** (the default) is a mail client: the folders on the left (Abiertas,
   Respondidas, Todas, Respuestas, plus the section, priority, session and project filters and the sessions
   list), the items of the chosen folder in the middle, and the chosen item's full card in a reading pane on
-  the right. On a phone the folders and the list come first, and tapping an item opens it with a "← Lista"
+  the right. On wide screens the folders are a rail of icons that opens over the list on hover or
+  focus; "Fijar barra" keeps it open as a column (remembered per browser, `inbox.navPinned`). On a phone the folders and the list come first, and tapping an item opens it with a "← Lista"
   back button. **Clásica** is the single column described below. Every tool works the same in both.
 - **Respuestas** (always in the bar, with its count, even at 0, so the layout does not jump): a count of items whose newest agent
   message (`agent_note`, `resolution`, `thread`) is newer than the user's last word and than what this
