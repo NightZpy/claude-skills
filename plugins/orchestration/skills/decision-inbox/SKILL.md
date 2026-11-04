@@ -579,6 +579,11 @@ label, so the same neutral-naming rule from §2 applies to the ratings shown und
      the new template;
   6. read the live inbox, publish the copy to the **same URL**, refresh the project's docs index if
      it has one, close the item with `resolution` and tell the director the version.
+  7. **stop the watch after publishing**: publishing arms this session's watch with automatic comment
+     replies, so inbox notices would reach the maintainer and be answered in its name. Run
+     `ArtifactComments {action:"watch", url:"<inbox>", on:false}` and check the list with
+     `ArtifactComments {action:"watch"}`. Only the director receives notices (§4); if one still
+     reaches the maintainer, it relays it to the director and does not reply in the thread.
 
 ## 7. Limits: when to move to a local, project-owned inbox
 
