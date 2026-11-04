@@ -11,6 +11,10 @@ agent ◀──read answer── (shared db) ──"Notify Claude"──▶ watc
 
 ## What you get
 
+- **Two layouts, same data:** a **Mail** layout (the default) that reads like an email client: folders (Inbox, Unread replies, Important, Starred, Outbox, Sent, Archive, Trash, All mail), a message list and a reading pane, senders with avatars, labels and a "Blocking" banner; and a **Classic** single column. On a wide screen the folders collapse to a rail of icons that you can pin open. Each browser remembers its choice.
+- **Search** above the list (`/` to focus, Esc to clear), with mail-style operators: `from:`, `is:unread`, `is:starred`, `label:`, `in:<folder>`, `p0`…`p3`, `#123`. It runs in your browser and writes nothing.
+- **Conversations on every item:** reply on the card (with images you drag, paste or annotate) and the agent answers in the same thread. Unread replies have their own folder and an optional panel pinned to the right.
+- **Copy buttons** on code blocks, so a draft the agent prepared (a Slack message, a command) is one tap away.
 - **One item per decision**, with context in Markdown, options (single or multiple choice), a free-text comment, and a recommended option.
 - **Who and when, first:** every card opens with how long ago it was posted ("2 hours ago"), the session that posted it, its priority (P0–P3) and what it blocks.
 - **All projects, one page:** project chips filter everything; a sessions strip shows what each session is doing, its goal, what it waits on and what is still missing (tap one for details); a session filter shows only that session's items.
@@ -27,7 +31,7 @@ agent ◀──read answer── (shared db) ──"Notify Claude"──▶ watc
   - "Notify Claude" sends your answers to the watching session;
   - "Ask for status" asks the agent where things stand;
   - agents write an "agent status" note or a "resolved" note with what they did.
-- **Works in English by default**; Spanish ships bundled, and any other language takes one strings object.
+- **Interface in English by default**, content in your language: `meta/config.lang` sets the interface (Spanish ships bundled; any other language takes one strings object) and `content_lang` tells agents which language to write in.
 
 ## Install
 
