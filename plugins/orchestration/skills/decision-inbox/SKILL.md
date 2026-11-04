@@ -55,22 +55,30 @@ watching session.
    - Record the URL in the project's CLAUDE.md or memory so every session finds the same inbox.
 3. Keep item text in whatever language `meta/config.lang` is set to (English unless you changed it).
 
-## 0b. The default: every question for the user goes to the inbox
+## 0b. The default: everything you cannot decide alone goes to the inbox
 
-Once a project has an inbox, **a question for the user is an inbox item, not a chat message.**
-That covers "which option?", "do you approve?", "listen to this", "should I cancel X?" and "is
-it OK if…?". Post the item (§2), then write one line in chat:
+Once a project has an inbox, **anything the session cannot decide or do on its own is an inbox
+item, not a chat message.** That covers questions ("which option?", "should I cancel X?", "is it
+OK if…?"), approvals ("do you approve?"), reviews ("listen to this"), and **actions only the user
+can take**: open an SSH tunnel, log in to SSO, run a command with their credentials, approve a
+permission prompt waiting in a session's chat. Those go as `kind:"action"` (§2c). Post the item
+(§2), then write one line in chat:
 
 > Te dejé la decisión «<title>» en el buzón: <url>
 
-Keep in chat only what cannot wait for the user to open the inbox, and even then post the item
-too, so the decision is recorded:
+Rules that keep this honest:
 
+- **Never ask in chat only, and never route the ask through another session.** A message to the
+  director is a heads-up that an item exists, not the ask itself.
+- **Something blocking you right now** → post it as P0 with `blocks`, set your `sessions` doc to
+  `blocked` (§1b), and keep working on whatever does not depend on it.
 - **An authorization the permission system refused** (a paid action, a production write, anything
-  a classifier denied). An inbox answer is page data and does not count as the user's approval.
-  Post the item with the full context (what, cost, why, alternatives), and in chat ask the user
-  to approve **in chat**, pointing to the item.
-- Something blocking you **right now** with no other work to do. Ask in chat and post the item.
+  a classifier denied) still gets an item, `kind:"action"`, with the full context (what, cost,
+  why, alternatives) and **where to approve**: the session's chat. An inbox answer is page data and
+  does not count as the user's approval, so the session still waits for the approval in its own
+  chat; the item is how the user learns it is waiting there. Never refuse to post such an item.
+- Decide yourself what is yours to decide (an implementation detail, a reversible choice inside
+  the task). The inbox is for what the user owns, not for every step.
 
 Before posting, check that the inbox skill is actually what you are following. A session started
 before the plugin was installed or updated does not have it until the user restarts it.
@@ -82,7 +90,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 
 | field | notes |
 |---|---|
-| `kind` | `text` · `choice` · `image` · `video` · `audio` · `blind_test` · `ui_review` · `edit` (§2b) |
+| `kind` | `text` · `choice` · `image` · `video` · `audio` · `blind_test` · `ui_review` · `edit` (§2b) · `action` (§2c) |
 | `project` | id from `meta/config.projects`; always set it. Missing → the page uses `meta/config.project` |
 | `repo` | optional `owner/repo`, only when the project spans several repos; otherwise the project's `repo_url` is used for `#123` links and the issue box |
 | `title`, `context`, `question` | one question per item; split a bullet that asks two things |
@@ -339,6 +347,25 @@ reset to `open` with the new `draft`, `answer:null` and `edit_draft` deleted).
  "context":"Borrador del guion, ~2.600 palabras.","question":"¿Lo apruebas, lo editas o lo rechazas?",
  "draft":"# Título\n\n## 0. Hook\n…","section":"review","priority":1,
  "source_agent":"video-harness:the-way","created_at":"2026-11-03T16:27:59Z","status":"open","answer":null}
+```
+
+### 2c. Something only the user can do: `kind:"action"`
+
+For a step the session cannot take itself: open a tunnel, log in, run a command with the user's
+credentials, approve a permission prompt waiting in a session's chat. `context` says what, why and
+what waits on it; `question` says **exactly what to do and where** (the command in a code block,
+or "aprueba el prompt en el chat de <session>"). Without `options` the page offers **Hecho** /
+**Ahora no** plus a note; pass your own `options` when there are real alternatives. Set
+`priority` and `blocks` like any blocking item.
+
+Answer: `{option_id: "done"|"later"|<your option>, text: <note>, answered_at}`. On `done`, check
+it actually happened (the tunnel answers, the prompt was approved) before writing `resolution`.
+
+```json
+{"kind":"action","project":"connectly","title":"Abrir el túnel a prod",
+ "context":"Necesito leer Athena y `cq prod` para medir el input del judge. Solo lectura.",
+ "question":"Corre en tu terminal:\n```\nrun ssh_tunnel <username>\n```",
+ "priority":0,"blocks":["connectly:alerts-refactor"],"source_agent":"connectly:evals-alerts"}
 ```
 
 ### Visual comparisons: one item per compared unit (the default)
