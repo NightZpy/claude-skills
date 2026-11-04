@@ -40,20 +40,25 @@ watching session.
        the project's group in the sessions strip. The main session keeps `goal` current.
      - `project` is the **fallback project id** for documents written without `project` (older
        items), and `repo_url` the fallback repo.
-   - **Language: the skill sets up the inbox in English by default.** The template's own default
-     is English (`LANG = "en"`); `meta/config.lang` overrides it. Choose another language, for
-     example the one the user speaks, only when you have a reason to — set `lang` to that
+   - **Two languages, kept apart.** `meta/config.lang` is the language of the page's interface
+     (buttons, tabs, labels); `meta/config.content_lang` (optional) is the language agents write
+     the content in (items, threads, notes, session docs, issue summaries), which is the user's
+     language. Example: `lang:"en"`, `content_lang:"es"` for an English interface with Spanish content.
+   - **Interface language: English by default.** The template's own default
+     is English (`LANG = "en"`); `meta/config.lang` overrides it. Choose another interface language
+     only when you have a reason to — set `lang` to that
      language's code. `es` is bundled; any other language also needs a translated `strings` set:
      every key of the template's `I18N.en` object. Missing keys fall back to English.
      - When you set a non-English `lang`, also translate the page `<title>` (it names the
        artifact in the gallery) and write it in that language.
      - Optional `sections` (`[[key, label], …]`) override the default importance buckets. Write
        their labels in whatever language you set `lang` to.
-     - Write every item (title, context, question, options, `rate`) in that same language.
+     - Write every item (title, context, question, options, `rate`) in the content language
+       (`content_lang`; when it is absent, the language the user writes to you in).
      - The notices the page sends back to Claude are always English. They are the page-to-agent
        protocol, not UI, and are unaffected by `lang`.
    - Record the URL in the project's CLAUDE.md or memory so every session finds the same inbox.
-3. Keep item text in whatever language `meta/config.lang` is set to (English unless you changed it).
+3. Write item text in the content language (`meta/config.content_lang`, else the user's language), not in `meta/config.lang`, which is only the interface.
 
 ## 0b. The default: everything you cannot decide alone goes to the inbox
 
@@ -118,7 +123,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 
 Collection **`issues`**, doc id = `<project>:<issue number>` (for example `ads-claude-videos:212`;
 a bare number is the legacy id and still read as a fallback): `{number, state, title, summary, url}`. `summary`
-is one line in the inbox's language (`meta/config.lang`, English by default), written by you
+is one line in the content language (`meta/config.content_lang`, else the user's language), written by you
 from the issue body. Add or refresh it whenever
 you post an item with a new `issue`.
 
@@ -196,7 +201,7 @@ A long task stays fresh because main keeps bumping `seen_at`. `idle` sessions co
 
 **Anti-noise:** no per-step updates, progress percentages, logs, tool output or Markdown in these
 fields. Budget about one write per state change; more than 6 writes an hour from one session is
-a smell. Write the text in the inbox's language (`meta/config.lang`).
+a smell. Write the text in the content language (`meta/config.content_lang`, else the user's language).
 
 ## 1c. Session notes (the user writes to a session)
 
