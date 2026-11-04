@@ -37,6 +37,11 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .tab{font:600 14px Archivo,sans-serif; padding:8px 14px; border-radius:999px; border:1.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer}
 .tab[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
 .tab .n{font-family:"JetBrains Mono",monospace; font-size:12px; margin-left:6px; opacity:.75}
+/* Queue jump: always in the sticky bar; hover, focus or tap opens the list of open items. */
+.qwrap{position:relative}
+.qpop{display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:10; width:min(440px, calc(100vw - 32px)); max-height:60vh; overflow-y:auto; box-shadow:0 10px 28px rgba(18,21,26,.18)}
+.qwrap:hover .qpop, .qwrap:focus-within .qpop, .qwrap.open .qpop{display:block}
+.qpop .row[aria-current="true"]{background:var(--tpl-soft)}
 .status-line{margin-left:auto; font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-3)}
 
 .card{margin:0 0 20px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:10px; overflow:hidden}
@@ -348,6 +353,7 @@ textarea.doc-ed.doc-note-ta{font:15px/1.45 Archivo,sans-serif; min-height:2.6em;
     <button class="tab" data-f="open" aria-pressed="true"><span data-t="tab_open"></span><span class="n" id="n-open">–</span></button>
     <button class="tab" data-f="answered" aria-pressed="false"><span data-t="tab_answered"></span><span class="n" id="n-answered">–</span></button>
     <button class="tab" data-f="all" aria-pressed="false"><span data-t="tab_all"></span><span class="n" id="n-all">–</span></button>
+    <span class="qwrap" id="qjump" hidden></span>
     <span class="status-line" id="live" data-t="connecting"></span>
   </div>
   <div class="bar2" id="sections" role="toolbar" data-t-aria="importance"></div>
@@ -1030,6 +1036,15 @@ function issueBox(it) {
     is?.summary ? el("p", {}, is.summary) : null,
     (is?.url || repo) ? el("a", {href: is?.url || repo.replace(/\/$/, "") + "/issues/" + n, target:"_blank", rel:"noopener"}, t("open_gh")) : null);
 }
+function renderQueueJump(pool, cur) {
+  const w = $("#qjump"); if (!w) return;
+  w.hidden = pool.length < 2;
+  if (w.hidden) { w.classList.remove("open"); return w.replaceChildren(); }
+  const pick = o => { w.classList.remove("open"); document.activeElement?.blur(); currentId = o.id; render(); scrollTop(); };
+  w.replaceChildren(
+    el("button", {class:"tab", type:"button", "aria-haspopup":"true", "aria-expanded": String(w.classList.contains("open")), onclick: () => { w.classList.toggle("open"); }}, t("queue"), el("span", {class:"n"}, String(pool.length))),
+    el("div", {class:"qpop queue"}, pool.map(o => { const r = rowFor(o, pick); if (o.id === cur?.id) r.setAttribute("aria-current", "true"); return r; })));
+}
 function rowFor(o, onPick) {
   return el("button", {class:"row" + (st(o) !== "open" ? " done" : ""), type:"button", onclick: () => onPick(o)},
     el("span", {class:"t"}, o.title), el("span", {class:"k"}, st(o) === "open" ? kindName(o.kind) : statusName(st(o))));
@@ -1504,10 +1519,12 @@ function render() {
     renderSections(open);
     const pool = section === "all" ? open : open.filter(i => i.section === section);
     if (!pool.length) {
+      renderQueueJump([], null);
       view = [el("div", {class:"empty"}, open.length ? t("empty_section") : t("empty_all"))];
     } else {
       if (!pool.some(i => i.id === currentId)) currentId = pool[0].id;
       const idx = pool.findIndex(i => i.id === currentId), cur = pool[idx];
+      renderQueueJump(pool, cur);
       const doneAll = items.length - open.length;
       view = [
         el("div", {class:"progress"}, el("span", {}, t("i_of_n", {i: idx + 1, n: pool.length})),
@@ -1522,6 +1539,7 @@ function render() {
       ];
     }
   } else {
+    renderQueueJump([], null);
     renderSections([]);
     const base = items.filter(i => filter === "all" || (st(i) !== "open" && (follow === "all" || followOf(i) === follow)));
     renderPrioBar(base);

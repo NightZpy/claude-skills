@@ -552,7 +552,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 
 - Every card opens with an origin line: priority badge (P0–P3), time-ago of `created_at` (exact date on hover), `source_agent`, the answer time and `blocks`. A priority filter (All, P0–P3) and a sort toggle (importance, newest, oldest) sit under the section chips; the choice is remembered per browser.
 - **Abiertas** shows one item at a time (a gallery), ordered by section, then priority, then age.
-  It has a progress bar, Previous/Next, a compact "En cola" list, and section filter chips with
+  It has a progress bar, Previous/Next, an always-visible "En cola N" button in the sticky bar (hover, focus or tap lists every open item to jump to), a compact "En cola" list, and section filter chips with
   counts. Saving moves on to the next open item.
 - **Respondidas** has follow-up filters: Sin avisar · Avisadas, sin resolver · Resueltas. It
   also has two bulk buttons: "Avisar a Claude de N sin avisar" and "Pedir estado de N avisadas",
