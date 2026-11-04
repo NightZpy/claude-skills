@@ -319,7 +319,11 @@ optional note: **Approve as is** · **Send my version** · **Reject**. Do not pa
 | `edit_draft` | `{text, at}`, written by the page ~1 s after the user stops typing (and on leaving the editor), so a closed tab loses nothing. Not an answer; ignore it until the item is `answered` |
 | `options` | not used: the outcomes are fixed |
 
-Answer: `{option_id: "approve"|"edited"|"reject", option_ids, text: <note>, edited_text, answered_at}`.
+Answer: `{option_id: "approve"|"edited"|"reject", option_ids, text: <note>, edited_text, comments, answered_at}`.
+`comments` is `[{paragraph, quote, text}]`: notes the user pinned to single paragraphs with «Comentar»
+(1-based paragraph = text between blank lines; `quote` is its first 80 characters, autosaved to
+`edit_comments` while open). Treat each as a request on that paragraph (a date or fact to check, a change)
+and relay them verbatim with the answer, whatever the outcome.
 `edited_text` is the user's **full** text when `option_id` is `edited`, else `null`. The page
 refuses "Send my version" when the text equals `draft`.
 
