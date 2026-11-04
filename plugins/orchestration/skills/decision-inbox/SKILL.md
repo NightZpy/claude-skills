@@ -324,7 +324,8 @@ Answer: `{option_id: "approve"|"edited"|"reject", option_ids, text: <note>, edit
 (1-based paragraph = text between blank lines; `quote` is its first 80 characters, autosaved to
 `edit_comments` while open). Treat each as a request on that paragraph (a date or fact to check, a change)
 and relay them verbatim with the answer, whatever the outcome.
-`edited_text` is the user's **full** text when `option_id` is `edited`, else `null`. The page
+`edited_text` is the user's **full** text whenever it differs from `draft` (any outcome: a reject can
+carry edits as examples of what they want), else `null`. The page
 refuses "Send my version" when the text equals `draft`.
 
 Reading it back: add `edited: .answer.edited_text` to the §3 `jq` projection, or write it to a

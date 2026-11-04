@@ -1553,7 +1553,8 @@ async function save(it, alsoNotify) {
   const answer = {option_id: it.multi ? null : ids[0] || null, option_ids: ids, text, ratings, answered_at: new Date().toISOString()};
   if (hasScore) answer.score = d.score;
   if (marks) answer.marks = marks;
-  if (it.kind === "edit") answer.edited_text = ids[0] === "edited" ? d.doc : null;   // the user's full version, verbatim
+  // The user's full version, verbatim, whenever it differs from the draft (a reject can still carry edits as examples).
+  if (it.kind === "edit") answer.edited_text = ids[0] === "edited" || d.doc !== String(it.draft ?? "") ? d.doc : null;
   if (it.kind === "edit") answer.comments = Object.entries(d.comments || it.edit_comments || {}).filter(([, c]) => c?.text?.trim())
     .map(([i, c]) => ({paragraph: +i + 1, quote: c.quote, text: c.text.trim()})).sort((a, b) => a.paragraph - b.paragraph);
   try {
