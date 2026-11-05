@@ -43,6 +43,8 @@ words (§ Page behaviour). The interface language and the content language are s
        the project's group in the sessions strip. The main session keeps `goal` current.
      - `project` is the **fallback project id** for documents written without `project` (older
        items), and `repo_url` the fallback repo.
+     - `linear_url` (optional, also per project): the Linear workspace, e.g. `https://linear.app/<workspace>`,
+       for items whose `issue` is a Linear id.
    - **Two languages, kept apart.** `meta/config.lang` is the language of the page's interface
      (buttons, tabs, labels); `meta/config.content_lang` (optional) is the language agents write
      the content in (items, threads, notes, session docs, issue summaries), which is the user's
@@ -112,7 +114,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `section` | a key from `meta/config.sections` (importance bucket; the page filters by it) |
 | `priority` | **0–3, set deliberately** (the page shows P0–P3, filters and sorts by it; values above 3 show as P3). Decide it the way work is triaged: **P0** = it blocks work right now, yours or another session's (nothing can proceed until answered); **P1** = it blocks a next step soon (you can work around it for a while) or holds money/a release; **P2** = normal: needed, but nothing waits on it; **P3** = whenever / for reference. When it blocks another session, name it in `blocks` and raise the priority accordingly |
 | `blocks` | optional list of what waits on the answer, e.g. `["video-harness:ui", "merge feat/x"]`; shown on the card next to the priority |
-| `issue` | issue number as a string; the page shows `issues/<n>` and links to GitHub |
+| `issue` | a GitHub issue number as a string (`"212"`, shown `#212`, links to the repo's `issues/<n>`) or a Linear id (`"AG-2805"`, links to `<linear_url>/issue/<id>`; set `linear_url` in `meta/config` or on the project, else the id shows without a link) |
 | `related` | extra item ids to link beyond "same issue" |
 | `source_agent` | who asked: `<project>:<session title>`, the title **exactly as the user sees it in the app's session list** (e.g. `connectly:alerts:refactor`), never a task nickname, a workstream label or a subagent's name. It is also the `name` of that session's doc in `sessions` (§1b). Subagents never post items or write `sessions` docs: they report to their parent session, which posts under its own name |
 | `created_at` | ISO timestamp |
