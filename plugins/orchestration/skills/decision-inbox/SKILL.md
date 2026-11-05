@@ -640,7 +640,10 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   the section, priority, session and project filters and the senders list), the messages of the chosen
   folder in the middle with the search box on top, and the chosen item's full card in a reading pane on
   the right. On wide screens the folders are a rail of icons that opens over the list on hover or
-  focus; "Pin sidebar" keeps it open as a column (remembered per browser, `inbox.navPinned`). On a phone
+  focus; "Pin sidebar" keeps it open as a column (remembered per browser, `inbox.navPinned`). "Expand
+  message" above the reading pane folds the message list to a strip the same way: it opens over the
+  message on hover or focus and folds again when an item is picked; "Show list" brings the column back
+  (`inbox.listAuto`). On a phone
   the folders and the list come first, and tapping an item opens it with a "← List" back button.
   **Classic** is the single column described below (Open · Answered · All · Replies). Every tool works
   the same in both.
