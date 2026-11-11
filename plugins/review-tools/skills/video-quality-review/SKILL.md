@@ -3,20 +3,18 @@ name: video-quality-review
 description: >
   Use when reviewing a finished generated video for quality — invoked with a
   video path or URL, or on phrases like "revisa este video", "review this
-  video", "qué tal quedó el video". Judges the video AS A VIDEO: what a viewer
-  sees and hears. Runs an offline audio pass (never played through speakers), a
-  native-frame-rate mechanical pass (flicker, reappearing screens, hard clip
-  edges) and four frame passes at cadences chosen by the rubric (never by asking
-  the user), scores six dimensions with anchored levels, and emits
-  severity-tagged findings that each carry a time interval, a screen region,
-  verbatim evidence, a confidence level and a concrete, checkable fix, as stable
-  JSON plus a short summary and time-coded correction notes.
-  Also compares a FAMILY of videos made from the same request, side by side, and
-  calibrates against the owner's feedback once the blind report is frozen.
-  Written so a Sonnet judge with Haiku runners can execute it step by step.
-  Deliberately blind to the generator's internals — it never reads logs,
-  prompts, configuration, costs or database rows, and never explains a defect by
-  its cause.
+  video", "qué tal quedó el video" — or when comparing a FAMILY of videos made
+  from the same request. Judges the video AS A VIDEO: what a viewer sees and
+  hears. Runs an offline audio pass (never played through speakers), a
+  native-frame-rate mechanical pass (flicker, reappearing screens, chopped clip
+  edges) and four frame passes at cadences chosen by the rubric, scores six
+  dimensions with anchored levels, and emits findings that each carry a time
+  interval, a screen region, verbatim evidence, a confidence level and a
+  checkable video-level fix — as stable JSON, a short summary and time-coded
+  correction notes. Calibrates against owner feedback only after the blind
+  report is frozen. Written for a Sonnet judge with Haiku runners. Blind to the
+  generator's internals: never reads logs, prompts, configuration or costs,
+  and never explains a defect by its cause.
 ---
 
 # Video Quality Review
