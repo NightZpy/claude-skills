@@ -636,7 +636,9 @@ def cmd_compare(a):
                                   "flash_events": len(vis["flashes"]),
                                   "blank_runs_mid": sum(1 for b in vis["blank_frames"] if b["position"] == "middle"),
                                   "longest_speech_gap_s": max([g["s"] for g in au.get("speech_gaps", [])] or [0])},
-                     "_env": au.get("envelope_100ms_db", [])})
+                     "_env": au.get("envelope_100ms_db", []),
+                     "_plan": {k: {x: y for x, y in p.items() if x not in ("frames", "window")}
+                               for k, p in r["passes"].items()}})
     if len({v["label"] for v in vids}) != len(vids):
         die("labels must be unique across the family")
     same_audio = []
@@ -652,7 +654,8 @@ def cmd_compare(a):
         order[-1].append(v["label"]) if key == prev else order.append([v["label"]])
         prev = key
     classes = sorted({c for v in vids for c in v["classes"]})
-    fam = {"schema": "vqr-family/1", "videos": [{k: x for k, x in v.items() if k != "_env"} for v in vids],
+    fam = {"schema": "vqr-family/1", "videos": [{k: x for k, x in v.items() if k[0] != "_"} for v in vids],
+           "same_plan": all(v["_plan"] == vids[0]["_plan"] for v in vids),
            "same_audio": same_audio,
            "class_matrix": {c: [v["label"] for v in vids if c in v["classes"]] for c in classes},
            "ordering": order, "ordering_rule": "verdict, then S4, S3, S2 counts; labels sharing a list are tied",
@@ -665,6 +668,8 @@ def cmd_compare(a):
         lv = " | ".join(str(v["levels"].get(d, "?")).replace("NOT SCORED", "NS").split(" —")[0] for d in ("D1", "D2", "D3", "D4", "D5", "D6"))
         print(f"| {v['label']} | {v['verdict']} | {lv} | {c['S4']}/{c['S3']}/{c['S2']}/{c['S1']} | {v['s3plus_per_min']} | "
               f"{ms['duration_s']}s | {ms['lufs']} | {ms['cuts_per_min']} | {ms['flash_events']} |")
+    if not fam["same_plan"]:
+        print("\nWARN: the reports declare different passes — a video looked at more closely shows more defects")
     print(f"\nordering (ties share a group): {order}")
     for s in same_audio:
         print(f"same audio track: {s['videos']} (envelope r={s['envelope_r']}) — D2 differences between them are not real")
