@@ -13,10 +13,15 @@ telling filename. Nothing about who or what made each video enters any report.
 video that got a denser look will show more defects, and that difference is
 yours, not the video's.
 
-**3 · One fresh judge per video.** Steps 0–9 of SKILL.md run per video in a separate
-context (one subagent each), and each `report.json` is frozen before any
-comparing starts. A judge that has seen V1 grades V2 against V1 instead of
-against the rubric.
+**3 · One fresh judge per video.** Steps 0–9 of SKILL.md run per video in a
+separate context (one subagent each), and each `report.json` is frozen before
+any comparing starts. A judge that has seen V1 grades V2 against V1 instead of
+against the rubric. The comparer in steps 4–6 is a further context that has
+read only the frozen reports, `mechanical.json` and the side-by-side strips.
+
+If the members were made under different requests — a later version produced
+after added instructions — D1 and `requirements` are judged against each
+video's own request and are not compared across; D2–D6 compare as usual.
 
 **4 · Compare (R, then J).**
 
