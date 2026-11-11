@@ -13,6 +13,7 @@ open). Needs ffmpeg/ffprobe; numpy for `measure`; Pillow for `sheet`/`strip`.
   vqr.py strip OUT.jpg LABEL=VIDEO@T,T,.. [LABEL=VIDEO@T,T,..]
   vqr.py align TRANSCRIPT.json ONSCREEN.json
   vqr.py check REPORT.json | FAMILY.json
+  vqr.py notes REPORT.json [--out NOTES.json]
   vqr.py compare DIR DIR [DIR ..] --out FAMILY.json
   vqr.py self-test
 """
@@ -24,6 +25,8 @@ LEVELS = ["Clean", "Rough", "Distracting", "Broken"]
 VERDICTS = ["SHIP", "SHIP WITH FIXES", "DO NOT SHIP"]
 S4_REASONS = ["fabricated-claim", "gibberish-as-information", "wrong-identity",
               "unintelligible-narration", "d1-gate"]
+FIX_ACTIONS = ["hide", "remove", "retime", "trim", "fade", "move", "resize", "restyle", "replace", "add", "level"]
+FIX_VERIFY = ("measure:", "align:", "probe:", "listen:")
 
 
 def sh(cmd):
@@ -560,6 +563,26 @@ def check_report(r):
             err.append(f"{fid}: region must use the 3x3 vocabulary, 'full-frame' or 'audio'")
         if len(str(f["evidence"])) < 15:
             err.append(f"{fid}: evidence too thin — quote what is on screen or in the audio, verbatim")
+        fx = f.get("fix")
+        if not isinstance(fx, dict) or "formulable" not in fx:
+            err.append(f"{fid}: missing fix — either the correction, or formulable:false with why")
+        elif not fx["formulable"]:
+            if len(str(fx.get("why", ""))) < 15:
+                err.append(f"{fid}: fix.formulable is false — say in fix.why what would be needed to write it")
+        else:
+            for key in ("action", "what", "t", "region", "target", "verify"):
+                if key not in fx:
+                    err.append(f"{fid}: fix is missing {key}")
+            if fx.get("action") not in FIX_ACTIONS:
+                err.append(f"{fid}: fix.action must be one of {FIX_ACTIONS}")
+            if not str(fx.get("verify", "")).startswith(FIX_VERIFY):
+                err.append(f"{fid}: fix.verify must start with one of {FIX_VERIFY} — name the check that will show it is fixed")
+            if not (isinstance(fx.get("t"), list) and len(fx["t"]) == 2):
+                err.append(f"{fid}: fix.t must be [start, end] in seconds")
+            for dec in re.findall(r"(?<![\d:@])\d+\.(\d+) ?s\b", f"{fx.get('what', '')} {fx.get('target', '')}"):
+                if 10 ** -len(dec) < res / 5:
+                    err.append(f"{fid}: fix asks for a change with {len(dec)} decimals of a second, finer than "
+                               f"{f['pass']} ({res}s) measured — give a bracket")
     want = derive_verdict(r["findings"])
     if r["verdict"] != want:
         err.append(f"verdict is {r['verdict']!r} but the findings derive {want!r} — the verdict is computed, not chosen")
@@ -604,6 +627,30 @@ def cmd_check(a):
         print("FAIL ", e)
     print(f"{'FAIL' if err else 'PASS'}: {len(err)} errors, {len(warn)} warnings — {a.report}")
     sys.exit(1 if err else 0)
+
+
+def cmd_notes(a):
+    """Correction notes, one per fixable finding: time, type, frame zone, text."""
+    r = json.load(open(a.report))
+    notes, open_items = [], []
+    for f in sorted(r["findings"], key=lambda f: f["fix"].get("t", f["t"])[0]):
+        fx = f["fix"]
+        if not fx["formulable"]:
+            open_items.append({"finding": f["id"], "t": f["t"], "class": f["class"], "why": fx["why"]})
+            continue
+        notes.append({"finding": f["id"], "t": fx["t"], "type": fx["action"], "region": fx["region"],
+                      "severity": f["severity"], "class": f["class"],
+                      "note": f"{fx['what']} → {fx['target']}", "verify": fx["verify"],
+                      **({"condition": fx["condition"]} if fx.get("condition") else {})})
+    out = {"schema": "vqr-notes/1", "label": r["label"], "notes": notes, "cannot_be_written_from_the_video": open_items}
+    if a.out:
+        json.dump(out, open(a.out, "w"), indent=1, ensure_ascii=False)
+    for n in notes:
+        print(f"{clock(n['t'][0])}–{clock(n['t'][1])} | {n['type']:8} | {n['region']} | S{n['severity']} {n['finding']} | "
+              f"{n['note']}" + (f" | only if: {n['condition']}" if n.get("condition") else "") + f" | check: {n['verify']}")
+    for o in open_items:
+        print(f"{clock(o['t'][0])}–{clock(o['t'][1])} | NO NOTE | {o['finding']} {o['class']} | {o['why']}")
+    print(f"{len(notes)} notes, {len(open_items)} findings with no fix that the video alone can dictate")
 
 
 # ---------------------------------------------------------------- compare
@@ -800,16 +847,23 @@ def cmd_self_test(_):
         good = {"id": "F01", "dim": "D4", "class": "out-of-slot", "severity": 3, "f": "once", "i": "comprehension",
                 "p_s": 6, "t": [31.0, 33.0], "pass": "P1", "region": "center", "kind": "judged", "confidence": "high",
                 "evidence": 'heading "TRES FINALES" (P1@00:32) while A1@00:29.8 says "tenía 35 años"',
-                "expected": "the graphic matches the clause in its own slot", "verified_by_judge": True}
+                "expected": "the graphic matches the clause in its own slot", "verified_by_judge": True,
+                "fix": {"formulable": True, "action": "retime", "what": 'the heading "TRES FINALES"', "t": [24.0, 26.0],
+                        "region": "center", "target": "on screen only while A1@00:25.1 says it; gone before 30s",
+                        "verify": "align: TRES FINALES in-slot"}}
         rep = {"label": "V1", "video": {}, "request": {}, "audio_playback": "none", "transcript": {},
                "passes": {"P1": {"resolution_s": 2.0}, "A1": {"resolution_s": 0.1}},
                "verdict": "SHIP WITH FIXES", "levels": {d: "Clean" for d in ("D1", "D2", "D3", "D5", "D6")} | {"D4": "Distracting"},
                "findings": [good], "positives": [{}, {}], "not_scored": ["prosody — subjective listening not performed"],
                "coverage": {}, "escalate": []}
         assert check_report(rep) == ([], []), check_report(rep)
-        bad = dict(good, t=[31.0, 31.5], evidence="heading appears 0.83s ahead at 00:31.3", confidence="low")
+        bad = dict(good, t=[31.0, 31.5], evidence="heading appears 0.83s ahead at 00:31.3", confidence="low",
+                   fix=dict(good["fix"], target="advance it 0.35s", verify="looks right"))
         errs, _ = check_report(dict(rep, findings=[bad], verdict="SHIP"))
-        assert len(errs) == 5, errs      # narrow interval, untagged time, fine duration, low-confidence S3, wrong verdict
+        # narrow interval, untagged time, fine duration, low-confidence S3, unverifiable fix, over-precise fix, wrong verdict
+        assert len(errs) == 7, errs
+        errs, _ = check_report(dict(rep, findings=[dict(good, fix={"formulable": False, "why": "which number is right needs the source"})]))
+        assert errs == [], errs
         print("PASS: vqr self-test")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -837,6 +891,7 @@ def main():
     s = sub.add_parser("align"); s.set_defaults(fn=cmd_align)
     s.add_argument("transcript"); s.add_argument("onscreen"); s.add_argument("--tol", type=float, default=2.0); s.add_argument("--out")
     s = sub.add_parser("check"); s.set_defaults(fn=cmd_check); s.add_argument("report")
+    s = sub.add_parser("notes"); s.set_defaults(fn=cmd_notes); s.add_argument("report"); s.add_argument("--out")
     s = sub.add_parser("compare"); s.set_defaults(fn=cmd_compare)
     s.add_argument("dirs", nargs="+"); s.add_argument("--out", required=True)
     s = sub.add_parser("self-test"); s.set_defaults(fn=cmd_self_test)

@@ -9,7 +9,8 @@ description: >
   edges) and four frame passes at cadences chosen by the rubric (never by asking
   the user), scores six dimensions with anchored levels, and emits
   severity-tagged findings that each carry a time interval, a screen region,
-  verbatim evidence and a confidence level, as stable JSON plus a short summary.
+  verbatim evidence, a confidence level and a concrete, checkable fix, as stable
+  JSON plus a short summary and time-coded correction notes.
   Also compares a FAMILY of videos made from the same request, side by side, and
   calibrates against the owner's feedback once the blind report is frozen.
   Written so a Sonnet judge with Haiku runners can execute it step by step.
@@ -47,6 +48,12 @@ viewers are precisely the ones the plan does not predict.
 
 You **may** run any tool on the file itself — `ffmpeg`, `ffprobe`, ASR, frame
 extraction, OCR. The file is the video, not an internal.
+
+**You do say how to fix it — in the video's own terms.** "Hide the title card
+between 00:05 and 00:09" is a statement about the picture: anyone can check it
+on the next render without knowing how the video is built. "Fix the scene's
+start offset" is a diagnosis in disguise — forbidden, and useless to whoever
+uses a different tool. See "Every finding carries a fix".
 
 Two extensions of the same boundary:
 
@@ -327,6 +334,62 @@ They are the describer's watch-list (step 4):
 - `unrequested-chrome` — progress bars, slide counters, disclaimer banners the
   request did not ask for. Never above S2.
 
+## Every finding carries a fix
+
+A finding says what is wrong; its `fix` says what the next render must look or
+sound like, precisely enough that someone can make the edit and someone else
+can check it. It is written at the level of the video — what, when, where, to
+what value — never at the level of the generator.
+
+```json
+"fix": {"formulable": true, "action": "hide",
+        "what": "the title card \"LO QUE HAY DEBAJO\"",
+        "t": [5.0, 8.5], "region": "center",
+        "target": "not shown before the clip; first appears at 00:34, where the voice reaches it",
+        "verify": "measure: no visual.reappearances pair for this screen · align: \"LO QUE HAY DEBAJO\" in-slot"}
+```
+
+- **`action`** — one verb from: `hide` (an element, for an interval), `remove`
+  (frames, a clip, an element, for good), `retime` (shift a start or an end),
+  `trim`, `fade`, `move`, `resize`, `restyle`, `replace`, `add`, `level`
+  (loudness).
+- **`what`** — the thing as a viewer would point at it: its visible text or a
+  plain description. Never a layer, track, scene id or file name.
+- **`t` and `region`** — where the *edit* applies, which is not always where
+  the defect was seen (the title card is flagged at its second showing; the
+  edit is on the first).
+- **`target`** — the value to reach. Numbers come from the pass that measured
+  them and are no finer than it: an offset bracketed by 0.25s probes is
+  "0.25–0.5s earlier", not "0.3s". `check` rejects a target finer than the
+  finding's pass.
+- **`verify`** — the check to re-run on the new file, starting with
+  `measure:`, `align:`, `probe:` (a frame or strip at stated times and what
+  must be read there) or `listen:` (only a person can confirm it).
+- **`condition`** — optional: the fix applies only if something a person must
+  establish is true. "Remove the clip's subtitles — *only if* a listener cannot
+  make the words out either."
+
+`references/fix-recipes.md` has the recipe for every defect class: read it at
+step 9, before writing the first `fix`.
+
+**When the video alone cannot dictate the fix, say so:**
+
+```json
+"fix": {"formulable": false,
+        "why": "the screen says 35 and the voice says 53; which is right needs the source figure"}
+```
+
+That covers: which of two disagreeing channels is right; what a garbled thing
+was meant to say; material the video does not contain; a whole-piece redo. An
+invented fix sends someone to change the right thing to the wrong value —
+worse than an honest gap. `why` names exactly what is missing.
+
+**Correction notes.** `vqr.py notes report.json --out notes.json` turns the
+fixes into one note per finding — `t`, `type` (the action), `region`, `note`,
+`verify`, plus `condition` when there is one — sorted by time, ready to send to
+a review panel that takes notes by time, type and frame zone. Findings with
+`formulable: false` are listed apart, with their `why`, and produce no note.
+
 ## Anchored levels
 
 Four levels, shared names, per-dimension text: **Clean / Rough / Distracting /
@@ -519,17 +582,21 @@ A finding in `report.json`:
  "t": [31.0, 33.0], "pass": "P1", "region": "center,in-safe",
  "kind": "judged", "confidence": "high", "verified_by_judge": true,
  "evidence": "heading \"TRES FINALES\" over stat graphic (P1@00:32) while A1@00:29.8–A1@00:36.5 = \"…tenía 35 años…\"; \"tres finales\" is spoken at A1@00:25.1",
- "expected": "the graphic matches the clause in its own slot"}
+ "expected": "the graphic matches the clause in its own slot",
+ "fix": {"formulable": true, "action": "retime", "what": "the heading \"TRES FINALES\"",
+         "t": [24.0, 26.0], "region": "center",
+         "target": "on screen only while A1@00:25.1 says it; gone before 00:30",
+         "verify": "align: \"TRES FINALES\" in-slot"}}
 ```
 
 and the same finding as one summary line:
 
 ```
-F07 | D4 out-of-slot | S3 (f:once i:comprehension p:6s) | t=[00:31.0–00:33.0] P1 | region=center,in-safe | judged, high | seen: heading "TRES FINALES" over stat graphic (P1@00:32) while A1@00:29.8–A1@00:36.5 = "…tenía 35 años…"; "tres finales" is spoken at A1@00:25.1 | expected: the graphic matches the clause in its own slot
+F07 | D4 out-of-slot | S3 (f:once i:comprehension p:6s) | t=[00:31.0–00:33.0] P1 | region=center,in-safe | judged, high | seen: heading "TRES FINALES" over stat graphic (P1@00:32) while A1@00:29.8–A1@00:36.5 = "…tenía 35 años…"; "tres finales" is spoken at A1@00:25.1 | expected: the graphic matches the clause in its own slot | fix: retime the heading "TRES FINALES" → on screen only while A1@00:25.1 says it; gone before 00:30 (check: align in-slot)
 ```
 
 Fields: id · dimension + class · severity(f/i/p) · time interval + pass ·
-region · `measured|judged` + confidence · evidence · expected.
+region · `measured|judged` + confidence · evidence · expected · fix.
 
 **Region** uses the rule-of-thirds 3×3 vocabulary — `top-left`, `top-center`,
 `top-right`, `center-left`, `center`, `center-right`, `bottom-left`,
@@ -566,7 +633,7 @@ and `escalate` (finding ids a bigger model or a person should look at).
 
 **Before delivering: `python3 scripts/vqr.py check report.json` must print
 `PASS`.** Then freeze it — record its sha256 — and do not edit it again. Later
-corrections are addenda.
+corrections are addenda. Then `vqr.py notes report.json --out notes.json`.
 
 ## How to run it
 
@@ -720,9 +787,10 @@ Text accuracy is the verbatim diff of the describer's subtitle strings against
 the transcript, under the collusion rule.
 
 **9 · Score, write, check, freeze (J).** Levels from the anchored text, each
-justified by a finding or a positive it cites. Write `$W/report.json`. Run
-`$VQR check $W/report.json` until it prints `PASS`. Record its sha256. Write
-the summary.
+justified by a finding or a positive it cites. Give every finding its `fix`
+from `references/fix-recipes.md`. Write `$W/report.json`. Run
+`$VQR check $W/report.json` until it prints `PASS`. Record its sha256. Run
+`$VQR notes $W/report.json --out $W/notes.json`. Write the summary.
 
 **10 · Calibrate — only if owner feedback exists, only now (J).** See
 "Calibration".

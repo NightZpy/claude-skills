@@ -35,7 +35,11 @@ free-form within the shape below.
      "t": [65.33, 66.1], "pass": "M1", "region": "top-left,top-center,top-right",
      "kind": "measured", "confidence": "high", "verified_by_judge": true,
      "evidence": "two document cards are fully visible at M1@01:05.20; the left one is gone at M1@01:05.33 and fades back by M1@01:05.70, then the right one does the same; 21 more re-entry events of the same shape at other scene starts (mechanical.json visual.flashes)",
-     "expected": "an element animates in once, from absent"}
+     "expected": "an element animates in once, from absent",
+     "fix": {"formulable": true, "action": "hide", "what": "each document card",
+             "t": [65.2, 65.7], "region": "top-left,top-center,top-right",
+             "target": "absent from the first frame of the scene until its own entrance starts; enters once",
+             "verify": "measure: no visual.flashes event in [65.2, 66.2]"}}
   ],
   "positives": [
     {"id": "G01", "dim": "D5", "t": "full", "pass": "P1", "kind": "judged",
@@ -74,6 +78,12 @@ Rules `check` enforces:
   `gibberish-as-information`, `wrong-identity`, `unintelligible-narration`,
   `d1-gate`. S3/S4 need `verified_by_judge: true` and cannot be
   `confidence: low`.
+- `fix` is present on every finding: either `formulable: false` with a `why`,
+  or `formulable: true` with `action` (from the fixed verb list), `what`, `t`
+  `[start, end]`, `region`, `target` and a `verify` that starts with
+  `measure:`, `align:`, `probe:` or `listen:`. A decimal number of seconds in
+  `what`/`target` must not be finer than a fifth of the finding's pass
+  resolution. Optional `condition`.
 - `region` uses the 3×3 names (comma-separated for several), `full-frame` or
   `audio`; add `in-safe`/`out-safe` when it applies.
 - `verdict` equals the one derived from the findings. 2–5 positives. Every id
@@ -85,6 +95,25 @@ missing from `escalate`.
 Not checked, still required: `class` from the vocabulary in SKILL.md;
 `level_basis` naming the finding or positive behind each level; no model,
 provider, profile or cost anywhere in the file.
+
+## `notes.json` — written by `vqr.py notes report.json --out notes.json`
+
+```json
+{"schema": "vqr-notes/1", "label": "V1",
+ "notes": [
+   {"finding": "F02", "t": [65.2, 65.7], "type": "hide", "region": "top-left,top-center,top-right",
+    "severity": 3, "class": "flicker",
+    "note": "each document card → absent from the first frame of the scene until its own entrance starts; enters once",
+    "verify": "measure: no visual.flashes event in [65.2, 66.2]"}
+ ],
+ "cannot_be_written_from_the_video": [
+   {"finding": "F06", "t": [112.0, 114.0], "class": "number-mismatch",
+    "why": "the screen says 35 and the voice says 53; which is right needs the source figure"}
+ ]}
+```
+
+One note per formulable fix, sorted by `t`. `type` is the fix's `action`;
+mapping it onto a panel's own note types is the caller's.
 
 ## `calibration.json` — only after `report.json` is frozen
 
