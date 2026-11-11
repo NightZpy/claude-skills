@@ -60,12 +60,12 @@ as `action` and put the other in `target`.
 
 | class | action | what → target | verify |
 |---|---|---|---|
-| `loudness` | `level` | the whole mix → `<−16 − measured>` LU of gain, landing in [−18, −14] LUFS | `measure:` `integrated_lufs` in range |
+| `loudness` | `level` | the whole mix → `<−16 − measured>` LU of gain, landing in [−18, −14] LUFS (*chosen by us* — `basis: our-target`, at most S2, unless the request names a level; no finding at all if it asks for the mix as it is). For one part louder than the rest: that part → within 3 dB of the voice around it | `measure:` `integrated_lufs` in range |
 | `true-peak` | `level` | the whole mix → true peak ≤ −1 dBTP (limit, not just gain) | `measure:` `true_peak_dbtp ≤ −1` |
 | `audio-hole` | `add` | the bed across `<interval>` → continuous through it | `measure:` no `dead_air` in `<interval>` |
 | `dead-air` | `trim` or `add` | the silent gap `<interval>` → ≤ 1.5s, or carried by a bed | `measure:` no `dead_air` / quiet `speech_gaps` ≥ 1.5s there |
 | `orphan-audio` | `remove` | the sound at `<interval>` → muted | `measure:` no `orphan_bursts` there · `listen:` no click or word fragment |
-| `asr-unintelligible` | `remove`, **conditional** | the clip's dialogue subtitles (or the clip) in `<interval>` → gone. `condition`: "a person listens to `<interval>` and cannot make the words out either" | `listen:` the words in `<interval>` |
+| `asr-unintelligible` | `remove`, **conditional** | the clip's dialogue subtitles in `<interval>` → gone. `condition`: "a person listens to `<interval>` and cannot make the words out either". If the clip has no subtitles, or the request orders the clip kept, **not formulable**: low ASR confidence proves nothing by itself, and what to do with the clip is the owner's call | `listen:` the words in `<interval>` |
 
 ## D4 — narration ↔ picture
 
@@ -88,7 +88,7 @@ as `action` and put the other in `target`.
 | `text-clipped` | `move` or `resize` | «`<text>`» → whole inside the frame / its box, with margin | `probe:` frame at `<t>` |
 | `text-illegible` | `resize` or `restyle` | «`<text>`» → readable at delivery size without zoom: contrast ≥ 4.5:1, on screen ≥ `chars / 17` s, and large enough that a describer reads it from the full frame | `probe:` full frame at `<t>`, no zoom |
 | `artifact-shape` | `remove` | the `<disc / plate / bar>` in `<region>` during `<interval>` → gone | `probe:` frame at `<t>` |
-| `empty-space` | `move` | the content in `<interval>` → spread over the frame; no dead area larger than a third of it | `probe:` frame at `<t>` |
+| `empty-space` | `move` or `resize` | the content in `<interval>` → spread over the frame; no dead band larger than a third of it (*chosen by us* unless the request sets it) | `measure:` no `empty_bands` entry in `<interval>` · `probe:` frame at `<t>` |
 | `unrequested-chrome` | `remove` | the `<progress bar / counter / banner>` → gone for the whole video | `probe:` sheets |
 | `style-break` | `restyle` | the scene `<interval>` → the palette and rendering style of its neighbours | `probe:` side-by-side strip with the scenes before and after |
 | `gibberish-text` | `replace` | «`<garbled>`» → the words the voice says at that moment, «`<quote>`», when it says them. Otherwise **not formulable**: the intended text is not in the video | `probe:` zoom at `<t>` |
@@ -104,6 +104,9 @@ as `action` and put the other in `target`.
 | `sub-contrast` | `restyle` | the subtitle line → backing or outline giving ≥ 4.5:1 on its worst frame | `probe:` frame at `<worst t>` |
 | `sub-speed` | `retime` | the line «`<text>`» → on screen ≥ `chars / 17` s, or split in two | `probe:` first and last frame showing it |
 | `sub-overlap` | `move` | the subtitle line → clear of `<the other text>` | `probe:` frame at `<t>` |
+| `text-out-safe` | `move` | «`<text>`» → inside the safe zone | `probe:` frame at `<t>` |
+| `text-contrast` | `restyle` | «`<text>`» → ≥ 4.5:1 against its worst background frame | `probe:` frame at `<worst t>` |
+| `text-speed` | `retime` | «`<text>`» → on screen ≥ `chars / 17` s | `probe:` first and last frame showing it |
 
 ## D1 — hook and gates
 
@@ -120,6 +123,10 @@ Say `formulable: false` with a `why` when writing the fix would need something
 that is not in the picture or the sound:
 
 - **which of two disagreeing channels is right** (number, name, claim);
+- **which line an image belongs to**, when nothing on screen, in the request
+  or in the voice says what the image is;
+- **anything the request has already decided** — its order, its mix, a clip it
+  wants whole. The fix may not undo an instruction;
 - **what a garbled or missing thing was meant to be**;
 - **material the video does not contain** (a payoff, a correct likeness);
 - **a whole-piece redo** (aspect, language).

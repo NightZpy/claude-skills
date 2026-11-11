@@ -53,6 +53,15 @@ on the next render without knowing how the video is built. "Fix the scene's
 start offset" is a diagnosis in disguise — forbidden, and useless to whoever
 uses a different tool. See "Every finding carries a fix".
 
+**What the request supplies is an input; what the request orders is not a
+defect.** Material the requester handed over — a clip, a logo, a capture —
+is part of the request, and you may compare the video against it (`vqr.py
+source` does this for an embedded clip). And when the request explicitly asks
+for the very thing the rubric would flag — a fixed order of scenes, a soft
+mix, a clip kept whole, no subtitles — it is not a finding and no fix may undo
+it. Record it in `coverage.deferred_to_request` with the request's words; if
+you think it costs the video something, say so there, once.
+
 **The request can leak, and can anchor.** A brief often names tools, ids and
 file names — ignore them; they are internals that happen to be written down. A
 request that is itself a list of corrections to an earlier version is still the
@@ -141,7 +150,11 @@ to make.
 
 Ask it **once per run** — once for a whole family, not once per video. If the
 caller already passed `verify_subtitles`, do not ask. If the caller supplied no
-transcript, there is nothing to ask: transcribe. If nobody can answer (you
+transcript, there is nothing to ask: transcribe. If the request says the video
+has no subtitles, there is nothing to verify: do not ask, transcribe anyway
+(D3 and D4 need the words), and set subtitle accuracy to `NOT SCORED — no
+subtitles`. The same holds if you only discover at step 3 that there are none
+— whatever was answered no longer matters. If nobody can answer (you
 are a subagent, or a batch job): default to **yes** when `vqr.py doctor` shows a
 local ASR engine — the run then costs compute, not money — and to **no**
 otherwise. Write the branch you took in the report's `transcript` block.
@@ -214,6 +227,25 @@ to trust the *finding* — fact, defect-or-intended, and severity together.
 defect you are unsure about is reported as unsure — not dropped, and not
 promoted.
 
+### Every finding names whose standard it breaks
+
+`basis` is one of:
+
+- **`request`** — the request asks for it (a duration limit, a safe zone, "use
+  the whole frame", "logos when named").
+- **`rubric`** — a defect by its nature, whoever asked: a flicker, a chopped
+  word, text nobody can read, a screen that contradicts the voice.
+- **`our-target`** — a number this rubric picked for want of a standard. They
+  are marked *chosen by us* wherever they appear: the loudness range, 17 CPS,
+  the default safe zones, the 8-second hold, the one-third empty band, the
+  3-frame fade.
+
+**A finding on `our-target` never exceeds S2**, and `check` enforces it. Missing
+a number we invented is a note to the owner — "your mix sits at −23 LUFS;
+−16 is common" — not a reason to hold the video. When the request states its
+own figure, the basis is `request` and the cap is gone. When the request asks
+for the opposite ("keep the soft mix"), there is no finding at all.
+
 ### Measured sub-checks
 
 **D1 gates** (any failure is automatically S4):
@@ -285,8 +317,15 @@ at what is on screen before calling it anything.
   range. Not a universal constant.* It applies to any on-screen sentence, not
   only subtitles.
 
-A video with no subtitles scores D6 on its other on-screen text; subtitle
-accuracy and sync are `NOT SCORED — no subtitles`. Whether subtitles were
+**D6 is about how on-screen text is delivered, subtitles or not.** With no
+subtitles, D6 is still scored: placement, contrast and reading speed apply to
+every heading, card and label, under `text-out-safe`, `text-contrast` and
+`text-speed`. Only the two subtitle-specific checks — accuracy and sync — go to
+`not_scored` as `subtitle accuracy and sync — no subtitles`. D6 is
+`NOT SCORED` as a whole only when the video shows no text at all. The line
+with D5: *how* text is delivered (where, against what, for how long) is D6;
+whether the text itself is right, whole and big enough to read is D5
+(`text-illegible`, `text-clipped`, `gibberish-text`). Whether subtitles were
 *wanted* is the request's business, and goes in `requirements`.
 
 ## From candidate to finding — the rules that keep this from being naive
@@ -308,11 +347,21 @@ its strip.
 | `holds` ≥ 8s | the narration keeps going (words inside the hold) and nothing at all changes on screen | a deliberate still: a suspense beat, a document held to be read, a look the request asks for. **A static background is never a defect by itself** | `pacing-slow` |
 | `speech_gaps`, not loud, ≥1.5s, mid-video | the picture is not carrying the moment either | a visual beat that is clearly meant to play without voice | `dead-air` |
 | `dead_air` under a continuous bed | always (measured) | — | `audio-hole` |
-| cut with `|step_db| ≥ 20` | `said_before`/`said_after` show a broken word or sentence, or a clip that starts from silence into running action | a new section starting on a sentence boundary | `hard-clip-entry`, `hard-clip-exit`, `cut-in-word` |
+| cut with `|step_db| ≥ 20` | `said_before`/`said_after` show a broken word or sentence; or `vqr.py source` shows the clip starting inside its source (`head_skipped_s` > 0.1) or stopping short of its end; or the strip shows an action already under way | a new section starting on a sentence boundary; **a clip that plays from the first frame of its source — its own opening silence makes the same step.** A hard cut with no transition, after a finished sentence, is a preference | `hard-clip-entry`, `hard-clip-exit`, `cut-in-word` |
+| `empty_bands` | the scene's content is crowded into part of the frame while a band of a third or more carries nothing, and nothing about the scene asks for it — an embedded clip shown small between black bars is the usual case | a title or chapter card, a deliberate pause, a composition that uses the space as space. Without a request to use the frame this is `our-target` | `empty-space` |
 | `low_confidence_speech` | it sits inside an embedded clip whose words matter: the machine could not make them out | proper nouns and brand names | `asr-unintelligible` — always `confidence: low`, with "a person must listen; if they cannot make it out either, cut the clip" |
 | `orphan_bursts` | a sound with no word under it, after speech has ended | — | `orphan-audio` — `confidence: low` |
 | `align` `early`/`late` ≥ 3s | the frame *presents* that text as its subject while the quoted narration is on something else | persistent chrome (logo, channel tag, source note, a section header that stays up); an agenda that previews on purpose; anticipation ≤ 2s | `out-of-slot` |
 | `align` `never-spoken` | a label with no function, or a claim the voice never makes | text that adds what the words do not say — that is what D4 `Clean` asks for | `stray-label`, or D4 `Broken` if it asserts a fact |
+
+**Know what an image is before saying where it belongs.** Calling a picture
+"the joke the voice introduces later" needs evidence that it is that joke: text
+on the image, the request's own list of materials, or the narration naming it
+while it is up. Two memes in one video are easy to swap. If you cannot
+establish it, the finding is `confidence: low`, its fix is `formulable: false`
+("which line this image belongs to is the author's to say"), and it goes in
+`escalate`. The same for people: a face is named only when a caption, the
+request or the voice names it.
 
 A screen shown twice is **one** finding, `screen-reappears`, not also an
 `out-of-slot`: cite the `align` row in its evidence, and put the fix on
@@ -333,7 +382,7 @@ reviewers and the owner's feedback can be matched without interpretation.
 | D3 | `flicker` `blank-frame` `screen-reappears` `frozen-picture` `hard-clip-entry` `hard-clip-exit` `cut-in-word` `reveal-done-early` `transition-mismatch` `pacing-slow` `pacing-rushed` |
 | D4 | `out-of-slot` `stray-label` `number-mismatch` `contradiction` `filler` `duplicate-data` |
 | D5 | `layer-out-of-slot` `occluded-subject` `overlap` `text-clipped` `text-illegible` `artifact-shape` `gibberish-text` `identity` `style-break` `empty-space` `unrequested-chrome` |
-| D6 | `sub-desync` `sub-mismatch` `sub-out-safe` `sub-contrast` `sub-speed` `sub-overlap` |
+| D6 | subtitles: `sub-desync` `sub-mismatch` `sub-out-safe` `sub-contrast` `sub-speed` `sub-overlap` · any other text: `text-out-safe` `text-contrast` `text-speed` |
 
 The D5 ones nobody can measure, and they are the ones owners report most.
 They are the describer's watch-list (step 4):
@@ -348,6 +397,8 @@ They are the describer's watch-list (step 4):
   describer could only read after a zoom is illegible to a viewer on a phone.
 - `artifact-shape` — a disc, plate, bar or box with no function.
 - `empty-space` — a large dead area while the content is crammed elsewhere.
+  `measure` lists `empty_bands` (a flat band over a third of the frame, or 60%
+  of it flat in all) as leads; the one-third figure is *chosen by us*.
 - `unrequested-chrome` — progress bars, slide counters, disclaimer banners the
   request did not ask for. Never above S2.
 
@@ -485,9 +536,17 @@ check.
 | `i` | usual severity | goes one higher when |
 |---|---|---|
 | `cosmetic` | S1 | `f: recurring/throughout` → S2 (never above) |
-| `attention` | S2 | `f: recurring/throughout`, or it affects more than a tenth of the video → S3 |
+| `attention` | S2 | it is an **event** that keeps happening → S3. A **state** stays S2 |
 | `comprehension` | S3 | it is on the S4 list below |
 | `trust` | S3 | it is on the S4 list below |
+
+**Event or state.** An *event* happens and takes the eye or the ear each time:
+a flicker, a hole in the music, a card that jumps. Three or more of them, or
+one that keeps going for a tenth of the video, is S3 — the viewer is being
+interrupted. A *state* is a constant property the viewer adjusts to once: the
+overall loudness, a margin, small credits, a clip sitting 9 dB above the voice.
+`f: throughout` does not raise a state; duration is what a state *is*.
+And nothing on `basis: our-target` goes above S2, event or state.
 
 - **S1 cosmetic** — found only by hunting. Fix if free.
 - **S2 minor** — a viewer notices. Attention and trust survive.
@@ -668,6 +727,17 @@ not-evaluable`, with finding ids — only what picture and sound can show),
 `coverage` (frames described, frames the judge read, what the budget dropped),
 and `escalate` (finding ids a bigger model or a person should look at).
 
+**Writing so that `check` passes the first time:**
+- A clock time in `evidence` or `expected` is always `PASS@MM:SS` or
+  `PASS@MM:SS.d` — `P1@01:05`, never a bare `01:05`. An aspect ratio (`9:16`)
+  is fine as it is.
+- A length of time is whole seconds, or a multiple of the finding's pass
+  resolution — "about 6s" in a P1 finding, not "5.5s" or "5,5s"; "0.25s" or
+  "0.5s" in a P4 one. The same in `fix.target`.
+- Every finding has `basis`; `our-target` cannot be above S2.
+- S3 and S4 need `verified_by_judge: true` and cannot be `confidence: low`.
+- The verdict is whatever the findings derive; write it last.
+
 **Before delivering: `python3 scripts/vqr.py check report.json` must print
 `PASS`.** Then freeze it — record its sha256 — and do not edit it again. Later
 corrections go in `addenda.json` beside it (`[{"what", "why"}]`), never into
@@ -720,12 +790,24 @@ One working directory per video: `W=<out>/<label>`. `VQR=<skill>/scripts/vqr.py`
 the runner's, **D** the describer's, **J** the judge's. Ready-to-paste prompts
 for R and D are in `references/prompts.md`.
 
-If you cannot dispatch subagents, do R and D yourself, in this order: steps 0
-and 2, then describe the P1 and P2 frames (step 4), and only then step 1 and
-the rest. `measure` and `transcribe` print and store what the voice says; the
-independence D4 depends on is between what was seen and what was said, and it
-survives only if the seeing comes first. Say in `reviewer` that one model did
-all three jobs.
+**One model doing all three jobs.** If you cannot dispatch subagents, you are
+runner, describer and judge, and three things change:
+
+1. **Order.** Steps 0 and 2, then `measure` **without** `--transcript` (it
+   prints only what the picture does), then describe (step 4), and only then
+   `transcribe`, `measure --transcript` and the rest. The independence D4
+   depends on is between what was seen and what was said; it survives only if
+   the seeing comes first.
+2. **Describing.** Still one JSON line per P1 and P2 frame, written from that
+   frame, opened at full size — a contact sheet is for planning, never for
+   reading text. The one economy allowed: inside a `holds` entry of
+   `mechanical.json` the picture is measured to be identical, so open its
+   first frame and give the others `{"file": "…", "same_as": "<first file>"}`.
+   Writing one description per scene and copying it over frames you did not
+   open is not that: it puts words on frames nobody looked at.
+3. **The slip check does not apply** — there is no hand-off for a description
+   to slip in. Say in `reviewer` that one model did all three jobs, and in
+   `coverage` how many frames were opened and how many were `same_as`.
 
 **0 · Preflight (R).** `"$VQR" doctor`. If ffmpeg, numpy or Pillow is missing,
 stop and say so. Write the request's facts to `$W/request.json`: language,
@@ -832,8 +914,13 @@ else may rest on the describer:
 1. **Entry.** P3 strip at the entry cut + its `audio.cuts` row. Does it start
    mid-action or mid-word, from silence, or on top of an unfinished sentence
    (`said_before`)? An entry cut with `|step_db| ≥ 20` is a candidate whatever
-   the words say — sound that snaps off or on is what "starts chopped" looks
-   like in numbers. → `hard-clip-entry`
+   the words say — and only a candidate: a clip whose own first tenth of a
+   second is silent makes the same step. If the request supplied the clip's
+   source, settle it with numbers:
+   `"$VQR" source VIDEO <clip source> --from <entry> --to <exit>` reports where
+   in its source the clip starts and stops and how much silence the source
+   itself opens with. Starts at its first frame and runs to its end → clean,
+   and worth a positive. → `hard-clip-entry` only on the table's conditions
 2. **Exit.** Same at the exit cut. And **what comes back**: is the screen after
    the clip one the viewer already saw before it (`reappearances` whose `again`
    starts at the exit)? → `screen-reappears`
@@ -894,7 +981,7 @@ Densify freely. **Never go sparser than this.**
 | pass | cadence | serves |
 |---|---|---|
 | **A1** | audio only | D2, D3 audio edges, D4/D6 alignment |
-| **M1** | every frame, thumbnail size | D3 flicker, reappearances, blank frames, holds |
+| **M1** | every frame, thumbnail size | D3 flicker, reappearances, blank frames, holds; D5 unused frame |
 | **P1** | fps=0.5, full video | D5 baseline, D4 sampling, subtitle OCR seed |
 | **P2** | fps=2, 0–5s | D1 — dense, because the opening is what decides everything |
 | **P3** | fps=4, ±1s around chosen cuts | D3 clip edges and transitions |
@@ -1027,6 +1114,8 @@ is exactly where the dense passes sit. Say this in the report rather than
 implying full coverage.
 
 **What M1 gets wrong.** It works on thumbnails with fixed thresholds:
+- `empty_bands` cannot tell an unused band from a deliberately plain one; a
+  title card is 80% flat by design.
 - A gentle flicker under ~4% of the frame, or one that fades both ways, is
   below it.
 - Live footage inside a clip produces `re-entry` and `blink` candidates from

@@ -34,7 +34,7 @@ free-form within the shape below.
      "f": "recurring", "i": "attention", "p_s": 12,
      "t": [65.33, 66.1], "occurrences": [[47.37, 47.73], [54.63, 55.03], [96.8, 97.2]],
      "pass": "M1", "region": "top-left,top-center,top-right",
-     "kind": "measured", "confidence": "high", "verified_by_judge": true,
+     "kind": "measured", "confidence": "high", "basis": "rubric", "verified_by_judge": true,
      "evidence": "two cards are fully visible at M1@01:05.20; the left one is gone at M1@01:05.33 and fades back by M1@01:05.70, then the right one does the same; the same shape at three other scene starts (occurrences)",
      "expected": "an element animates in once, from absent",
      "fix": {"formulable": true, "action": "hide", "what": "each card of the scene",
@@ -58,6 +58,8 @@ free-form within the shape below.
   "coverage": {"frames_described": 214, "frames_read_by_judge": 31,
                "candidates": {"flashes": 35, "reappearances": 1, "align_early_late": 3},
                "dropped": ["P3: 1 of 15 hard cuts not sampled (budget)"],
+               "deferred_to_request": [{"what": "the promise arrives only after the 25 s clip",
+                                        "request": "«gancho → meme completo → título»"}],
                "blind_spots": ["a wrong label that appears and clears inside a P1 gap away from a cut"]},
   "escalate": []
 }
@@ -74,13 +76,16 @@ Rules `check` enforces:
   for a recurring defect, its clearest instance, with the others in the
   optional `occurrences` (a list of `[start, end]`).
 - Clock times in `evidence`/`expected` are written `PASS@MM:SS` or
-  `PASS@MM:SS.d`. A decimal number of seconds ("0.31s") must be a multiple of
-  the pass's resolution or have no more digits than a fifth of it.
+  `PASS@MM:SS.d` (a bare `9:16` is read as an aspect ratio). A decimal number
+  of seconds ("0.31s", "5,5s") must be a multiple of the pass's resolution or
+  have no more digits than a fifth of it.
 - `severity` 1–4. `i: cosmetic` cannot be above S2. S4 needs
   `i: comprehension|trust` and `s4_reason` ∈ `fabricated-claim`,
   `gibberish-as-information`, `wrong-identity`, `unintelligible-narration`,
   `d1-gate`. S3/S4 need `verified_by_judge: true` and cannot be
   `confidence: low`.
+- `basis` is `request`, `rubric` or `our-target`; `our-target` cannot be above
+  S2.
 - `fix` is present on every finding: either `formulable: false` with a `why`,
   or `formulable: true` with `action` (from the fixed verb list), `what`, `t`
   `[start, end]`, `region`, `target` and a `verify` that starts with
