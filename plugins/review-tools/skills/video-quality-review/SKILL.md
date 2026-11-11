@@ -687,6 +687,11 @@ is the main way this skill gets expensive for no gain.
 | **Judging** — choosing windows, turning candidates into findings, verifying on the frames, levels, severity, `report.json` | **Sonnet or larger** (judge) | This is where discretion lives. |
 | **Arbitrating `escalate`** — every S4, any close call between two levels, any "is this intended?" the judge could not settle | **Opus / Fable, or the owner** | Few items, high stakes. |
 
+The split is not a cost preference, it is a quality argument in both
+directions. A frontier model doing frame description wastes money on a task
+with a single correct answer. And a cheap model doing the final judgement
+unguarded is the failure this rubric is built to prevent.
+
 Earlier versions of this skill reserved the verdict for a frontier model,
 because a cheap model handed a pile of evidence produces "a confident,
 well-formatted verdict arrived at by pattern-matching". That risk is real, and a
@@ -777,6 +782,8 @@ strips, as prose. Fixed watch-list, for every frame:
 - every on-screen text **verbatim**, with its region and role (`subtitle`,
   `heading`, `label`, `number`, `source-note`, `chrome`);
 - what the picture shows, and whether it is an embedded clip;
+- any person or character: face, hair, wardrobe, identifying marks — D5's
+  identity check compares these across scenes — and a sharpness note;
 - the D5 list: anything left over from another scene, anything covering the
   subject, overlaps, clipped words, text it could not read, shapes with no
   function, large empty areas;

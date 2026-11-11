@@ -59,6 +59,8 @@ per line, one line per frame, nothing else in the file:
 {"file": "<the frame's file name, copied exactly>",
  "texts": [{"text": "<verbatim>", "region": "<region>", "role": "<role>"}],
  "picture": "<what the frame shows, one sentence>",
+ "subject": "<any person or character: face, hair, wardrobe, identifying marks such as a number or a crest — or \"none\">",
+ "sharpness": "<sharp | soft | blurred, and where if not the whole frame>",
  "clip": <true if the frame is moving footage placed inside the composition — a meme video, a film clip; false for stills, screenshots and graphics>,
  "layout": ["<each problem you can SEE, or leave the list empty>"],
  "unreadable": ["<where, and roughly how long, any text you cannot read with confidence is>"]}
