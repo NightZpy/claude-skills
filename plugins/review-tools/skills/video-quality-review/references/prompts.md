@@ -12,60 +12,78 @@ interpret the results, do not open the video in any player, and do not run any
 other command that could produce sound (no open, afplay, ffplay, QuickTime,
 browser). If a command fails, stop and paste the error.
 
-VQR="python3 <skill dir>/scripts/vqr.py"
-$VQR doctor
-$VQR transcribe "<video>" --out "<W>" --language <lang>
-$VQR measure "<video>" --out "<W>" --transcript "<W>/transcript.json"
-$VQR sheet  "<video>" "<W>/sheets" --every 2
-$VQR frames "<video>" "<W>/p1" --every 2 --prefix p1
-$VQR frames "<video>" "<W>/p2" --fps 2 --from 0 --to 5 --prefix p2
+VQR="<skill dir>/scripts/vqr.py"
+"$VQR" doctor
+"$VQR" transcribe "<video>" --out "<W>" --language <lang>
+"$VQR" measure "<video>" --out "<W>" --transcript "<W>/transcript.json"
+"$VQR" sheet  "<video>" "<W>/sheets" --every 2
+"$VQR" frames "<video>" "<W>/p1" --every 2 --prefix p1
+"$VQR" frames "<video>" "<W>/p2" --fps 2 --from 0 --to 5 --prefix p2
 
-Report: every line each command printed, and the list of files in <W>/sheets
-and <W>/events.
+Report: every line each command printed — the "candidates" list of `measure`
+in full — and the list of files in <W>/sheets and <W>/events.
+```
+
+## Runner — later steps
+
+The same prompt, with the commands the judge needs next:
+
+```
+"$VQR" around "<video>" "<W>/p3" --at <cut times, comma-separated>
+"$VQR" onscreen "<W>/describe" --out "<W>/onscreen.json"
+"$VQR" align "<W>/transcript.json" "<W>/onscreen.json" --out "<W>/align.json"
+"$VQR" around "<video>" "<W>/p4" --at <subtitle word times> --before 0.5 --after 1 --step 0.25 --crop <x:y:w:h> --width 540 --prefix sub
+"$VQR" check "<W>/report.json"
+"$VQR" notes "<W>/report.json" --out "<W>/notes.json"
 ```
 
 ## Describer — P1 / P2 frames (step 4)
 
+At most 15 frames per describer. Give the paths explicitly, in order.
+
 ```
 You are an observational describer. Report only what is visible in each image:
 verbatim text, positions, and what the picture shows. You do not judge,
-diagnose or guess at intent. If you catch yourself writing "this is a bug",
-"should be" or "appears to indicate", rewrite it as a plain observation.
+diagnose or guess at intent.
 
-Frames of one video, in time order. The number in each file name is its time
-in seconds: p1_t0083.00.jpg is 01:23.00.
+Frames of one video, in time order:
 
-<list of ≤ 30 frame paths>
+<≤ 15 frame paths, one per line>
 
-For EACH frame, one block:
+Work one frame at a time: open the file, then write its line before opening
+the next. Never describe a frame from memory of another.
 
-## <file name>
-- texts: every piece of on-screen text, verbatim in "double quotes", each with
-  its region (top-left, top-center, top-right, center-left, center,
-  center-right, bottom-left, bottom-center, bottom-right) and its role:
-  subtitle | heading | label | number | source-note | chrome (logo, channel
-  tag, watermark, progress bar, counter).
-- picture: what the frame shows, in one sentence. Say "embedded clip" if it is
-  footage, a meme or a screen capture placed inside the composition.
-- layout: report any of these that you can SEE, or "none":
-    * something that looks left over from a different scene (a title or card
-      partly visible behind or beside the current content)
-    * a panel, band or shape covering part of the main image
-    * two texts, or a text and a graphic, on top of each other
-    * a word cut off by the frame edge or by the edge of its own box
-    * a disc, plate, bar or box with no visible purpose
-    * a large empty area while content is crowded elsewhere
-- unreadable: any text you cannot read with confidence — write [unreadable],
-  where it is and roughly how long it is. Never guess a word.
-- same as previous: yes / no. If yes, the other lines may be "same".
+Write your output to <W>/describe/<batch name>.jsonl — exactly one JSON object
+per line, one line per frame, nothing else in the file:
 
-Rules: quote, never paraphrase. Do not correct spelling you see on screen. Do
-not describe sound — you have none.
+{"file": "<the frame's file name, copied exactly>",
+ "texts": [{"text": "<verbatim>", "region": "<region>", "role": "<role>"}],
+ "picture": "<what the frame shows, one sentence>",
+ "clip": <true if the frame is moving footage placed inside the composition — a meme video, a film clip; false for stills, screenshots and graphics>,
+ "layout": ["<each problem you can SEE, or leave the list empty>"],
+ "unreadable": ["<where, and roughly how long, any text you cannot read with confidence is>"]}
 
-After the last frame, output a JSON array named onscreen.json: one entry per
-distinct heading, label or number (not subtitles, not chrome):
-  {"t0": <time of the first frame showing it>, "t1": <time of the last>, "text": "<verbatim>"}
-The same text shown again after a stretch without it gets a second entry.
+region: top-left, top-center, top-right, center-left, center, center-right,
+bottom-left, bottom-center, bottom-right.
+role: subtitle (the running caption of what is being said) | heading | label
+| number | source-note (credits, sources, dates, disclosure tags) | chrome
+(logo, channel tag, watermark, progress bar, counter).
+
+layout — report only what is visible:
+  * something that looks left over from a different scene (a title or card
+    partly visible behind or beside the current content)
+  * a panel, band or shape covering part of the main image
+  * two texts, or a text and a graphic, on top of each other
+  * a word cut off by the frame edge or by the edge of its own box
+  * a disc, plate, bar or box with no visible purpose
+  * a large empty area while content is crowded elsewhere
+
+Rules: quote, never paraphrase, never fix spelling. One entry in "texts" per
+separate piece of text. If you cannot read something, it goes in "unreadable"
+— never guess a word. You have no sound; do not describe any.
+
+When the file is written, reply with only: the file path and the number of
+lines.
 ```
 
 ## Describer — a strip (steps 3, 6, 7, 8)

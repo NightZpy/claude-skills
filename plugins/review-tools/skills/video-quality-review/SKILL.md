@@ -49,11 +49,18 @@ viewers are precisely the ones the plan does not predict.
 You **may** run any tool on the file itself — `ffmpeg`, `ffprobe`, ASR, frame
 extraction, OCR. The file is the video, not an internal.
 
-**You do say how to fix it — in the video's own terms.** "Hide the title card
-between 00:05 and 00:09" is a statement about the picture: anyone can check it
+**You do say how to fix it — in the video's own terms.** "Hide the chapter card
+between 00:12 and 00:18" is a statement about the picture: anyone can check it
 on the next render without knowing how the video is built. "Fix the scene's
 start offset" is a diagnosis in disguise — forbidden, and useless to whoever
 uses a different tool. See "Every finding carries a fix".
+
+**The request can leak, and can anchor.** A brief often names tools, ids and
+file names — ignore them; they are internals that happen to be written down. A
+request that is itself a list of corrections to an earlier version is still the
+request: it says what was asked, and each item becomes a row in
+`requirements`. But its defects belong to *that* version. Find defects in this
+video's pixels first; never copy one in from the list.
 
 Two extensions of the same boundary:
 
@@ -215,7 +222,9 @@ promoted.
 - Spoken language is the requested language.
 - Aspect ratio is the requested one (16:9 explainers and 9:16 shorts are both
   normal — the gate is the request, not a house format).
-- Duration within ±10% of requested, or inside the requested range.
+- Duration within ±10% of a requested target. When the request gives a range or
+  a maximum instead, that is the gate, with no tolerance — stated limits are
+  usually a platform's.
 
 **D2:**
 - Integrated loudness in [−18, −14] LUFS, true peak ≤ −1 dBTP (`ffmpeg
@@ -265,7 +274,9 @@ at what is on screen before calling it anything.
 **D6:**
 - Burned subtitle text vs independent ASR, verbatim diff. **See the ASR
   collusion rule below — this is only `measured` under a condition.**
-- Sync offset ≤ 250ms, to your sampling resolution.
+- Sync offset ≤ 250ms, to your sampling resolution. ASR word starts run up to
+  ~0.2s early, so with 0.25s probes an offset is `measured` only from 0.5s up;
+  between 0.25s and 0.5s it is `judged`, `confidence: medium`.
 - Placement inside the safe zone. The request's own safe zone wins when it
   states one. Otherwise, 9:16: the Reels box, 1010×1280 within 1080×1920 — it
   has the largest bottom margin, and we do not know the target platform. 16:9:
@@ -295,6 +306,7 @@ its strip.
 | `blink` | something appears and is gone before it can be read | — | `flicker` |
 | blank frame, `middle` + `hard_edges` | always worth a finding | `hard_edges: false`: a fade through black | `blank-frame` |
 | `reappearances` | a title, section card or text screen that was already presented comes back and the narration there is not returning to it — above all right after an inserted clip (`first` ends where the clip starts, `again` starts where it ends) | a scene cutting back to a speaker or place; a recap the narration announces; a base layer (a map, a board) the section keeps building on | `screen-reappears` |
+| `holds` ≥ 2s inside an embedded clip | the clip's picture stands still while its own sound runs on | a clip that is a still image by nature | `frozen-picture` |
 | `holds` ≥ 8s | the narration keeps going (words inside the hold) and nothing at all changes on screen | a deliberate still: a suspense beat, a document held to be read, a look the request asks for. **A static background is never a defect by itself** | `pacing-slow` |
 | `speech_gaps`, not loud, ≥1.5s, mid-video | the picture is not carrying the moment either | a visual beat that is clearly meant to play without voice | `dead-air` |
 | `dead_air` under a continuous bed | always (measured) | — | `audio-hole` |
@@ -303,6 +315,13 @@ its strip.
 | `orphan_bursts` | a sound with no word under it, after speech has ended | — | `orphan-audio` — `confidence: low` |
 | `align` `early`/`late` ≥ 3s | the frame *presents* that text as its subject while the quoted narration is on something else | persistent chrome (logo, channel tag, source note, a section header that stays up); an agenda that previews on purpose; anticipation ≤ 2s | `out-of-slot` |
 | `align` `never-spoken` | a label with no function, or a claim the voice never makes | text that adds what the words do not say — that is what D4 `Clean` asks for | `stray-label`, or D4 `Broken` if it asserts a fact |
+
+A screen shown twice is **one** finding, `screen-reappears`, not also an
+`out-of-slot`: cite the `align` row in its evidence, and put the fix on
+whichever showing `align` leaves out of slot. `weak-match` rows in `align` (one
+shared word out of several) are not candidates at all. A `never-spoken` proper
+noun is usually the ASR spelling it by ear — look for the sound-alike in the
+transcript before believing it.
 
 ### Defect classes
 
@@ -313,7 +332,7 @@ reviewers and the owner's feedback can be matched without interpretation.
 |---|---|
 | D1 | `gate-language` `gate-aspect` `gate-duration` `weak-hook` `undelivered-promise` |
 | D2 | `loudness` `true-peak` `dead-air` `audio-hole` `orphan-audio` `asr-unintelligible` |
-| D3 | `flicker` `blank-frame` `screen-reappears` `hard-clip-entry` `hard-clip-exit` `cut-in-word` `reveal-done-early` `transition-mismatch` `pacing-slow` `pacing-rushed` |
+| D3 | `flicker` `blank-frame` `screen-reappears` `frozen-picture` `hard-clip-entry` `hard-clip-exit` `cut-in-word` `reveal-done-early` `transition-mismatch` `pacing-slow` `pacing-rushed` |
 | D4 | `out-of-slot` `stray-label` `number-mismatch` `contradiction` `filler` `duplicate-data` |
 | D5 | `layer-out-of-slot` `occluded-subject` `overlap` `text-clipped` `text-illegible` `artifact-shape` `gibberish-text` `identity` `style-break` `empty-space` `unrequested-chrome` |
 | D6 | `sub-desync` `sub-mismatch` `sub-out-safe` `sub-contrast` `sub-speed` `sub-overlap` |
@@ -343,34 +362,23 @@ what value — never at the level of the generator.
 
 ```json
 "fix": {"formulable": true, "action": "hide",
-        "what": "the title card \"LO QUE HAY DEBAJO\"",
-        "t": [5.0, 8.5], "region": "center",
-        "target": "not shown before the clip; first appears at 00:34, where the voice reaches it",
-        "verify": "measure: no visual.reappearances pair for this screen · align: \"LO QUE HAY DEBAJO\" in-slot"}
+        "what": "the chapter card \"PARTE DOS\"",
+        "t": [12.0, 18.0], "region": "center",
+        "target": "not shown before the inserted clip; first appears at 01:02, where the voice reaches it",
+        "verify": "measure: no visual.reappearances pair for this screen · align: \"PARTE DOS\" in-slot"}
 ```
 
-- **`action`** — one verb from: `hide` (an element, for an interval), `remove`
-  (frames, a clip, an element, for good), `retime` (shift a start or an end),
-  `trim`, `fade`, `move`, `resize`, `restyle`, `replace`, `add`, `level`
-  (loudness).
-- **`what`** — the thing as a viewer would point at it: its visible text or a
-  plain description. Never a layer, track, scene id or file name.
-- **`t` and `region`** — where the *edit* applies, which is not always where
-  the defect was seen (the title card is flagged at its second showing; the
-  edit is on the first).
-- **`target`** — the value to reach. Numbers come from the pass that measured
-  them and are no finer than it: an offset bracketed by 0.25s probes is
-  "0.25–0.5s earlier", not "0.3s". `check` rejects a target finer than the
-  finding's pass.
-- **`verify`** — the check to re-run on the new file, starting with
-  `measure:`, `align:`, `probe:` (a frame or strip at stated times and what
-  must be read there) or `listen:` (only a person can confirm it).
-- **`condition`** — optional: the fix applies only if something a person must
-  establish is true. "Remove the clip's subtitles — *only if* a listener cannot
-  make the words out either."
+`action` is one verb from a fixed list (`hide`, `remove`, `retime`, `trim`,
+`fade`, `move`, `resize`, `restyle`, `replace`, `add`, `level`). `what` names
+the thing as a viewer would point at it — never a layer, track, scene id or
+file. `t` and `region` are where the *edit* applies. `target` is the value to
+reach, no finer than the pass that measured it ("0.25–0.5s earlier", not
+"0.3s"). `verify` names the check to re-run on the new file and starts with
+`measure:`, `align:`, `probe:` or `listen:`. An optional `condition` makes the
+fix depend on something only a person can establish.
 
-`references/fix-recipes.md` has the recipe for every defect class: read it at
-step 9, before writing the first `fix`.
+**Read `references/fix-recipes.md` at step 9, before writing the first `fix`**
+— it defines each field and gives the recipe for every defect class.
 
 **When the video alone cannot dictate the fix, say so:**
 
@@ -409,6 +417,14 @@ default into, and the middle is where "everything is basically fine" hides.
 - **Broken** — the opening promises something the video never delivers, or the
   first frames are broken media: black, placeholder, wrong language.
 
+### D2 and D6 — measured dimensions
+No prose to interpret: the level follows the worst finding in the dimension.
+- **Clean** — every measured sub-check passes, or S1 only.
+- **Rough** — an S2.
+- **Distracting** — an S3, or an S2 that recurs.
+- **Broken** — an S4: narration that cannot be understood, a subtitle
+  asserting words nobody said.
+
 ### D3 — transitions & synthetic motion (judged residue)
 - **Clean** — every transition matches its content event: hard cut on
   continuous flow, dissolve on a time or topic shift. Motion eases in and out
@@ -446,7 +462,8 @@ default into, and the middle is where "everything is basically fine" hides.
   narrative reason.
 - **Distracting** — visible at normal speed: a face that changes between scenes,
   garbled decorative text, one scene from a visibly different palette with no
-  narrative reason.
+  narrative reason; or layout that gets in the way — texts overlapping, a word
+  cut off, a shape over the subject, information too small to read.
 - **Broken** — the subject is the wrong person or entity, or carries the
   identity markers of a rival or wrong entity, or readable text presented as
   information is gibberish. A knowledgeable viewer would call the video fake.
@@ -467,6 +484,13 @@ p: <duration affected>)`, and the severity number must be consistent with them.
 Writing `S4 (i:cosmetic)` is a self-contradiction and the report fails its own
 check.
 
+| `i` | usual severity | goes one higher when |
+|---|---|---|
+| `cosmetic` | S1 | `f: recurring/throughout` → S2 (never above) |
+| `attention` | S2 | `f: recurring/throughout`, or it affects more than a tenth of the video → S3 |
+| `comprehension` | S3 | it is on the S4 list below |
+| `trust` | S3 | it is on the S4 list below |
+
 - **S1 cosmetic** — found only by hunting. Fix if free.
 - **S2 minor** — a viewer notices. Attention and trust survive.
 - **S3 major** — costs attention or causes momentary confusion. Fix next time.
@@ -479,6 +503,12 @@ check.
 - Wrong subject or identity.
 - Unintelligible narration.
 - Any D1 binary gate failure.
+
+**The border test for "a contradictory visual":** it is S4 when a viewer who
+simply believes the screen comes away with a claim that neither the voice nor
+the request makes. If the false reading needs interpreting — a line that could
+mean two things, a legend that does not match its drawing — it is S3, and it
+goes in `escalate`.
 
 **Verdict:**
 
@@ -533,6 +563,10 @@ a defect in the report.
 **3. Onsets are intervals, never instants:**
 `t=[last-clean-sample – first-affected-sample]`, e.g. `t=[00:14.0–00:16.0] P1`.
 
+A defect that happens many times is **one** finding with `f: recurring`: `t` is
+its clearest instance, and `occurrences` lists the others as `[start, end]`
+pairs. Do not stretch `t` over the whole video — that claims a 3-minute defect.
+
 **Prerequisite:** frames must be named by their real timestamp.
 `vqr.py frames`, `sheet` and `strip` do this: each frame is fetched by seeking
 to its time, the file name is that time (`p1_t0083.00.jpg` = 01:23.00) and
@@ -563,8 +597,10 @@ order:
 A finding finer than its pass is a defect *in the report* — fix it or drop it.
 
 `vqr.py check` runs the mechanical part of this: interval no narrower than the
-pass's resolution, every clock time in the prose tagged `PASS@`, no decimal
-duration finer than the pass can support. It does not read meaning — "three
+pass's resolution, every clock time in the prose tagged `PASS@`, and no decimal
+number of seconds ("0.31s") unless it is a multiple of the pass's resolution or
+has no more digits than a fifth of it — in a P4 finding at 0.25s, "0.25s" and
+"0.5s" pass and "0.31s" does not. The same goes for `fix.target`. It does not read meaning — "three
 frames later" in a P1 finding still gets past it, and is still yours to catch.
 
 ## Output format
@@ -606,7 +642,8 @@ half alone. `full-frame` when it is everywhere; `audio` for a finding with no
 picture.
 
 **Evidence quotes verbatim.** For D4, quote both channels. A paraphrase is not
-evidence.
+evidence. Quote the transcript as the ASR wrote it, tagged `A1@`; its spelling
+of a name ("Megaspid") is the engine's ear, never a finding.
 
 **Positives are findings too**, `G`-prefixed. **Two to five per report,
 mandatory** — they are the regression baseline:
@@ -625,7 +662,9 @@ The scoreboard row is the cross-video comparison unit:
 **Cohort rule:** levels and verdicts compare across any two videos. Raw counts
 and ratios only compare within the same duration and preset class.
 
-`report.json` also carries, besides findings and positives: `requirements` (each
+`report.json` also carries, besides findings and positives: `reviewer` (which
+model judged, ran and described — say so when one model did more than one
+job), `requirements` (each
 viewer-visible requirement of the request → `met | not-met | partial |
 not-evaluable`, with finding ids — only what picture and sound can show),
 `coverage` (frames described, frames the judge read, what the budget dropped),
@@ -633,7 +672,8 @@ and `escalate` (finding ids a bigger model or a person should look at).
 
 **Before delivering: `python3 scripts/vqr.py check report.json` must print
 `PASS`.** Then freeze it — record its sha256 — and do not edit it again. Later
-corrections are addenda. Then `vqr.py notes report.json --out notes.json`.
+corrections go in `addenda.json` beside it (`[{"what", "why"}]`), never into
+the frozen file. Then `vqr.py notes report.json --out notes.json`.
 
 ## How to run it
 
@@ -671,20 +711,20 @@ rest.**
 
 ### The steps
 
-One working directory per video: `W=<out>/<label>`. `VQR="python3
-<skill>/scripts/vqr.py"`. Steps marked **R** are the runner's, **D** the
-describer's, **J** the judge's. Ready-to-paste prompts for R and D are in
-`references/prompts.md`.
+One working directory per video: `W=<out>/<label>`. `VQR=<skill>/scripts/vqr.py`
+— the path alone, called as `"$VQR" <command>` (a variable holding
+`python3 path` does not split into two words in zsh). Steps marked **R** are
+the runner's, **D** the describer's, **J** the judge's. Ready-to-paste prompts
+for R and D are in `references/prompts.md`.
 
-If you cannot dispatch subagents, do R and D yourself, in this order: describe
-the P1 and P2 frames (step 4) right after step 2, **before** you read any
-transcript text — `transcript.json`, `align.json`, and the `said_before`,
-`said_after` and `low_confidence_speech` fields of `mechanical.json`. The
+If you cannot dispatch subagents, do R and D yourself, in this order: steps 0
+and 2, then describe the P1 and P2 frames (step 4), and only then step 1 and
+the rest. `measure` and `transcribe` print and store what the voice says; the
 independence D4 depends on is between what was seen and what was said, and it
 survives only if the seeing comes first. Say in `reviewer` that one model did
 all three jobs.
 
-**0 · Preflight (R).** `$VQR doctor`. If ffmpeg, numpy or Pillow is missing,
+**0 · Preflight (R).** `"$VQR" doctor`. If ffmpeg, numpy or Pillow is missing,
 stop and say so. Write the request's facts to `$W/request.json`: language,
 aspect, duration or range, safe zone if stated, whether subtitles are expected,
 `subtitle_source`, `verify_subtitles`.
@@ -693,8 +733,8 @@ aspect, duration or range, safe zone if stated, whether subtitles are expected,
 where to look.
 
 ```bash
-$VQR transcribe VIDEO --out $W --language <requested language>
-$VQR measure VIDEO --out $W --transcript $W/transcript.json
+"$VQR" transcribe VIDEO --out $W --language <requested language>
+"$VQR" measure VIDEO --out $W --transcript $W/transcript.json
 ```
 
 `transcribe` re-runs ASR, language auto-detected, over every hole of 4s or more
@@ -702,66 +742,93 @@ that the first pass left — Whisper drops whole stretches after music or a clip
 in another language, and an unpatched hole reads as "nobody spoke for 26
 seconds". If the caller supplied a transcript and declined verification, skip
 `transcribe` and pass theirs to `measure`. `measure` writes `mechanical.json`
-(A1 + M1) and one strip per flicker and reappearance candidate in `$W/events/`.
+(A1 + M1), strips for up to twelve flicker and eight reappearance candidates in
+`$W/events/`, and prints a plain-language list of candidates — keep that
+printout, it is the judge's worklist for step 6.
 
 **2 · Sample (R).**
 
 ```bash
-$VQR sheet  VIDEO $W/sheets --every 2
-$VQR frames VIDEO $W/p1 --every 2 --prefix p1
-$VQR frames VIDEO $W/p2 --fps 2 --from 0 --to 5 --prefix p2
+"$VQR" sheet  VIDEO $W/sheets --every 2
+"$VQR" frames VIDEO $W/p1 --every 2 --prefix p1
+"$VQR" frames VIDEO $W/p2 --fps 2 --from 0 --to 5 --prefix p2
 ```
 
-**3 · Plan (J).** Read the printed summary of `measure`, then every contact
-sheet — they show the P1 instants, twelve to eighteen per image. Write down:
+**3 · Plan (J).** Read every contact sheet — they show the P1 instants,
+twelve to eighteen per image — and the cut times in `measure`'s printout. Write
+down:
 
-- **Embedded clips** (memes, footage, screen captures that play): each one's
-  span, from the hard cut that enters it to the hard cut that leaves it.
+- **Embedded clips**: footage with its own picture and sound playing inside the
+  video (a meme video, a film clip). Take each one's span from the sheets and
+  the hard cuts that enter and leave it. A still image or a screenshot is not
+  a clip.
 - **P3 windows**: both edges of every embedded clip; every cut with
   `|step_db| ≥ 20`; then other hard cuts, spread evenly, up to the budget.
-- Which candidates in `mechanical.json` need a strip that `measure` did not
-  already make.
 
-For each P3 window around a cut at `t` (R):
+Then one strip per window (R) — nine tiles from 1s before to 1s after:
 
 ```bash
-$VQR strip $W/p3/cut_<t>.jpg "=VIDEO@<t-0.875>,<t-0.625>,<t-0.375>,<t-0.125>,<t+0.125>,<t+0.375>,<t+0.625>,<t+0.875>"
+"$VQR" around VIDEO $W/p3 --at <t1>,<t2>,<t3>
 ```
 
-**4 · Describe (D).** P1 and P2 frames in batches of at most 30; then the P3
-and event strips. Fixed watch-list, for every frame:
+**4 · Describe (D), then build the timeline (R).** P1 and P2 frames in batches
+of at most 15, one describer each, each writing `$W/describe/<batch>.jsonl` —
+one JSON line per frame, keyed by the frame's file name. Then the P3 and event
+strips, as prose. Fixed watch-list, for every frame:
 
 - every on-screen text **verbatim**, with its region and role (`subtitle`,
   `heading`, `label`, `number`, `source-note`, `chrome`);
-- the subject, and whether the frame is an **embedded clip**;
+- what the picture shows, and whether it is an embedded clip;
 - the D5 list: anything left over from another scene, anything covering the
   subject, overlaps, clipped words, text it could not read, shapes with no
   function, large empty areas;
 - for a strip: what differs from tile to tile, and nothing else.
 
-The describer ends with `onscreen.json` — each distinct heading, label or
-number as `{"t0", "t1", "text"}`, first to last frame it was seen in (not
-subtitles, not chrome).
+```bash
+"$VQR" onscreen $W/describe --out $W/onscreen.json
+```
+
+`onscreen` builds the text timeline — each heading, label or number, from the
+first to the last frame it was seen in — and takes every time **from the file
+names**. A describer that slips a description onto the wrong frame cannot
+then shift a timestamp; it happened in the first real run of this skill, by
+4 seconds. Guard against the slip itself too: for each batch, the judge opens
+one frame from its middle and compares it with that frame's line. If it does
+not match, the batch is redone.
 
 **The describer never sees the transcript**, the request, or any candidate
 list. D4 is judged by aligning two *independently produced* streams, and a
 describer that has been shown the narration sees content that matches it. Keep
 `video-frame-review`'s `[unreadable]` discipline: a hedge is the trigger to
-zoom (P4: `$VQR strip … --crop x:y:w:h --width 900`, or a full-width
+zoom (P4: `"$VQR" strip … --crop x:y:w:h --width 900`, or a full-width
 `frames --at`), never an answer.
 
-**5 · Align (R).** `$VQR align $W/transcript.json $W/onscreen.json --out $W/align.json`
+**5 · Align (R).** `"$VQR" align $W/transcript.json $W/onscreen.json --out $W/align.json`
 
-**6 · Candidates → findings (J).** Walk `mechanical.json` and `align.json` top
-to bottom with the candidate table. For each: read its strip yourself, decide,
-and either write the finding or note in `coverage` why it is not one. Then the
-describer's D5 observations, verified the same way.
+**6 · Candidates → findings (J).** Walk `measure`'s candidate list and
+`align.json` top to bottom with the candidate table. For each: decide from its
+strip, and either write the finding or note in `coverage` why it is not one.
+Then the describer's D5 observations.
+
+When one kind of candidate repeats — thirty re-entries — read three strips
+(first, middle, last); if all three show the same thing, it is one finding,
+`f: recurring`, with the rest in `occurrences`.
+
+**What the judge must read with its own eyes — the short list.** Everything
+else may rest on the describer:
+- every contact sheet;
+- the entry and the exit strip of every embedded clip;
+- the strip behind every finding at S3 or S4;
+- one frame per describer batch (the slip check above);
+- the frame or zoom behind any quote an S3 or S4 depends on.
 
 **7 · Every embedded clip gets the same five questions (J).**
 
 1. **Entry.** P3 strip at the entry cut + its `audio.cuts` row. Does it start
    mid-action or mid-word, from silence, or on top of an unfinished sentence
-   (`said_before`)? → `hard-clip-entry`
+   (`said_before`)? An entry cut with `|step_db| ≥ 20` is a candidate whatever
+   the words say — sound that snaps off or on is what "starts chopped" looks
+   like in numbers. → `hard-clip-entry`
 2. **Exit.** Same at the exit cut. And **what comes back**: is the screen after
    the clip one the viewer already saw before it (`reappearances` whose `again`
    starts at the exit)? → `screen-reappears`
@@ -769,28 +836,31 @@ describer's D5 observations, verified the same way.
    speech is in another language — a translation check against the refilled
    transcript. → `sub-desync`, `sub-mismatch`
 4. **Can its words be made out?** `low_confidence_speech` inside the span. →
-   `asr-unintelligible`, low confidence
+   `asr-unintelligible`, low confidence. **Does its picture keep moving?** A
+   `holds` entry inside the span → `frozen-picture`
 5. **Is the voice talking about it?** The narration around the span, quoted. A
    clip nobody introduces or lands is `out-of-slot`.
 
-**8 · Subtitles (J plans, R extracts, D reads).** Pick five subtitle events
-spread over the video, plus three inside each embedded clip. For each, take a
-word that starts its line and its ASR start `t`:
+**8 · Subtitles, if there are any (J plans, R extracts, D reads).** Pick five
+subtitle events spread over the video, plus three inside each embedded clip —
+all of them inside the clips when those are the only subtitles. For each, take
+a word that starts its line and its ASR start `t`:
 
 ```bash
-$VQR strip $W/p4/sub_<t>.jpg "=VIDEO@<t-0.5>,<t-0.25>,<t>,<t+0.25>,<t+0.5>" --crop 0:0.55:1:0.4 --width 540
+"$VQR" around VIDEO $W/p4 --at <t1>,<t2> --before 0.5 --after 1 --step 0.25 --crop 0:0.55:1:0.4 --width 540 --prefix sub
 ```
 
-The first tile showing the line brackets its onset to 0.25s — the resolution
-this check declares. Earlier than `t-0.25` or later than `t+0.25` → `sub-desync`.
-Text accuracy is the verbatim diff of the describer's subtitle strings against
-the transcript, under the collusion rule.
+(Move the crop to wherever the sheets show the subtitles.) The first tile
+showing the line brackets its onset to 0.25s — the resolution this check
+declares. Text accuracy is the verbatim diff of the describer's subtitle
+strings against the transcript, under the collusion rule; for a clip in
+another language it is a check of sense, and it is `judged`.
 
 **9 · Score, write, check, freeze (J).** Levels from the anchored text, each
 justified by a finding or a positive it cites. Give every finding its `fix`
 from `references/fix-recipes.md`. Write `$W/report.json`. Run
-`$VQR check $W/report.json` until it prints `PASS`. Record its sha256. Run
-`$VQR notes $W/report.json --out $W/notes.json`. Write the summary.
+`"$VQR" check $W/report.json` until it prints `PASS`. Record its sha256. Run
+`"$VQR" notes $W/report.json --out $W/notes.json`. Write the summary.
 
 **10 · Calibrate — only if owner feedback exists, only now (J).** See
 "Calibration".
@@ -835,10 +905,10 @@ scale.
 | contact sheets | ~6 | judge |
 | P1 frames | ~90 | describer |
 | P2 frames | 10 | describer |
-| P3 strips (8 tiles each) | ≤ 20 | describer |
-| M1 event strips | ≤ 20 (`measure` makes the first 12 flicker + 8 reappearance) | describer, then judge |
+| P3 strips (9 tiles each) | ≤ 20 | describer |
+| M1 event strips | ≤ 20 (`measure` makes 12 flicker + 8 reappearance) | describer |
 | P4 zooms and subtitle probes | ≤ 25 | describer |
-| verification reads | ≤ 40 | judge |
+| the judge's own reads (the short list in step 6) | ≤ 40 | judge |
 
 When a cap cuts something — forty cuts and twenty strips — choose by the plan
 in step 3 and **list what was dropped in `coverage.dropped`**. A capped pass
@@ -924,7 +994,8 @@ capability>` and keep the marker stable across videos so comparability survives:
   Proxying this from a transcript is guessing. ASR confidence is a lead for a
   person to follow, which is why `asr-unintelligible` can never be more than
   `confidence: low`.
-- **External factual truth** — you have no sources. D4 covers only *internal*
+- **External factual truth** — you have no sources, and that includes
+  geography read off a drawn map. D4 covers only *internal*
   contradiction between channels. "The claim is false" is not yours to make;
   "the screen and the voice disagree" is.
 - **Actual retention** — you have no audience. The hook level is a craft

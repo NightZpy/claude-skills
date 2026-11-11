@@ -32,11 +32,12 @@ free-form within the shape below.
   "findings": [
     {"id": "F02", "dim": "D3", "class": "flicker", "severity": 3,
      "f": "recurring", "i": "attention", "p_s": 12,
-     "t": [65.33, 66.1], "pass": "M1", "region": "top-left,top-center,top-right",
+     "t": [65.33, 66.1], "occurrences": [[47.37, 47.73], [54.63, 55.03], [96.8, 97.2]],
+     "pass": "M1", "region": "top-left,top-center,top-right",
      "kind": "measured", "confidence": "high", "verified_by_judge": true,
-     "evidence": "two document cards are fully visible at M1@01:05.20; the left one is gone at M1@01:05.33 and fades back by M1@01:05.70, then the right one does the same; 21 more re-entry events of the same shape at other scene starts (mechanical.json visual.flashes)",
+     "evidence": "two cards are fully visible at M1@01:05.20; the left one is gone at M1@01:05.33 and fades back by M1@01:05.70, then the right one does the same; the same shape at three other scene starts (occurrences)",
      "expected": "an element animates in once, from absent",
-     "fix": {"formulable": true, "action": "hide", "what": "each document card",
+     "fix": {"formulable": true, "action": "hide", "what": "each card of the scene",
              "t": [65.2, 65.7], "region": "top-left,top-center,top-right",
              "target": "absent from the first frame of the scene until its own entrance starts; enters once",
              "verify": "measure: no visual.flashes event in [65.2, 66.2]"}}
@@ -69,10 +70,12 @@ Rules `check` enforces:
 - Every pass has `resolution_s`. Every `levels.D1..D6` is `Clean`, `Rough`,
   `Distracting`, `Broken` or starts with `NOT SCORED`.
 - Every finding has all the fields above. `pass` is **one** declared pass. `t`
-  is `[start, end]` in seconds, at least as wide as that pass's resolution.
+  is `[start, end]` in seconds, at least as wide as that pass's resolution —
+  for a recurring defect, its clearest instance, with the others in the
+  optional `occurrences` (a list of `[start, end]`).
 - Clock times in `evidence`/`expected` are written `PASS@MM:SS` or
-  `PASS@MM:SS.d`. Decimal durations ("0.4s") must not be finer than a fifth of
-  the pass's resolution.
+  `PASS@MM:SS.d`. A decimal number of seconds ("0.31s") must be a multiple of
+  the pass's resolution or have no more digits than a fifth of it.
 - `severity` 1–4. `i: cosmetic` cannot be above S2. S4 needs
   `i: comprehension|trust` and `s4_reason` ∈ `fabricated-claim`,
   `gibberish-as-information`, `wrong-identity`, `unintelligible-narration`,
@@ -82,8 +85,8 @@ Rules `check` enforces:
   or `formulable: true` with `action` (from the fixed verb list), `what`, `t`
   `[start, end]`, `region`, `target` and a `verify` that starts with
   `measure:`, `align:`, `probe:` or `listen:`. A decimal number of seconds in
-  `what`/`target` must not be finer than a fifth of the finding's pass
-  resolution. Optional `condition`.
+  `what`/`target` follows the same rule as in the evidence. Optional
+  `condition`.
 - `region` uses the 3×3 names (comma-separated for several), `full-frame` or
   `audio`; add `in-safe`/`out-safe` when it applies.
 - `verdict` equals the one derived from the findings. 2–5 positives. Every id
@@ -103,7 +106,7 @@ provider, profile or cost anywhere in the file.
  "notes": [
    {"finding": "F02", "t": [65.2, 65.7], "type": "hide", "region": "top-left,top-center,top-right",
     "severity": 3, "class": "flicker",
-    "note": "each document card → absent from the first frame of the scene until its own entrance starts; enters once",
+    "note": "each card of the scene → absent from the first frame of the scene until its own entrance starts; enters once",
     "verify": "measure: no visual.flashes event in [65.2, 66.2]"}
  ],
  "cannot_be_written_from_the_video": [
@@ -122,13 +125,13 @@ mapping it onto a panel's own note types is the caller's.
   "schema": "vqr-calibration/1",
   "label": "V1",
   "frozen_report_sha256": "…",
-  "feedback_source": "owner chat, 2026-11-11",
+  "feedback_source": "owner, written note",
   "statements": [
-    {"quote": "tiene unos resaltados que parecen parpadeos", "outcome": "hit", "findings": ["F02"]},
-    {"quote": "los subtítulos están mal en el vídeo meme, desincronizados", "outcome": "miss",
+    {"quote": "some elements seem to blink when a scene starts", "outcome": "hit", "findings": ["F02"]},
+    {"quote": "the subtitles in the clip are out of sync", "outcome": "miss",
      "reason": "not-sampled", "note": "no subtitle probe was placed inside the clip"},
-    {"quote": "la música de fondo es monótona", "outcome": "not-perceivable-offline"},
-    {"quote": "yo habría elegido un estilo más dinámico", "outcome": "preference"}
+    {"quote": "the background music is monotonous", "outcome": "not-perceivable-offline"},
+    {"quote": "I would have picked a livelier style", "outcome": "preference"}
   ],
   "recall": 0.5,
   "unmentioned_s3_plus": ["F05"],

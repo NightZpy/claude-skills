@@ -11,6 +11,8 @@ open). Needs ffmpeg/ffprobe; numpy for `measure`; Pillow for `sheet`/`strip`.
   vqr.py frames VIDEO DIR (--every S | --fps N --from A --to B | --at T,T,..)
   vqr.py sheet VIDEO DIR [--every 2]
   vqr.py strip OUT.jpg LABEL=VIDEO@T,T,.. [LABEL=VIDEO@T,T,..]
+  vqr.py around VIDEO DIR --at T,T,.. [--before 1 --after 1 --step 0.25] [--crop x:y:w:h]
+  vqr.py onscreen DESCRIBE_DIR --out ONSCREEN.json
   vqr.py align TRANSCRIPT.json ONSCREEN.json
   vqr.py check REPORT.json | FAMILY.json
   vqr.py notes REPORT.json [--out NOTES.json]
@@ -300,7 +302,8 @@ def cmd_measure(a):
     if not a.no_strips:
         d, f = os.path.join(a.out, "events"), 1 / p["fps"]
         os.makedirs(d, exist_ok=True)
-        for k, e in enumerate(vis["flashes"][:12], 1):
+        fl = vis["flashes"]                               # twelve strips, spread over the whole list
+        for k, e in enumerate([fl[round(i * (len(fl) - 1) / 11)] for i in range(12)] if len(fl) > 12 else fl, 1):
             t0, t1 = e["t"]
             times = [t0 - 2 * f, t0 - f, t0, (t0 + t1) / 2, t1, t1 + f]
             m["strips"].append(strip(os.path.join(d, f"flash_{k:02d}.jpg"), [("", video, times)], cols=6))
@@ -324,6 +327,29 @@ def cmd_measure(a):
             print("audio: no transcript given — speech gaps, orphan sounds and words at cuts were NOT measured")
     print(f"strips: {len(m['strips'])} in {os.path.join(a.out, 'events')}" if m["strips"] else "strips: none")
     print("audio playback: none")
+    print("candidates (leads to check on the frames, not findings):")
+    kinds = {k: [e for e in vis["flashes"] if e["kind"] == k] for k in ("re-entry", "flash", "blink")}
+    for k, ev in kinds.items():
+        if ev:
+            print(f"  {k} ×{len(ev)}: " + ", ".join(clock(e["t"][0]) for e in ev[:8]) + (" …" if len(ev) > 8 else ""))
+    for b in vis["blank_frames"]:
+        if b["position"] == "middle" and b["hard_edges"]:
+            print(f"  blank frames, hard edges: {clock(b['t'][0])}–{clock(b['t'][1])}")
+    for r in vis["reappearances"][:8]:
+        print(f"  screen of {clock(r['first'][0])}–{clock(r['first'][1])} is back at {clock(r['again'][0])}–{clock(r['again'][1])}")
+    for h in vis["holds"]:
+        if h["s"] >= 8:
+            print(f"  nothing moves for {h['s']}s: {clock(h['t'][0])}–{clock(h['t'][1])}")
+    for c in au.get("cuts", []):
+        if abs(c["step_db"] or 0) >= 20:
+            print(f"  cut {clock(c['t'])}: audio steps {c['step_db']:+} dB — before: {c.get('said_before', '?')!r} · after: {c.get('said_after', '?')!r}")
+    for d in au.get("dead_air", []):
+        if d["position"] == "middle":
+            print(f"  digital silence {clock(d['t'][0])}–{clock(d['t'][1])}" + (" under a continuous bed" if au["continuous_bed"] else ""))
+    for g in au.get("speech_gaps") or []:
+        print(f"  no words {clock(g['t'][0])}–{clock(g['t'][1])} ({g['s']}s), " + ("but as loud as speech: music, a clip or an ASR hole" if g["as_loud_as_speech"] else "and quiet"))
+    for l in au.get("low_confidence_speech") or []:
+        print(f"  ASR unsure (p={l['mean_p']}) {clock(l['t'][0])}–{clock(l['t'][1])}: {l['text']!r}")
 
 
 # ---------------------------------------------------------------- frames, sheets, strips
@@ -375,6 +401,48 @@ def cmd_strip(a):
     print("wrote:", strip(a.out, rows, cols=a.cols, width=a.width, crop=parse_crop(a.crop)))
     for label, _, ts in rows:
         print(f"row {label or '-'}: " + " ".join(clock(t) for t in ts))
+
+
+def cmd_around(a):
+    """One strip per time: the frames just before and after it. Cuts, clip edges, subtitle onsets."""
+    video = resolve(a.video)
+    os.makedirs(a.dir, exist_ok=True)
+    for t in (to_seconds(x) for x in a.at.split(",")):
+        n0, n1 = int(round(a.before / a.step)), int(round(a.after / a.step))
+        times = [round(t + k * a.step, 3) for k in range(-n0, n1 + 1) if t + k * a.step >= 0]
+        out = strip(os.path.join(a.dir, f"{a.prefix}_t{t:07.2f}.jpg"), [("", video, times)], width=a.width, crop=parse_crop(a.crop))
+        print(f"{out}: {clock(times[0])} … {clock(times[-1])} every {a.step}s ({len(times)} tiles)")
+
+
+def cmd_onscreen(a):
+    """The on-screen text timeline, built from the describer's per-frame JSONL. Times come from the
+    frame file names, never from what the describer wrote, so a slipped description cannot move them."""
+    seen, bad = {}, 0
+    for name in sorted(os.listdir(a.dir)):
+        if not name.endswith(".jsonl"):
+            continue
+        for line in open(os.path.join(a.dir, name)):
+            try:
+                d = json.loads(line)
+                t = float(re.search(r"_t(\d+\.\d+)", d["file"]).group(1))
+            except (ValueError, KeyError, AttributeError, TypeError):
+                bad += bool(line.strip())
+                continue
+            for x in d.get("texts", []):
+                if x.get("role") in ("heading", "label", "number") and x.get("text", "").strip():
+                    seen.setdefault(norm(x["text"]).strip(), []).append((t, x["text"].strip()))
+    rows = []
+    for shows in seen.values():
+        shows.sort()
+        start = prev = shows[0][0]
+        for t, _ in shows[1:] + [(float("inf"), "")]:
+            if t - prev > a.gap:                         # gone for longer than the sampling gap: a new showing
+                rows.append({"t0": start, "t1": prev, "text": shows[0][1]})
+                start = t
+            prev = t
+    rows.sort(key=lambda r: r["t0"])
+    json.dump(rows, open(a.out, "w"), indent=1, ensure_ascii=False)
+    print(f"wrote: {a.out} ({len(rows)} showings of {len(seen)} texts" + (f"; {bad} unreadable lines skipped" if bad else "") + ")")
 
 
 def to_seconds(s):
@@ -442,7 +510,10 @@ def same_word(a, b):
     if a.isdigit() or b.isdigit():
         return a == b
     k = min(len(a), len(b), 6)
-    return k >= 4 and a[:k] == b[:k]                     # tolerate inflection: restricción / restricciones
+    if k >= 4 and a[:k] == b[:k]:                        # tolerate inflection: restricción / restricciones
+        return True
+    # ...and one wrong letter: ASR spells names by ear (Qwen / Quen)
+    return k >= 4 and len(a) == len(b) and sum(x != y for x, y in zip(a, b)) == 1
 
 
 def align(words, shown, tol=2.0):
@@ -454,16 +525,20 @@ def align(words, shown, tol=2.0):
         said = {t: [s[1] for s in spoken if s[0] and same_word(t, s[0])] for t in toks}
         said = {t: h for t, h in said.items() if h}
         # Where the voice is on this text: the moments when most of its words are said together
-        # (within 3 s). One shared word — "NVIDIA" — said elsewhere does not count as a mention.
+        # (within 3 s). One shared word — the brand, said everywhere — does not make a mention.
         every = sorted(h for hs in said.values() for h in hs)
         cover = [sum(any(abs(x - h) <= 3 for x in hs) for hs in said.values()) for h in every]
         hits = [h for h, c in zip(every, cover) if c == max(cover)]
+        # One matched word out of several is a coincidence more often than a mention.
+        weak = bool(cover) and len(toks) >= 2 and max(cover) * 2 < len(toks)
         row = {"t": [t0, t1], "text": o["text"], "words_matched": f"{max(cover, default=0)}/{len(toks)}",
                "spoken_in_slot": " ".join(s[3] for s in spoken if s[2] > t0 and s[1] < t1)}
         if not toks:
             row["status"] = "no-content-words"
         elif not hits:
             row["status"] = "never-spoken"
+        elif weak:
+            row["status"] = "weak-match"
         elif any(t0 - tol <= h <= t1 + tol for h in hits):
             row["status"] = "in-slot"
         else:
@@ -476,6 +551,11 @@ def align(words, shown, tol=2.0):
     return out
 
 
+def short(text, n=14):
+    w = text.split()
+    return " ".join(w[:n]) + (" …" if len(w) > n else "")
+
+
 def cmd_align(a):
     rows = align(load_words(a.transcript), json.load(open(a.onscreen)), a.tol)
     if a.out:
@@ -483,10 +563,10 @@ def cmd_align(a):
     for r in rows:
         if r["status"] in ("early", "late"):
             print(f"{r['status']:13} {r['offset_s']:5}s  {clock(r['t'][0])}  {r['text']!r} — spoken at "
-                  f"{clock(r['nearest_mention']['t'])}; meanwhile the voice says: {r['spoken_in_slot']!r}")
+                  f"{clock(r['nearest_mention']['t'])}; meanwhile the voice says: {short(r['spoken_in_slot'])!r}")
         elif r["status"] == "never-spoken":
-            print(f"never-spoken          {clock(r['t'][0])}  {r['text']!r} — meanwhile: {r['spoken_in_slot']!r}")
-    n = {s: sum(1 for r in rows if r["status"] == s) for s in ("in-slot", "early", "late", "never-spoken")}
+            print(f"never-spoken          {clock(r['t'][0])}  {r['text']!r} — meanwhile: {short(r['spoken_in_slot'])!r}")
+    n = {s: sum(1 for r in rows if r["status"] == s) for s in ("in-slot", "early", "late", "never-spoken", "weak-match")}
     print(f"{len(rows)} on-screen texts: {n}. These are candidates, not findings — see SKILL.md §D4.")
 
 
@@ -496,6 +576,16 @@ def derive_verdict(findings):
     s4 = [f for f in findings if f.get("severity") == 4]
     s3_dims = {f.get("dim") for f in findings if f.get("severity") == 3}
     return "DO NOT SHIP" if s4 or len(s3_dims) >= 3 else "SHIP WITH FIXES" if s3_dims else "SHIP"
+
+
+def too_fine(text, res):
+    """Decimal durations a pass cannot support: not a multiple of its resolution, and more digits than a fifth of it."""
+    out = []
+    for num in re.findall(r"(?<![\d:@.])(\d+\.\d+) ?s\b", text):
+        mult = float(num) / res
+        if abs(mult - round(mult)) > 0.02 and 10 ** -len(num.split(".")[1]) < res / 5:
+            out.append(num)
+    return out
 
 
 def check_report(r):
@@ -536,9 +626,13 @@ def check_report(r):
         for tag, tok in re.findall(r"(?:\b(\w+)@)?(\d{1,2}:\d{2}(?:\.\d+)?)", text):
             if tag not in passes:
                 err.append(f"{fid}: time {tok} in the prose has no pass tag — write it as PASS@{tok}")
-        for dec in re.findall(r"(?<![\d:@])\d+\.(\d+) ?s\b", text):
-            if 10 ** -len(dec) < res / 5:
-                err.append(f"{fid}: a duration with {len(dec)} decimals is finer than {f['pass']} ({res}s) can support")
+            if float(tok.split(":")[1]) >= 60:
+                err.append(f"{fid}: {tok} is not a clock time (seconds run 00-59)")
+        for num in too_fine(text, res):
+            err.append(f"{fid}: {num}s is finer than {f['pass']} ({res}s) can support — use a multiple of {res}s or a bracket")
+        occ = f.get("occurrences", [])
+        if not all(isinstance(o, list) and len(o) == 2 for o in occ):
+            err.append(f"{fid}: occurrences must be a list of [start, end]")
         if f["kind"] not in ("measured", "judged"):
             err.append(f"{fid}: kind must be measured|judged")
         if f["confidence"] not in ("high", "medium", "low"):
@@ -579,10 +673,9 @@ def check_report(r):
                 err.append(f"{fid}: fix.verify must start with one of {FIX_VERIFY} — name the check that will show it is fixed")
             if not (isinstance(fx.get("t"), list) and len(fx["t"]) == 2):
                 err.append(f"{fid}: fix.t must be [start, end] in seconds")
-            for dec in re.findall(r"(?<![\d:@])\d+\.(\d+) ?s\b", f"{fx.get('what', '')} {fx.get('target', '')}"):
-                if 10 ** -len(dec) < res / 5:
-                    err.append(f"{fid}: fix asks for a change with {len(dec)} decimals of a second, finer than "
-                               f"{f['pass']} ({res}s) measured — give a bracket")
+            for num in too_fine(f"{fx.get('what', '')} {fx.get('target', '')}", res):
+                err.append(f"{fid}: fix asks for {num}s, finer than {f['pass']} ({res}s) measured — "
+                           f"use a multiple of {res}s or a bracket")
     want = derive_verdict(r["findings"])
     if r["verdict"] != want:
         err.append(f"verdict is {r['verdict']!r} but the findings derive {want!r} — the verdict is computed, not chosen")
@@ -641,13 +734,15 @@ def cmd_notes(a):
         notes.append({"finding": f["id"], "t": fx["t"], "type": fx["action"], "region": fx["region"],
                       "severity": f["severity"], "class": f["class"],
                       "note": f"{fx['what']} → {fx['target']}", "verify": fx["verify"],
-                      **({"condition": fx["condition"]} if fx.get("condition") else {})})
+                      **({"condition": fx["condition"]} if fx.get("condition") else {}),
+                      **({"also_at": f["occurrences"]} if f.get("occurrences") else {})})
     out = {"schema": "vqr-notes/1", "label": r["label"], "notes": notes, "cannot_be_written_from_the_video": open_items}
     if a.out:
         json.dump(out, open(a.out, "w"), indent=1, ensure_ascii=False)
     for n in notes:
         print(f"{clock(n['t'][0])}–{clock(n['t'][1])} | {n['type']:8} | {n['region']} | S{n['severity']} {n['finding']} | "
-              f"{n['note']}" + (f" | only if: {n['condition']}" if n.get("condition") else "") + f" | check: {n['verify']}")
+              f"{n['note']}" + (f" | also at {len(n['also_at'])} more places" if n.get("also_at") else "")
+              + (f" | only if: {n['condition']}" if n.get("condition") else "") + f" | check: {n['verify']}")
     for o in open_items:
         print(f"{clock(o['t'][0])}–{clock(o['t'][1])} | NO NOTE | {o['finding']} {o['class']} | {o['why']}")
     print(f"{len(notes)} notes, {len(open_items)} findings with no fix that the video alone can dictate")
@@ -840,7 +935,7 @@ def cmd_self_test(_):
         json.dump(words, open(f"{tmp}/t.json", "w"))
         rows = align(load_words(f"{tmp}/t.json"), [{"t0": 1.0, "t1": 3.0, "text": "CHIPS"},
                                                    {"t0": 5.0, "t1": 7.0, "text": "TRES FINALES"},
-                                                   {"t0": 9.0, "t1": 9.0, "text": "compiten de cerca"}])
+                                                   {"t0": 9.0, "t1": 9.0, "text": "sin relación alguna"}])
         assert [r_["status"] for r_ in rows] == ["in-slot", "early", "never-spoken"], rows
         assert rows[1]["offset_s"] == 13.3, rows[1]
 
@@ -862,6 +957,15 @@ def cmd_self_test(_):
         errs, _ = check_report(dict(rep, findings=[bad], verdict="SHIP"))
         # narrow interval, untagged time, fine duration, low-confidence S3, unverifiable fix, over-precise fix, wrong verdict
         assert len(errs) == 7, errs
+        assert too_fine("late by 0.25s, then 0.31s", 0.25) == ["0.31"] and too_fine("0.83s", 0.1) == ["0.83"]
+        os.makedirs(f"{tmp}/d")
+        open(f"{tmp}/d/a.jsonl", "w").write("\n".join(json.dumps({"file": f"p1_t{t:07.2f}.jpg", "texts": [
+            {"text": "CHIPS", "role": "heading"}, {"text": "sub", "role": "subtitle"}]}) for t in (1, 3, 5, 21)) + "\nnot json\n")
+        cmd_onscreen(argparse.Namespace(dir=f"{tmp}/d", out=f"{tmp}/o.json", gap=2.5))
+        assert json.load(open(f"{tmp}/o.json")) == [{"t0": 1.0, "t1": 5.0, "text": "CHIPS"}, {"t0": 21.0, "t1": 21.0, "text": "CHIPS"}]
+        cmd_around(argparse.Namespace(video=f"{tmp}/clip.mp4", dir=f"{tmp}/ar", at="2.0", before=0.5, after=0.5, step=0.25,
+                                      crop=None, prefix="cut", width=160))
+        assert os.path.getsize(f"{tmp}/ar/cut_t0002.00.jpg") > 1000
         errs, _ = check_report(dict(rep, findings=[dict(good, fix={"formulable": False, "why": "which number is right needs the source"})]))
         assert errs == [], errs
         print("PASS: vqr self-test")
@@ -888,6 +992,13 @@ def main():
     s = sub.add_parser("strip"); s.set_defaults(fn=cmd_strip)
     s.add_argument("out"); s.add_argument("specs", nargs="+"); s.add_argument("--cols", type=int)
     s.add_argument("--width", type=int, default=360); s.add_argument("--crop", help="x:y:w:h as fractions, e.g. 0:0.7:1:0.3")
+    s = sub.add_parser("around"); s.set_defaults(fn=cmd_around)
+    s.add_argument("video"); s.add_argument("dir"); s.add_argument("--at", required=True)
+    s.add_argument("--before", type=float, default=1.0); s.add_argument("--after", type=float, default=1.0)
+    s.add_argument("--step", type=float, default=0.25); s.add_argument("--crop"); s.add_argument("--prefix", default="cut")
+    s.add_argument("--width", type=int, default=300)
+    s = sub.add_parser("onscreen"); s.set_defaults(fn=cmd_onscreen)
+    s.add_argument("dir"); s.add_argument("--out", required=True); s.add_argument("--gap", type=float, default=2.5)
     s = sub.add_parser("align"); s.set_defaults(fn=cmd_align)
     s.add_argument("transcript"); s.add_argument("onscreen"); s.add_argument("--tol", type=float, default=2.0); s.add_argument("--out")
     s = sub.add_parser("check"); s.set_defaults(fn=cmd_check); s.add_argument("report")

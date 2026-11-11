@@ -2,16 +2,36 @@
 
 How to write `fix` for each class: the edit, the target value, and the check
 that shows it worked. Fill the `<…>` slots from the finding's own evidence.
-Numbers come from the pass that measured them and are no finer than it: a
-subtitle offset bracketed by 0.25s probes is "0.25–0.5s", not "0.3s".
+
+## The fields
+
+- **`action`** — one verb from: `hide` (an element, for an interval), `remove`
+  (frames, a clip, an element, for good), `retime` (shift a start or an end),
+  `trim`, `fade`, `move`, `resize`, `restyle`, `replace`, `add`, `level`
+  (loudness).
+- **`what`** — the thing as a viewer would point at it: its visible text or a
+  plain description. Never a layer, track, scene id or file name.
+- **`t` and `region`** — where the *edit* applies, which is not always where
+  the defect was seen (a card flagged at its second showing may need the edit
+  on the first).
+- **`target`** — the value to reach. Numbers come from the pass that measured
+  them and are no finer than it: an offset bracketed by 0.25s probes is
+  "0.25–0.5s earlier", not "0.3s". `check` rejects a target finer than the
+  finding's pass.
+- **`verify`** — the check to re-run on the new file, starting with
+  `measure:`, `align:`, `probe:` (a frame or strip at stated times and what
+  must be read there) or `listen:` (only a person can confirm it).
+- **`condition`** — optional: the fix applies only if something a person must
+  establish is true. "Remove the clip's subtitles — *only if* a listener cannot
+  make the words out either."
 
 `verify` always starts with the check to re-run:
 
 - `measure:` — a field of `mechanical.json` after `vqr.py measure` on the new
   file ("no `visual.flashes` event in [65.2, 66.2]").
-- `align:` — a row of `vqr.py align` ("«LO QUE HAY DEBAJO» is `in-slot`").
+- `align:` — a row of `vqr.py align` ("«PARTE DOS» is `in-slot`").
 - `probe:` — a frame or strip at stated times and what must be read there
-  ("strip at 9.0, 9.25, 9.5: the line «Me encanta» first appears at 9.25").
+  ("strip at 9.0, 9.25, 9.5: the line «Buenos días» first appears at 9.25").
 - `listen:` — only a person's ears can confirm it. Say what they listen for.
 
 ## D3 — edit, motion, pacing
@@ -22,6 +42,7 @@ subtitle offset bracketed by 0.25s probes is "0.25–0.5s", not "0.3s".
 | `flicker` (`flash`, `blink`) | `remove` | the `<n>` stray frames at `<t>` → the frames before and after are contiguous | `measure:` no `flashes` event in `<interval>` |
 | `blank-frame` | `remove` | the `<n>` blank frames at `<t>` → none | `measure:` no `blank_frames` with `position: middle` and `hard_edges` |
 | `screen-reappears` | `hide` | `<screen>` during whichever showing is out of slot (`first` or `again` — the one `align` does not put `in-slot`) → shown once, where the voice is on it | `measure:` no `reappearances` pair for it · `align:` its text `in-slot` |
+| `frozen-picture` | `trim` or `replace` | the clip in `<interval>` → ends where its picture stops moving, or keeps moving for as long as its sound runs | `measure:` no `holds` entry inside the clip's span |
 | `hard-clip-entry` | `retime` + `fade` | the clip's start → after the sentence in `said_before` ends, on a pause; audio fades in over ≥ 3 frames | `measure:` that cut's `|step_db| < 20` and no `inside_word` |
 | `hard-clip-exit` | `retime` + `fade` | the clip's end → after its last word ends; audio fades out over ≥ 3 frames | same |
 | `cut-in-word` | `retime` | the cut at `<t>` → inside the pause between `<word A>` (ends `<tA>`) and `<word B>` (starts `<tB>`) | `measure:` that cut's `|step_db| < 20` |
@@ -55,7 +76,7 @@ as `action` and put the other in `target`.
 | `duplicate-data` | `remove` | the second «`<value + heading>`» → one occurrence | `probe:` frame at `<t>` |
 | `filler` | `replace` | the generic image in `<interval>` → a picture of the specific claim «`<quote>`» | `probe:` frames in `<interval>` |
 | `number-mismatch` | — | **not formulable**: screen says «`<n1>`», voice says «`<n2>`»; which is right needs the source. Once known: `replace` the wrong one | — |
-| `contradiction` | — | **not formulable** for the same reason, unless the request itself states the fact | — |
+| `contradiction` | — | **not formulable** for the same reason — unless the request itself states the fact, and then: `replace` `<the wrong element>` → what the request states | `probe:` frame at `<t>` |
 
 ## D5 — visual integrity
 
@@ -90,7 +111,7 @@ as `action` and put the other in `target`.
 |---|---|---|---|
 | `weak-hook` | `retime` | the shot or claim now at `<t>` → inside the first 2s, when the video contains the payoff material. If it does not, **not formulable**: a new opening has to be written | `probe:` P2 frames |
 | `undelivered-promise` | — | **not formulable**: the content promised at `<t>` is not in the video | — |
-| `gate-duration` | `trim` | the video → inside `<range>`; name the stretches this report already flags as slow | `measure:` `duration_s` |
+| `gate-duration` | `trim` | the video → inside `<range or limit>`; name the stretches this report already flags as slow or frozen | `measure:` `duration_s` |
 | `gate-aspect`, `gate-language` | — | **not formulable** as a note: the whole piece is to be redone at `<requested>` | — |
 
 ## When to answer "not formulable"
