@@ -33,6 +33,7 @@ The same prompt, with the commands the judge needs next:
 "$VQR" onscreen "<W>/describe" --out "<W>/onscreen.json"
 "$VQR" align "<W>/transcript.json" "<W>/onscreen.json" --out "<W>/align.json"
 "$VQR" around "<video>" "<W>/p4" --at <subtitle word times> --before 0.5 --after 1 --step 0.25 --crop <x:y:w:h> --width 540 --prefix sub
+"$VQR" source "<video>" "<clip source supplied with the request>" --from <entry> --to <exit>
 "$VQR" check "<W>/report.json"
 "$VQR" notes "<W>/report.json" --out "<W>/notes.json"
 ```
@@ -59,7 +60,7 @@ per line, one line per frame, nothing else in the file:
 {"file": "<the frame's file name, copied exactly>",
  "texts": [{"text": "<verbatim>", "region": "<region>", "role": "<role>"}],
  "picture": "<what the frame shows, one sentence>",
- "subject": "<any person or character: face, hair, wardrobe, identifying marks such as a number or a crest — or \"none\">",
+ "subject": "<any person or character: face, hair, wardrobe, identifying marks such as a number or a crest — or \"none\". Describe; give a name only if a caption or label on screen gives it>",
  "sharpness": "<sharp | soft | blurred, and where if not the whole frame>",
  "clip": <true if the frame is moving footage placed inside the composition — a meme video, a film clip; false for stills, screenshots and graphics>,
  "layout": ["<each problem you can SEE, or leave the list empty>"],
