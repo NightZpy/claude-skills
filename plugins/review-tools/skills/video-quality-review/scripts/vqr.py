@@ -13,6 +13,7 @@ open). Needs ffmpeg/ffprobe; numpy for `measure`; Pillow for `sheet`/`strip`.
   vqr.py strip OUT.jpg LABEL=VIDEO@T,T,.. [LABEL=VIDEO@T,T,..]
   vqr.py around VIDEO DIR --at T,T,.. [--before 1 --after 1 --step 0.25] [--crop x:y:w:h]
   vqr.py onscreen DESCRIBE_DIR --out ONSCREEN.json
+  vqr.py source VIDEO CLIP_SOURCE --from T_IN --to T_OUT
   vqr.py align TRANSCRIPT.json ONSCREEN.json
   vqr.py check REPORT.json | FAMILY.json
   vqr.py notes REPORT.json [--out NOTES.json]
@@ -29,6 +30,7 @@ S4_REASONS = ["fabricated-claim", "gibberish-as-information", "wrong-identity",
               "unintelligible-narration", "d1-gate"]
 FIX_ACTIONS = ["hide", "remove", "retime", "trim", "fade", "move", "resize", "restyle", "replace", "add", "level"]
 FIX_VERIFY = ("measure:", "align:", "probe:", "listen:")
+BASES = ["request", "rubric", "our-target"]
 
 
 def sh(cmd):
@@ -272,9 +274,29 @@ def visual_measures(video, p):
         r["away_s"] = round(r["again"][0] - r["first"][1], 2)
         del r["_j"]
 
+    # Unused frame: full-width rows (or full-height columns) with nothing in them. A plain
+    # background and a faint grid both count; a line of tiny credits nearly does.
+    # ponytail: thumbnails cannot tell an empty band from a deliberate flat field — the judge can.
+    def unused(img):
+        best = (0.0, "", 0.0)
+        for axis, names in ((1, ("top", "middle", "bottom")), (0, ("left", "middle", "right"))):
+            flat = img.std(axis=axis) < 6
+            for s0, e0 in runs(flat):
+                frac = (e0 - s0) / len(flat)
+                if frac > best[0]:
+                    best = (frac, names[0] if s0 == 0 else names[2] if e0 == len(flat) else names[1], float(flat.mean()))
+        return best
+    bands = [unused(S[j].astype(np.float32)) for j in range(len(idx))]
+    empty = []
+    for s0, e0 in runs([b[0] >= 0.33 or b[2] >= 0.6 for b in bands], 4):
+        part = bands[s0:e0]
+        empty.append({"t": [T(idx[s0]), T(idx[e0 - 1])], "largest_band": round(float(np.median([b[0] for b in part])), 2),
+                      "where": max({b[1] for b in part}, key=[b[1] for b in part].count),
+                      "flat_fraction": round(float(np.median([b[2] for b in part])), 2)})
+
     minutes = n / fps / 60
     return {"resolution_s": round(1 / fps, 3), "frames": n, "cuts": [T(i) for i in cuts], "flashes": flashes,
-            "blank_frames": blanks, "holds": holds[:15], "reappearances": recur,
+            "blank_frames": blanks, "holds": holds[:15], "reappearances": recur, "empty_bands": empty,
             "reappearance_resolution_s": round(step / fps, 2),
             "pacing": {"cuts_per_min": round(len(cuts) / minutes, 1),
                        "longest_hold_s": holds[0]["s"] if holds else 0.0,
@@ -337,12 +359,16 @@ def cmd_measure(a):
             print(f"  blank frames, hard edges: {clock(b['t'][0])}–{clock(b['t'][1])}")
     for r in vis["reappearances"][:8]:
         print(f"  screen of {clock(r['first'][0])}–{clock(r['first'][1])} is back at {clock(r['again'][0])}–{clock(r['again'][1])}")
+    for e in vis["empty_bands"]:
+        print(f"  unused frame {clock(e['t'][0])}–{clock(e['t'][1])}: a flat band over {e['largest_band']:.0%} of it ({e['where']}), "
+              f"{e['flat_fraction']:.0%} flat in all")
     for h in vis["holds"]:
         if h["s"] >= 8:
             print(f"  nothing moves for {h['s']}s: {clock(h['t'][0])}–{clock(h['t'][1])}")
     for c in au.get("cuts", []):
         if abs(c["step_db"] or 0) >= 20:
-            print(f"  cut {clock(c['t'])}: audio steps {c['step_db']:+} dB — before: {c.get('said_before', '?')!r} · after: {c.get('said_after', '?')!r}")
+            print(f"  cut {clock(c['t'])}: audio steps {c['step_db']:+} dB — before: {c.get('said_before', '?')!r} · after: "
+                  f"{c.get('said_after', '?')!r} (a clip's own opening silence looks like this too: see `source`)")
     for d in au.get("dead_air", []):
         if d["position"] == "middle":
             print(f"  digital silence {clock(d['t'][0])}–{clock(d['t'][1])}" + (" under a continuous bed" if au["continuous_bed"] else ""))
@@ -414,10 +440,55 @@ def cmd_around(a):
         print(f"{out}: {clock(times[0])} … {clock(times[-1])} every {a.step}s ({len(times)} tiles)")
 
 
+def envelope(video):
+    import numpy as np
+    pcm = np.frombuffer(sh(["ffmpeg", "-v", "error", "-i", video, "-vn", "-ac", "1", "-ar", "8000",
+                            "-f", "s16le", "-"]).stdout, np.int16).astype(np.float64)
+    n = len(pcm) // 80
+    return np.sqrt((pcm[:n * 80].reshape(n, 80) ** 2).mean(axis=1))      # RMS per 10 ms
+
+
+def cmd_source(a):
+    """Is an embedded clip the whole of its source, and where does it start? Compares sound only.
+    The source is material the request supplied — an input, not one of the generator's records."""
+    import numpy as np
+    video, src = resolve(a.video), resolve(a.source)
+    v, s = envelope(video), envelope(src)
+    if len(s) < 50 or not s.any():
+        die("the source has no usable audio — compare frames by eye with `strip` instead")
+    lo, hi = int(a.start * 100), int(a.to * 100)
+    best = (-1.0, 0)
+    # ponytail: brute-force lag search at 10 ms over ±(source length); fine for clips of a minute or two.
+    for lag in range(lo - len(s), hi):                   # lag = video window index where source t=0 lands
+        a0, a1 = max(lag, lo), min(lag + len(s), hi)
+        if a1 - a0 < 100:
+            continue
+        x, y = v[a0:a1], s[a0 - lag:a1 - lag]
+        x, y = x - x.mean(), y - y.mean()
+        den = np.sqrt((x * x).sum() * (y * y).sum())
+        if den and (c := float((x * y).sum() / den)) > best[0]:
+            best = (c, lag)
+    corr, lag = best
+    quiet = lambda e: next((i for i, x in enumerate(e) if x > 33), len(e)) / 100      # first 10 ms above -60 dBFS
+    out = {"correlation": round(corr, 3), "source_zero_at": round(lag / 100, 2), "source_duration_s": round(len(s) / 100, 2),
+           "head_skipped_s": round(a.start - lag / 100, 2), "tail_skipped_s": round(len(s) / 100 - (a.to - lag / 100), 2),
+           "source_leading_silence_s": quiet(s), "source_trailing_silence_s": quiet(s[::-1])}
+    print(json.dumps(out, indent=1))
+    if corr < 0.8:
+        print("no confident match (correlation under 0.8): the sound was replaced, re-timed or this is not its source")
+    else:
+        head, tail = out["head_skipped_s"], out["tail_skipped_s"]
+        print(f"the clip starts {'at the first frame of' if abs(head) <= 0.05 else f'{head}s into'} its source and "
+              f"{'runs to its end' if abs(tail) <= 0.05 else f'stops {tail}s before its end' if tail > 0 else f'is held {-tail}s past its end'}; "
+              f"the source itself opens with {out['source_leading_silence_s']}s of silence")
+    print("audio playback: none")
+    return out
+
+
 def cmd_onscreen(a):
     """The on-screen text timeline, built from the describer's per-frame JSONL. Times come from the
     frame file names, never from what the describer wrote, so a slipped description cannot move them."""
-    seen, bad = {}, 0
+    seen, bad, by_file = {}, 0, {}
     for name in sorted(os.listdir(a.dir)):
         if not name.endswith(".jsonl"):
             continue
@@ -428,6 +499,9 @@ def cmd_onscreen(a):
             except (ValueError, KeyError, AttributeError, TypeError):
                 bad += bool(line.strip())
                 continue
+            if d.get("same_as"):                         # a frame inside a measured hold: same picture, same texts
+                d["texts"] = by_file.get(d["same_as"], [])
+            by_file[d["file"]] = d.get("texts", [])
             for x in d.get("texts", []):
                 if x.get("role") in ("heading", "label", "number") and x.get("text", "").strip():
                     seen.setdefault(norm(x["text"]).strip(), []).append((t, x["text"].strip()))
@@ -581,7 +655,8 @@ def derive_verdict(findings):
 def too_fine(text, res):
     """Decimal durations a pass cannot support: not a multiple of its resolution, and more digits than a fifth of it."""
     out = []
-    for num in re.findall(r"(?<![\d:@.])(\d+\.\d+) ?s\b", text):
+    for num in re.findall(r"(?<![\d:@.,])(\d+[.,]\d+) ?s\b", text):
+        num = num.replace(",", ".")
         mult = float(num) / res
         if abs(mult - round(mult)) > 0.02 and 10 ** -len(num.split(".")[1]) < res / 5:
             out.append(num)
@@ -624,6 +699,8 @@ def check_report(r):
             err.append(f"{fid}: t={f['t']} is narrower than {f['pass']}'s resolution ({res}s) — widen it to an interval")
         text = f"{f['evidence']} {f.get('expected', '')}"
         for tag, tok in re.findall(r"(?:\b(\w+)@)?(\d{1,2}:\d{2}(?:\.\d+)?)", text):
+            if not tag and tok in ("9:16", "16:10"):     # an aspect ratio, not a clock
+                continue
             if tag not in passes:
                 err.append(f"{fid}: time {tok} in the prose has no pass tag — write it as PASS@{tok}")
             if float(tok.split(":")[1]) >= 60:
@@ -650,6 +727,11 @@ def check_report(r):
             err.append(f"{fid}: S4 needs i:comprehension|trust and s4_reason in {S4_REASONS}")
         if sev >= 3 and not f.get("verified_by_judge"):
             err.append(f"{fid}: S{sev} must be verified on the source frames by the judge")
+        if f.get("basis") not in BASES:
+            err.append(f"{fid}: basis must be one of {BASES} — whose standard does this break?")
+        elif f["basis"] == "our-target" and sev > 2:
+            err.append(f"{fid}: a target this rubric chose (basis our-target) caps at S2 — it is a note to the owner, "
+                       f"not a reason to hold the video")
         if sev >= 3 and f["confidence"] == "low":
             err.append(f"{fid}: low confidence caps severity at S2 — verify it or lower it, and list it in escalate")
         regions = {c for part in str(f["region"]).split(",") for c in [part.strip()]}
@@ -732,7 +814,7 @@ def cmd_notes(a):
             open_items.append({"finding": f["id"], "t": f["t"], "class": f["class"], "why": fx["why"]})
             continue
         notes.append({"finding": f["id"], "t": fx["t"], "type": fx["action"], "region": fx["region"],
-                      "severity": f["severity"], "class": f["class"],
+                      "severity": f["severity"], "class": f["class"], "basis": f.get("basis"),
                       "note": f"{fx['what']} → {fx['target']}", "verify": fx["verify"],
                       **({"condition": fx["condition"]} if fx.get("condition") else {}),
                       **({"also_at": f["occurrences"]} if f.get("occurrences") else {})})
@@ -941,6 +1023,7 @@ def cmd_self_test(_):
 
         good = {"id": "F01", "dim": "D4", "class": "out-of-slot", "severity": 3, "f": "once", "i": "comprehension",
                 "p_s": 6, "t": [31.0, 33.0], "pass": "P1", "region": "center", "kind": "judged", "confidence": "high",
+                "basis": "rubric",
                 "evidence": 'heading "TRES FINALES" (P1@00:32) while A1@00:29.8 says "tenía 35 años"',
                 "expected": "the graphic matches the clause in its own slot", "verified_by_judge": True,
                 "fix": {"formulable": True, "action": "retime", "what": 'the heading "TRES FINALES"', "t": [24.0, 26.0],
@@ -958,6 +1041,15 @@ def cmd_self_test(_):
         # narrow interval, untagged time, fine duration, low-confidence S3, unverifiable fix, over-precise fix, wrong verdict
         assert len(errs) == 7, errs
         assert too_fine("late by 0.25s, then 0.31s", 0.25) == ["0.31"] and too_fine("0.83s", 0.1) == ["0.83"]
+        assert too_fine("unos 5,5s", 2.0) == ["5.5"] and too_fine("at 10, 16s", 2.0) == []
+        ok = dict(good, evidence=good["evidence"] + "; the frame is 9:16", basis="our-target", severity=2, i="attention")
+        assert check_report(dict(rep, findings=[ok], verdict="SHIP")) == ([], []), check_report(dict(rep, findings=[ok], verdict="SHIP"))
+        errs, _ = check_report(dict(rep, findings=[dict(good, basis="our-target")]))
+        assert len(errs) == 1 and "caps at S2" in errs[0], errs
+        assert v["empty_bands"] and v["empty_bands"][0]["largest_band"] == 1.0, v["empty_bands"]   # a bare ramp is all flat
+        sh(["ffmpeg", "-v", "error", "-y", "-ss", "1.0", "-to", "5.0", "-i", f"{tmp}/clip.mp4", "-vn", f"{tmp}/src.wav"])
+        m_ = cmd_source(argparse.Namespace(video=f"{tmp}/clip.mp4", source=f"{tmp}/src.wav", start=1.0, to=5.0))
+        assert m_["correlation"] > 0.95 and abs(m_["head_skipped_s"]) <= 0.05 and abs(m_["tail_skipped_s"]) <= 0.05, m_
         os.makedirs(f"{tmp}/d")
         open(f"{tmp}/d/a.jsonl", "w").write("\n".join(json.dumps({"file": f"p1_t{t:07.2f}.jpg", "texts": [
             {"text": "CHIPS", "role": "heading"}, {"text": "sub", "role": "subtitle"}]}) for t in (1, 3, 5, 21)) + "\nnot json\n")
@@ -999,6 +1091,9 @@ def main():
     s.add_argument("--width", type=int, default=300)
     s = sub.add_parser("onscreen"); s.set_defaults(fn=cmd_onscreen)
     s.add_argument("dir"); s.add_argument("--out", required=True); s.add_argument("--gap", type=float, default=2.5)
+    s = sub.add_parser("source"); s.set_defaults(fn=cmd_source)
+    s.add_argument("video"); s.add_argument("source"); s.add_argument("--from", dest="start", type=float, required=True)
+    s.add_argument("--to", type=float, required=True)
     s = sub.add_parser("align"); s.set_defaults(fn=cmd_align)
     s.add_argument("transcript"); s.add_argument("onscreen"); s.add_argument("--tol", type=float, default=2.0); s.add_argument("--out")
     s = sub.add_parser("check"); s.set_defaults(fn=cmd_check); s.add_argument("report")
