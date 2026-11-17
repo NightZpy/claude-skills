@@ -39,6 +39,8 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .tab .n{font-family:"JetBrains Mono",monospace; font-size:12px; margin-left:6px; opacity:.75}
 /* Queue jump: always in the sticky bar; hover, focus or tap opens the list of open items. */
 .qwrap{position:relative}
+.qstep{padding:8px 12px; font-size:16px; line-height:1}
+.qstep:disabled{opacity:.35; cursor:default}
 .qpop{display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:10; width:min(440px, calc(100vw - 32px)); max-height:60vh; overflow-y:auto; box-shadow:0 10px 28px rgba(18,21,26,.18)}
 .qwrap:hover .qpop, .qwrap:focus-within .qpop, .qwrap.open .qpop{display:block}
 /* An invisible bridge over the 6px gap, so moving the pointer from the tab to the list keeps it open. */
@@ -86,6 +88,9 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .origin{display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline; margin:0 0 10px; font:700 15px "JetBrains Mono",monospace; color:var(--ink)}
 .origin .who{color:var(--tpl)}
 .origin .ans{font-weight:400; font-size:13px; color:var(--ink-2)}
+/* Relative time with the exact date on hover, focus or tap (a native title is slow and absent on touch). */
+.tip{position:relative; cursor:help; text-decoration:underline dotted var(--ink-3); text-underline-offset:3px}
+.tip:hover::after, .tip:focus::after{content:attr(data-tip); position:absolute; left:0; top:calc(100% + 6px); z-index:12; white-space:nowrap; padding:5px 9px; border-radius:6px; background:var(--ink); color:var(--surface); font:400 12px "JetBrains Mono",monospace; text-decoration:none; box-shadow:0 6px 18px rgba(18,21,26,.2)}
 .q{font-family:"JetBrains Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--signal)}
 .chip{font-family:"JetBrains Mono",monospace; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line-strong); color:var(--ink-2); background:var(--surface-2)}
 .chip.open{border-color:var(--signal); color:var(--signal); background:var(--signal-soft)}
@@ -627,6 +632,8 @@ function el(tag, attrs = {}, ...kids) {
   for (const k of kids.flat()) if (k != null && k !== false) n.append(k.nodeType ? k : String(k));
   return n;
 }
+const fmtExact = iso => { try { return new Date(iso).toLocaleString(LANG, {weekday:"short", day:"numeric", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit"}); } catch { return iso || ""; } };
+const whenEl = (iso, text, cls = "when") => el("span", {class: cls + " tip", tabindex: "0", "data-tip": fmtExact(iso), "aria-label": fmtExact(iso)}, text);
 const fmt = iso => { try { return new Date(iso).toLocaleString(LANG, {day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"}); } catch { return iso || ""; } };
 const st = it => it.status || "open";
 const issueNo = it => it.issue ? String(it.issue).replace(/^#/, "") : null;
@@ -1291,7 +1298,7 @@ function renderQueueJump(pool, cur) {
 }
 function rowFor(o, onPick) {
   return el("button", {class:"row" + (st(o) !== "open" ? " done" : ""), type:"button", onclick: () => onPick(o)},
-    el("span", {class:"t"}, o.title), el("span", {class:"k"}, st(o) === "open" ? kindName(o.kind) : statusName(st(o))));
+    el("span", {class:"t"}, o.title), el("span", {class:"k"}, (o.created_at ? ago(o.created_at) + " · " : "") + (st(o) === "open" ? kindName(o.kind) : statusName(st(o)))));
 }
 // Mail view: one row per item in the middle list; tapping it shows that item's card in the reading pane.
 function mailRow(o) {
@@ -1535,10 +1542,10 @@ function card(it) {
   node.append(el("div", {class:"top"},
     el("div", {class:"origin"},
       el("span", {class:"prio p" + prioOf(it)}, "P" + prioOf(it)),
-      it.created_at ? el("span", {class:"when", title: fmt(it.created_at)}, ago(it.created_at)) : null,
+      it.created_at ? whenEl(it.created_at, ago(it.created_at)) : null,
       layout === "mail" ? avatar(it.source_agent) : null,
       it.source_agent ? el("span", {class:"who"}, it.source_agent) : null,
-      it.answer?.answered_at ? el("span", {class:"ans", title: fmt(it.answer.answered_at)}, t("your_answer", {at: ago(it.answer.answered_at)})) : null,
+      it.answer?.answered_at ? whenEl(it.answer.answered_at, t("your_answer", {at: ago(it.answer.answered_at)}), "ans") : null,
       Array.isArray(it.blocks) && it.blocks.length ? el("span", {class:"blocks conly"}, t("blocks", {x: it.blocks.join(", ")})) : null,
       layout === "mail" ? starBtn(it) : null),
     Array.isArray(it.blocks) && it.blocks.length ? el("div", {class:"blockbar monly"}, t("m_blocking", {x: it.blocks.join(", ")})) : null,
@@ -1672,8 +1679,9 @@ const sortFn = (a, b) => sortBy === "new" ? String(b.created_at).localeCompare(S
 function ago(iso) {
   const s = Math.min(0, (Date.parse(iso) - Date.now()) / 1000); if (!Number.isFinite(s)) return "";   // clock skew: a future time reads "now"
   const rtf = new Intl.RelativeTimeFormat(LANG, {numeric:"auto"});
-  for (const [u, n] of [["year", 31536000], ["month", 2592000], ["week", 604800], ["day", 86400], ["hour", 3600], ["minute", 60]])
-    if (Math.abs(s) >= n) return rtf.format(Math.round(s / n), u);
+  // [unit, seconds per unit, shown from]: days until two weeks, weeks until two months, so 8 days is not "last week".
+  for (const [u, n, from] of [["year", 31536000, 31536000], ["month", 2592000, 5184000], ["week", 604800, 1209600], ["day", 86400, 86400], ["hour", 3600, 3600], ["minute", 60, 60]])
+    if (Math.abs(s) >= from) return rtf.format(Math.round(s / n), u);
   return rtf.format(Math.round(s), "second");
 }
 function renderPrioBar(pool) {
@@ -2010,7 +2018,11 @@ function render() {
       rows = pool;
       const doneAll = items.length - open.length;
       view = [
-        el("div", {class:"progress"}, el("span", {}, t("i_of_n", {i: idx + 1, n: pool.length})),
+        // Previous / next right above the card too, so moving through the queue never means scrolling past the item.
+        el("div", {class:"progress"},
+          el("button", {class:"tab qstep", type:"button", disabled: idx === 0, "aria-label": t("prev"), onclick: () => { currentId = pool[idx - 1].id; render(); scrollTop(); }}, "‹"),
+          el("span", {}, t("i_of_n", {i: idx + 1, n: pool.length})),
+          el("button", {class:"tab qstep", type:"button", disabled: idx === pool.length - 1, "aria-label": t("next"), onclick: () => { currentId = pool[idx + 1].id; render(); scrollTop(); }}, "›"),
           el("span", {class:"track"}, el("span", {class:"fill", style:`width:${items.length ? Math.round(100 * doneAll / items.length) : 0}%`})),
           el("span", {}, t("answered_n", {done: doneAll, n: items.length}))),
         card(cur),
