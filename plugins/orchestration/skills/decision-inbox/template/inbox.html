@@ -1005,7 +1005,7 @@ function buildABPlayer(tracks, kind) {
   let currentIt = null;
   const state = {active: 0};
   const mediaEls = tracks.map((m, i) => el(kind === "video" ? "video" : "audio",
-    {preload:"metadata", src: srcOf(m), playsinline: kind === "video" ? true : null, style: i === 0 ? "" : "display:none"}));
+    {preload:"metadata", src: srcOf(m), controls: true, playsinline: kind === "video" ? true : null, style: i === 0 ? "" : "display:none"}));   // native controls too: volume, speed, fullscreen
   const active = () => mediaEls[state.active];
   const fmtT = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   const seek = el("input", {type:"range", min:0, max:100, step:0.1, value:0, "aria-label": t("ab_seek")});
@@ -1035,10 +1035,11 @@ function buildABPlayer(tracks, kind) {
   function switchTo(i) {
     if (i === state.active || i < 0 || i >= mediaEls.length) return;
     const old = active(), wasPlaying = !old.paused, t0 = old.currentTime;
-    old.pause(); if (kind === "video") old.style.display = "none";
+    old.pause(); old.style.display = "none";
     state.active = i;
     const cur = active();
-    cur.currentTime = t0; if (kind === "video") cur.style.display = "";
+    cur.volume = old.volume; cur.muted = old.muted; cur.playbackRate = old.playbackRate;   // the switch keeps what the user set
+    cur.currentTime = t0; cur.style.display = "";
     if (wasPlaying) cur.play();
     switchWrap.querySelectorAll("button").forEach((b, bi) => b.setAttribute("aria-pressed", String(bi === i)));
     syncSeek(); refreshMarks();
