@@ -38,7 +38,7 @@ h1{font-weight:800; font-size:clamp(36px,8vw,64px); line-height:.98; letter-spac
 .tab[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
 .tab .n{font-family:"JetBrains Mono",monospace; font-size:12px; margin-left:6px; opacity:.75}
 /* Queue jump: always in the sticky bar; hover, focus or tap opens the list of open items. */
-.qwrap{position:relative}
+.qwrap{position:relative; display:inline-flex; gap:4px; align-items:center}
 .qstep{padding:8px 12px; font-size:16px; line-height:1}
 .qstep:disabled{opacity:.35; cursor:default}
 .qpop{display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:10; width:min(440px, calc(100vw - 32px)); max-height:60vh; overflow-y:auto; box-shadow:0 10px 28px rgba(18,21,26,.18)}
@@ -502,6 +502,7 @@ body.vmail .mnav .ss{margin:0}
 body.vmail .mnav .srow{grid-template-columns:10px minmax(0,1fr) auto; grid-template-areas:"dot nm bd" ". dg dg"}
 body.vmail .mnav .srow .age{display:none}
 body.vmail .mread .nav{margin:0 0 12px}
+body.vmail .mread .progress{position:sticky; top:0; z-index:4; background:var(--ground); padding:6px 0}   /* mail mode's sticky ‹ › (the bar's #qjump is hidden there) */
 .tab .ic, .navpin{display:none}
 .tab .ic svg, .navpin svg{width:18px; height:18px}
 /* Wide mail view: the sidebar is a rail of icons that opens over the list on hover or focus;
@@ -1481,8 +1482,12 @@ function renderQueueJump(pool, cur) {
   w.hidden = pool.length < 2;
   if (w.hidden) { w.classList.remove("open"); return w.replaceChildren(); }
   const pick = o => { w.classList.remove("open"); document.activeElement?.blur(); currentId = o.id; render(); scrollTop(); };
-  w.replaceChildren(
-    el("button", {class:"tab", type:"button", "aria-haspopup":"true", "aria-expanded": String(w.classList.contains("open")), onclick: () => { w.classList.toggle("open"); }}, t("queue"), el("span", {class:"n"}, String(pool.length))),
+  // Previous / next live in the sticky bar too, so a long item never has to be scrolled past to move on.
+  const idx = pool.findIndex(o => o.id === cur?.id);
+  const step = d => el("button", {class:"tab qstep", type:"button", disabled: idx + d < 0 || idx + d >= pool.length, "aria-label": t(d < 0 ? "prev" : "next"), onclick: () => pick(pool[idx + d])}, d < 0 ? "‹" : "›");
+  w.replaceChildren(step(-1),
+    el("button", {class:"tab", type:"button", "aria-haspopup":"true", "aria-expanded": String(w.classList.contains("open")), onclick: () => { w.classList.toggle("open"); }}, t("queue"), el("span", {class:"n"}, (idx + 1) + "/" + pool.length)),
+    step(1),
     el("div", {class:"qpop queue"}, pool.map(o => { const r = rowFor(o, pick); if (o.id === cur?.id) r.setAttribute("aria-current", "true"); return r; })));
 }
 function rowFor(o, onPick) {
