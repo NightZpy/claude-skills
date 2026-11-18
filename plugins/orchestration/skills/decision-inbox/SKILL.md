@@ -110,7 +110,9 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `multi` | `true` lets the user tick several options (checkboxes); optional `min` / `max` bound how many. Default is single choice. Use it whenever more than one answer can be true ("which of these should we ship?", "which issues can I close?"), rather than faking it with combined options |
 | `media` | `[{asset_id, url:"/_blob/<asset_id>", label, type:"image"\|"audio"\|"video", role?:"reference"\|"candidate"}]` |
 | `rate` | comparison items only: `{question, options:[{id,label}]}`, the per-candidate scale (default Good / Fair / Poor, in the interface language) |
-| `ratings` | `{<candidate asset_id>: option_id}`, written by the page **the moment** the user rates, before any answer |
+| `ratings` | `{<media key>: option_id or number}` (key = `asset_id`, else `label`), written by the page **the moment** the user rates, before any answer. Covers comparison candidates and, with per-media review, every image/video/audio |
+| `per_media` | per-media review: each image/video/audio gets its own rating (`rate`, default Good/Fair/Poor) and note, in the card and in the one-by-one gallery, with the item's question asked after them. **On by default when the item has 2+ media**; `false` turns it off, `true` forces it for a single media |
+| `media_notes` | `{<media key>: text}`, the per-media notes, written by the page as each note is left (like `ratings`) and copied into `answer.media_notes` on save |
 | `section` | a key from `meta/config.sections` (importance bucket; the page filters by it) |
 | `priority` | **0–3, set deliberately** (the page shows P0–P3, filters and sorts by it; values above 3 show as P3). Decide it the way work is triaged: **P0** = it blocks work right now, yours or another session's (nothing can proceed until answered); **P1** = it blocks a next step soon (you can work around it for a while) or holds money/a release; **P2** = normal: needed, but nothing waits on it; **P3** = whenever / for reference. When it blocks another session, name it in `blocks` and raise the priority accordingly |
 | `blocks` | optional list of what waits on the answer, e.g. `["video-harness:ui", "merge feat/x"]`; shown on the card next to the priority |
@@ -424,7 +426,9 @@ shape, and it is the shape the page is built for:
 
 For comparison items add `ratings: .answer.ratings` to the `jq` projection. It maps asset
 ids, which you translate to labels with the item's `media` list. For items using the newer
-review tools (§6) add `score: .answer.score, marks: .answer.marks` too.
+review tools (§6) add `score: .answer.score, marks: .answer.marks` too. For packages with several
+media (per-media review is on by default at 2+ media) add `ratings: .answer.ratings, notes: .answer.media_notes`:
+both are keyed by `asset_id`.
 
 
 ```
@@ -572,6 +576,7 @@ All opt-in per item — items without these fields render exactly as before.
 | `media[].type:"gif"` or `"video"` | any item | mixed into the same lightbox gallery as images — Previous/Next, swipe, ←/→ step through pngs, gifs and videos together |
 | (toggle, no field) | any comparison item | the card and its lightbox both offer "Side by side" / "Slide" (before/after wipe with a draggable divider) for the same reference+candidate pair |
 | `ab: true` (or a candidate role on ≥2 same-type tracks) | audio or video media | a shared-transport A/B(/C/…) player: one play/seek bar, a lettered switch that swaps tracks without losing playback position. Works with any number of tracks ≥2 |
+| (default at 2+ media; `per_media:false` off) | any item with media | per-media review: a rating and a note under every image/video/audio, a "Review one by one" button that steps through the gallery with the same rating and note per media, and the item's question after them. Saved in `ratings[key]` and `media_notes[key]` the moment they change; `answer.media_notes` on save. One package = one item with all its media; the user judges each piece on its own |
 | `marks: true`, optional `mark_scale: {min,max,step}` | audio/video media | "Mark moment" / "Mark range" buttons under the player; each mark can carry a note and, with `mark_scale`, a score |
 | (with `marks`, writer views) | audio/video media | each mark offers "Capture frame" (video) and "Upload image"; the annotator draws arrows, lines, boxes or freehand plus a note and stores a PNG in the asset store, recorded on the mark as `images[] {id, url, note, at}`. Fetch one with `Artifact {action:"read", url, path:"<asset id>"}` |
 
