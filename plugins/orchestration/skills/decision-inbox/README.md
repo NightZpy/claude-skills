@@ -29,6 +29,7 @@ agent ◀──read answer── (shared db) ──"Notify Claude"──▶ watc
 - **Frame-precise transport on every video:** ±1 frame, ±0.1 s, ±1 s, 0.1×–1× speed and an `m:ss.ff` readout; keys `,` `.` (frame), `Shift+←/→`, `←/→`, space, `m` (mark).
 - **Keyboard for everything** in the maximised view and the gallery: play, frame and second steps, speed, marks and ranges, ratings, send, `?` for the list.
 - **Navigate the current view from the message:** in Mail, the reading pane's toolbar has ‹ «i of n ▾» ›, whose list follows the folder, search and filters you are in; the list icon hides or shows the message list.
+- **Compact marks:** each mark folds to one line; tap its time to seek and open it.
 - **Compact icon buttons:** icon plus tooltip (label and key) on desktop, icon plus a short label on touch.
 - **Maximise any video in place**, without losing its time or marks.
 - **Follow-up:**
