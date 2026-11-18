@@ -27,6 +27,8 @@ agent ◀──read answer── (shared db) ──"Notify Claude"──▶ watc
   - blind tests, whose key the agent reveals only after your verdict.
 - **Time marks on every audio/video player** (card, package, A/B, gallery, maximised): mark a moment or a range, add a note and a score, and attach screenshots. Marks travel with each media's review. Capture the current video frame or upload an image, then draw arrows, lines, boxes or freehand on it and add a comment.
 - **Frame-precise transport on every video:** ±1 frame, ±0.1 s, ±1 s, 0.1×–1× speed and an `m:ss.ff` readout; keys `,` `.` (frame), `Shift+←/→`, `←/→`, space, `m` (mark).
+- **Keyboard for everything** in the maximised view and the gallery: play, frame and second steps, speed, marks and ranges, ratings, send, `?` for the list.
+- **Compact icon buttons:** icon plus tooltip (label and key) on desktop, icon plus a short label on touch.
 - **Maximise any video in place**, without losing its time or marks.
 - **Follow-up:**
   - "Notify Claude" sends your answers to the watching session;
