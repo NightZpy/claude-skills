@@ -687,6 +687,11 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   the folders and the list come first, and tapping an item opens it with a "← List" back button.
   **Classic** is the single column described below (Open · Answered · All · Replies). Every tool works
   the same in both.
+- **Mail flow.** Saving an answer or replying in the conversation opens the next message of the list (the
+  previous one at the end), as a click would; a failed save stays put to show the error. Unread rows (an agent
+  message newer than the user's last word and what this browser saw) are tinted with a filled dot before the
+  sender; read rows show an empty ring. A resolved card is dimmed only once read: with an unread reply, or one
+  opened this visit, it stays at full strength.
 - **Mail words (Mail only; Classic keeps its own).** Each item reads as a message: `source_agent` is the sender
   (avatar with initials), the thread is the conversation ("Re: …"), `blocks` is a red "Blocking: …" banner, `issue`
   is a "Linked issue", media are "Attachments". Folders are views over the same data: Inbox (open), Unread replies,
@@ -730,8 +735,8 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   only items whose `source_agent` is that session. It combines with the project filter, scopes the
   items only (not the strip) and is remembered per browser (`inbox.session`).
 
-- Every card opens with an origin line: priority badge (P0–P3), time-ago of `created_at` (exact date on hover), `source_agent`, the answer time and `blocks`. A priority filter (All, P0–P3) and a sort toggle (importance, newest, oldest) sit under the section chips; the choice is remembered per browser.
-- **Open** (Mail: Inbox) shows one item at a time (a gallery), ordered by section, then priority, then age.
+- Every card opens with an origin line: priority badge (P0–P3), time-ago of `created_at` (exact date on hover), `source_agent`, the answer time and `blocks`. A priority filter (All, P0–P3) and a sort toggle (newest, importance, oldest) sit under the section chips. Every visit opens newest first, by latest activity (created, the agent's last message or the user's last word, whichever is later); the toggle lasts for that visit.
+- **Open** (Mail: Inbox) shows one item at a time (a gallery), newest first (with the importance sort: by section, then priority, then age).
   It has a progress bar, Previous/Next, an always-visible "Up next N" button in the sticky bar (Classic; hover, focus or tap lists every open item to jump to), a compact "Up next" list, and section filter chips with
   counts. Saving moves on to the next open item.
 - **Answered** (Classic) has follow-up filters: Not sent · Sent, unresolved · Resolved. It
