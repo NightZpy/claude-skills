@@ -130,7 +130,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `status_asked_at` | set by the page when the user pressed "Ask for status" (Mail: "Follow up") |
 | `key_revealed` | blind tests only; `null` until the agent reveals after the verdict |
 | `notified_at` | set by the page when the user pressed "Notify Claude" (Mail: "Send"), per item or in bulk |
-| `media_purged_at` | set by the director when it deleted the item's files 6 h after the answer (§3b); the page then shows a line instead of each file |
+| `media_purged_at` | set when the item's files were deleted: by the director 6 h after the answer (§3b), or by **Free space** / `inbox-cleanup.py` (§3c); the page then shows a line instead of each file |
 
 Collection **`issues`**, doc id = `<project>:<issue number>` (for example `ads-claude-videos:212`;
 a bare number is the legacy id and still read as a fallback): `{number, state, title, summary, url}`. `summary`
@@ -492,6 +492,35 @@ Before deleting, the session that owns the item must have everything it needs fr
 blind test's label→asset mapping is in its upload log, audio was transcribed (§1c). The page
 shows "File deleted … 6 h after the answer" for an item with `media_purged_at`, and "File not
 available" for any other deleted file, instead of a broken player.
+
+## 3c. Free space on demand (by state, dates or ids)
+
+When the store fills up anyway (the 1 GB cap, or §3b was skipped), free it in one of two ways.
+Both share one rule: **an asset is deleted only when a selected item uses it and no other item,
+note or session does; open items are never selected.**
+
+1. **The page's "Free space" button** (writer views; a storage line sits under the toolbar and turns
+   red at 80 %). The user picks states (resolved and withdrawn by default; answered on request),
+   a created-between date range and/or item ids (`2026-11-03-*` for a prefix), optionally files no
+   row uses (only when older than a day, so a file a session just uploaded is safe). The dialog
+   shows how many files and MB it would free and which items; a second click confirms. The page
+   deletes through the `assets` capability and writes `media_purged_at` on each item it touched.
+2. **`scripts/inbox-cleanup.py`** for a session, when the user asks or nobody is at the page:
+   ```
+   ArtifactData {action:"list", url, collection:"items", query:{limit:1000}, out_dir:"<scratch>/gc"}
+   ArtifactData {action:"list", url, collection:"notes", query:{limit:1000}, out_dir:"<scratch>/gc"}
+   python3 scripts/inbox-cleanup.py <scratch>/gc/items --extra <scratch>/gc/notes \
+       [--status processed,withdrawn] [--from 2026-11-01] [--to 2026-11-10] [--ids '2026-11-03-*,<id>']
+   ```
+   It prints `{delete:[asset ids], items:[item ids], kept_shared, selected}` and deletes nothing.
+   Hand that list to one cheap subagent: `Artifact {action:"delete", url, path:<id>}` per id, then
+   `media_purged_at` on each listed item (batches of 50 with `if_version`). Deleting is permanent:
+   run it only on the user's request or under a standing rule they gave.
+
+**At 80 %:** the `Artifact {action:"list", url, scope:"assets"}` header gives the usage. A session
+about to upload that sees ≥ 80 % runs §3b first; if that is not enough it runs the script with
+`--status processed,withdrawn --to <7 days ago>` and says so in its item. The page never deletes on
+its own (the platform forbids bulk deletes on load); it only turns the storage line red.
 
 ## 4. Notifications
 
