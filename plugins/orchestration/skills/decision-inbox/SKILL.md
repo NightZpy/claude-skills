@@ -500,7 +500,8 @@ Both share one rule: **an asset is deleted only when a selected item uses it and
 note or session does; open items are never selected.**
 
 1. **The page's "Free space" button** (writer views; a storage line sits under the toolbar and turns
-   red at 80 %). The user picks states (resolved and withdrawn by default; answered on request),
+   red at 80 %). The user picks states (resolved and withdrawn by default; answered on request;
+   **"Everything but open"** ticks every closed state and unused files and clears dates and ids),
    a created-between date range and/or item ids (`2026-11-03-*` for a prefix), optionally files no
    row uses (only when older than a day, so a file a session just uploaded is safe). The dialog
    shows how many files and MB it would free and which items; a second click confirms. The page
@@ -510,7 +511,7 @@ note or session does; open items are never selected.**
    ArtifactData {action:"list", url, collection:"items", query:{limit:1000}, out_dir:"<scratch>/gc"}
    ArtifactData {action:"list", url, collection:"notes", query:{limit:1000}, out_dir:"<scratch>/gc"}
    python3 scripts/inbox-cleanup.py <scratch>/gc/items --extra <scratch>/gc/notes \
-       [--status processed,withdrawn] [--from 2026-11-01] [--to 2026-11-10] [--ids '2026-11-03-*,<id>']
+       [--status processed,withdrawn | all-but-open] [--from 2026-11-01] [--to 2026-11-10] [--ids '2026-11-03-*,<id>']
    ```
    It prints `{delete:[asset ids], items:[item ids], kept_shared, selected}` and deletes nothing.
    Hand that list to one cheap subagent: `Artifact {action:"delete", url, path:<id>}` per id, then

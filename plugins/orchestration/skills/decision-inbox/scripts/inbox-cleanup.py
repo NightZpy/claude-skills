@@ -9,6 +9,7 @@ An asset is deleted only when a selected item uses it and no unselected item, no
 Open items are never selected.
 
   inbox-cleanup.py <dir>/items [--extra <dir>/notes ...] [--status processed,withdrawn]
+                   (--status all-but-open: every state except open)
                    [--from 2026-11-01] [--to 2026-11-10] [--ids '2026-11-03-*,2026-11-17-apagon-v1']
 """
 import argparse, glob, json, os, re, sys
@@ -27,7 +28,8 @@ def ids_in(doc):
 
 def plan(items, extra, status, frm=None, to=None, ids=()):
     def pick(iid, it):
-        if (it.get("status") or "open") == "open" or (it.get("status") or "open") not in status:
+        st = it.get("status") or "open"
+        if st == "open" or ("all-but-open" not in status and st not in status):
             return False
         when = str(it.get("created_at") or iid)
         if frm and when < frm: return False
@@ -52,6 +54,8 @@ def demo():
     assert p == {"delete": [a], "items": ["x"], "kept_shared": 1, "selected": 1}, p
     assert plan(items, [{"audio": "/_blob/" + a}], {"processed"}, ids=["x"])["delete"] == []
     assert plan(items, [], {"processed"}, ids=["z*"])["delete"] == [c]
+    items["w"] = {"status": "answered", "media": [{"asset_id": "d" * 32}]}
+    assert plan(items, [], {"all-but-open"})["delete"] == sorted([a, c, "d" * 32])
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--self-test"]:
