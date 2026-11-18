@@ -113,6 +113,7 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `ratings` | `{<media key>: option_id or number}` (key = `asset_id`, else `label`), written by the page **the moment** the user rates, before any answer. Covers comparison candidates and, with per-media review, every image/video/audio |
 | `per_media` | per-media review: each image/video/audio gets its own rating (`rate`, default Good/Fair/Poor) and note, in the card and in the one-by-one gallery, with the item's question asked after them. **On by default when the item has 2+ media**; `false` turns it off, `true` forces it for a single media |
 | `media_notes` | `{<media key>: text}`, the per-media notes, written by the page as each note is left (like `ratings`) and copied into `answer.media_notes` on save |
+| `media_reviews` | `{<media key>: {rating, note, sent_at}}`, **partial reviews**. The user can send one media's review on its own ("Send this review" under it), or press "Save and notify" before answering the item's question: only the reviewed media are sent, they leave the open item's list, and the item **stays open** with the rest. Each send posts a `Partial review:` notice listing those media. When every media is sent and the item has no `options`/`scale`, the item becomes `answered` (`answer.media_reviews`, notice `Answered:`). A final answer copies all reviews into `answer.media_reviews` |
 | `section` | a key from `meta/config.sections` (importance bucket; the page filters by it) |
 | `priority` | **0–3, set deliberately** (the page shows P0–P3, filters and sorts by it; values above 3 show as P3). Decide it the way work is triaged: **P0** = it blocks work right now, yours or another session's (nothing can proceed until answered); **P1** = it blocks a next step soon (you can work around it for a while) or holds money/a release; **P2** = normal: needed, but nothing waits on it; **P3** = whenever / for reference. When it blocks another session, name it in `blocks` and raise the priority accordingly |
 | `blocks` | optional list of what waits on the answer, e.g. `["video-harness:ui", "merge feat/x"]`; shown on the card next to the priority |
@@ -427,8 +428,9 @@ shape, and it is the shape the page is built for:
 For comparison items add `ratings: .answer.ratings` to the `jq` projection. It maps asset
 ids, which you translate to labels with the item's `media` list. For items using the newer
 review tools (§6) add `score: .answer.score, marks: .answer.marks` too. For packages with several
-media (per-media review is on by default at 2+ media) add `ratings: .answer.ratings, notes: .answer.media_notes`:
-both are keyed by `asset_id`.
+media (per-media review is on by default at 2+ media) add `ratings: .answer.ratings, notes: .answer.media_notes, reviews: .answer.media_reviews`:
+all keyed by `asset_id`. A `Partial review:` notice means the item is still `open`: read `item.media_reviews`
+(entries carry `sent_at`; act on the newest ones), write an `agent_note` if useful, and leave the status alone.
 
 
 ```
