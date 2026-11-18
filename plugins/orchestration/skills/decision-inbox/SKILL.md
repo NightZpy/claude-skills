@@ -688,10 +688,12 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
   the section, priority, session and project filters and the senders list), the messages of the chosen
   folder in the middle with the search box on top, and the chosen item's full card in a reading pane on
   the right. On wide screens the folders are a rail of icons that opens over the list on hover or
-  focus; "Pin sidebar" keeps it open as a column (remembered per browser, `inbox.navPinned`). "Expand
-  message" above the reading pane folds the message list to a strip the same way: it opens over the
-  message on hover or focus and folds again when an item is picked; "Show list" brings the column back
-  (`inbox.listAuto`). On a phone
+  focus; "Pin sidebar" keeps it open as a column (remembered per browser, `inbox.navPinned`). The
+  reading pane opens with one sticky toolbar: the list icon (hide the message list to widen the
+  message / show it again, `inbox.listAuto`), ‹ «i of n ▾» › and the progress bar. «i of n» opens a
+  popover with the items of the current view (folder, search, priority, section and session filters):
+  title, priority, unread dot and age, the current one marked; click or ↑/↓/Enter picks, Esc closes.
+  ‹ › and the counter walk the same list. On a phone
   the folders and the list come first, and tapping an item opens it with a "← List" back button.
   **Classic** is the single column described below (Open · Answered · All · Replies). Every tool works
   the same in both.
@@ -745,7 +747,7 @@ SQL select, and redesigning the page is a one-off cost, not a per-read one.
 
 - Every card opens with an origin line: priority badge (P0–P3), time-ago of `created_at` (exact date on hover), `source_agent`, the answer time and `blocks`. A priority filter (All, P0–P3) and a sort toggle (newest, importance, oldest) sit under the section chips. Every visit opens newest first, by latest activity (created, the agent's last message or the user's last word, whichever is later); the toggle lasts for that visit.
 - **Open** (Mail: Inbox) shows one item at a time (a gallery), newest first (with the importance sort: by section, then priority, then age).
-  It has a progress bar, Previous/Next, an always-visible "Up next N" button in the sticky bar (Classic; hover, focus or tap lists every open item to jump to), a compact "Up next" list, and section filter chips with
+  It has a progress bar, Previous/Next, an always-visible "Up next" button in the sticky bar (Classic; hover, focus or tap lists the items of the current tab and filters: open items to move through with ‹ ›, or in Answered/All the shown cards to scroll to), a compact "Up next" list, and section filter chips with
   counts. Saving moves on to the next open item.
 - **Answered** (Classic) has follow-up filters: Not sent · Sent, unresolved · Resolved. It
   also has two bulk buttons: "Notify Claude of N not sent" and "Ask status of N sent",
