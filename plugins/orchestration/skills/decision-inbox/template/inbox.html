@@ -2222,11 +2222,11 @@ function gcPreview() {
   const f = gcForm();
   if (!f.states.length && !f.orphans) { gcPlan = null; return out.replaceChildren(el("p", {}, t("gc_none"))); }
   gcPlan = gcCompute(f);
-  out.replaceChildren(
+  out.replaceChildren(...[
     el("p", {}, el("b", {}, t("gc_plan", {n: gcPlan.kill.length, size: mb(gcPlan.bytes), items: gcPlan.items.length}))),
     gcPlan.shared ? el("p", {class:"gc-hint"}, t("gc_shared", {n: gcPlan.shared})) : null,
     gcPlan.items.length ? el("details", {}, el("summary", {}, t("gc_which")), el("ul", {}, gcPlan.items.slice(0, 200).map(i => el("li", {}, i.id + " · " + (i.title || ""))))) : null,
-    el("button", {class:"btn", type:"button", id:"gc-go", disabled: !gcPlan.kill.length, onclick: gcArm}, t("gc_delete", {n: gcPlan.kill.length, size: mb(gcPlan.bytes)})));
+    el("button", {class:"btn", type:"button", id:"gc-go", disabled: !gcPlan.kill.length, onclick: gcArm}, t("gc_delete", {n: gcPlan.kill.length, size: mb(gcPlan.bytes)}))].filter(Boolean));
 }
 function gcArm() {
   const b = $("#gc-go"); if (!b || !gcPlan) return;
