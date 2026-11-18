@@ -25,7 +25,8 @@ agent ◀──read answer── (shared db) ──"Notify Claude"──▶ watc
   - A/B/C… players that keep the playback position when you switch tracks;
   - numeric scales and per-candidate ratings;
   - blind tests, whose key the agent reveals only after your verdict.
-- **Time marks on audio/video:** mark a moment or a range, add a note and a score, and attach screenshots. Capture the current video frame or upload an image, then draw arrows, lines, boxes or freehand on it and add a comment.
+- **Time marks on every audio/video player** (card, package, A/B, gallery, maximised): mark a moment or a range, add a note and a score, and attach screenshots. Marks travel with each media's review. Capture the current video frame or upload an image, then draw arrows, lines, boxes or freehand on it and add a comment.
+- **Frame-precise transport on every video:** ±1 frame, ±0.1 s, ±1 s, 0.1×–1× speed and an `m:ss.ff` readout; keys `,` `.` (frame), `Shift+←/→`, `←/→`, space, `m` (mark).
 - **Maximise any video in place**, without losing its time or marks.
 - **Follow-up:**
   - "Notify Claude" sends your answers to the watching session;

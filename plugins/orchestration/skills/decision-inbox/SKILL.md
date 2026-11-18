@@ -108,12 +108,12 @@ Collection **`items`**, one document per decision, doc id = a readable slug
 | `title`, `context`, `question` | one question per item; split a bullet that asks two things |
 | `options` | `[{id, label, detail?}]`; put "Recommended" (in the content language) in `detail`, never in the label |
 | `multi` | `true` lets the user tick several options (checkboxes); optional `min` / `max` bound how many. Default is single choice. Use it whenever more than one answer can be true ("which of these should we ship?", "which issues can I close?"), rather than faking it with combined options |
-| `media` | `[{asset_id, url:"/_blob/<asset_id>", label, type:"image"\|"audio"\|"video", role?:"reference"\|"candidate"}]` |
+| `media` | `[{asset_id, url:"/_blob/<asset_id>", label, type:"image"\|"audio"\|"video", role?:"reference"\|"candidate", fps?}]`. Set `fps` on videos that are not 30 fps: the frame step and the `m:ss.ff` readout use it |
 | `rate` | comparison items only: `{question, options:[{id,label}]}`, the per-candidate scale (default Good / Fair / Poor, in the interface language) |
 | `ratings` | `{<media key>: option_id or number}` (key = `asset_id`, else `label`), written by the page **the moment** the user rates, before any answer. Covers comparison candidates and, with per-media review, every image/video/audio |
 | `per_media` | per-media review: each image/video/audio gets its own rating (`rate`, default Good/Fair/Poor) and note, in the card and in the one-by-one gallery, with the item's question asked after them. **On by default when the item has 2+ media**; `false` turns it off, `true` forces it for a single media |
 | `media_notes` | `{<media key>: text}`, the per-media notes, written by the page as each note is left (like `ratings`) and copied into `answer.media_notes` on save |
-| `media_reviews` | `{<media key>: {rating, note, sent_at}}`, **partial reviews**. The user can send one media's review on its own ("Send this review" under it), or press "Save and notify" before answering the item's question: only the reviewed media are sent, they leave the open item's list, and the item **stays open** with the rest. Each send posts a `Partial review:` notice listing those media. When every media is sent and the item has no `options`/`scale`, the item becomes `answered` (`answer.media_reviews`, notice `Answered:`). A final answer copies all reviews into `answer.media_reviews` |
+| `media_reviews` | `{<media key>: {rating, note, marks?, sent_at}}`, **partial reviews** (`marks` = that media's time marks, same shape as `marks_data[key]`, present when the user marked it). The user can send one media's review on its own ("Send this review" under it), or press "Save and notify" before answering the item's question: only the reviewed media are sent, they leave the open item's list, and the item **stays open** with the rest. Each send posts a `Partial review:` notice listing those media. When every media is sent and the item has no `options`/`scale`, the item becomes `answered` (`answer.media_reviews`, notice `Answered:`). A final answer copies all reviews into `answer.media_reviews` |
 | `section` | a key from `meta/config.sections` (importance bucket; the page filters by it) |
 | `priority` | **0–3, set deliberately** (the page shows P0–P3, filters and sorts by it; values above 3 show as P3). Decide it the way work is triaged: **P0** = it blocks work right now, yours or another session's (nothing can proceed until answered); **P1** = it blocks a next step soon (you can work around it for a while) or holds money/a release; **P2** = normal: needed, but nothing waits on it; **P3** = whenever / for reference. When it blocks another session, name it in `blocks` and raise the priority accordingly |
 | `blocks` | optional list of what waits on the answer, e.g. `["video-harness:ui", "merge feat/x"]`; shown on the card next to the priority |
@@ -428,7 +428,7 @@ shape, and it is the shape the page is built for:
 For comparison items add `ratings: .answer.ratings` to the `jq` projection. It maps asset
 ids, which you translate to labels with the item's `media` list. For items using the newer
 review tools (§6) add `score: .answer.score, marks: .answer.marks` too. For packages with several
-media (per-media review is on by default at 2+ media) add `ratings: .answer.ratings, notes: .answer.media_notes, reviews: .answer.media_reviews`:
+media (per-media review is on by default at 2+ media) add `ratings: .answer.ratings, notes: .answer.media_notes, reviews: .answer.media_reviews` (each review carries its `marks`):
 all keyed by `asset_id`. A `Partial review:` notice means the item is still `open`: read `item.media_reviews`
 (entries carry `sent_at`; act on the newest ones), write an `agent_note` if useful, and leave the status alone.
 
@@ -598,7 +598,7 @@ answers with the §3 query.
 
 ## 6. Review tools: scales, galleries, compare wipe, A/B, marks
 
-All opt-in per item — items without these fields render exactly as before.
+Opt-in per item, except time marks and the video transport: those are on for every audio/video (`marks: false` turns marks off).
 
 | Field | On | Use for |
 |---|---|---|
@@ -609,7 +609,8 @@ All opt-in per item — items without these fields render exactly as before.
 | (toggle, no field) | any comparison item | the card and its lightbox both offer "Side by side" / "Slide" (before/after wipe with a draggable divider) for the same reference+candidate pair |
 | `ab: true` (or a candidate role on ≥2 same-type tracks) | audio or video media | a shared-transport A/B(/C/…) player: one play/seek bar, a lettered switch that swaps tracks without losing playback position. Works with any number of tracks ≥2 |
 | (default at 2+ media; `per_media:false` off) | any item with media | per-media review: a rating and a note under every image/video/audio, a "Review one by one" button that steps through the gallery with the same rating and note per media, and the item's question after them. Saved in `ratings[key]` and `media_notes[key]` the moment they change; `answer.media_notes` on save. One package = one item with all its media; the user judges each piece on its own |
-| `marks: true`, optional `mark_scale: {min,max,step}` | audio/video media | "Mark moment" / "Mark range" buttons under the player; each mark can carry a note and, with `mark_scale`, a score |
+| (default; `marks: false` turns it off), optional `mark_scale: {min,max,step}` | audio/video media, in every player: card, per-media package, A/B, lightbox, maximised | "Mark moment" / "Mark range" buttons under the player; each mark carries a free-text note (editable, × deletes) and, with `mark_scale`, a score. The list is sorted by time; tapping a timestamp seeks there exactly (a moment pauses on it, a range plays from its start) |
+| (always on videos) | every video player | precise transport: ±1 frame (`media.fps`, default 30), ±0.1 s, ±1 s, speed 0.1× / 0.25× / 0.5× / 1×, readout `m:ss.ff` (ff = frame number in the second). Keys while the player has focus: `,` / `.` frame, `Shift+←/→` 0.1 s, `←/→` 1 s, space play/pause, `m` mark moment. Frame and 0.1 s steps pause; a frame step lands mid-frame, `(n + 0.5) / fps` |
 | (with `marks`, writer views) | audio/video media | each mark offers "Capture frame" (video) and "Upload image"; the annotator draws arrows, lines, boxes or freehand plus a note and stores a PNG in the asset store, recorded on the mark as `images[] {id, url, note, at}`. Fetch one with `Artifact {action:"read", url, path:"<asset id>"}` |
 
 **When to reach for these:** `scale`/`rate.scale` when Good/Fair/Poor is too coarse (numeric
@@ -624,11 +625,16 @@ reviewer needs to flag specific timestamps in a take rather than rating the whol
 
 - `answer.score`: the number picked on `item.scale`.
 - `ratings[<media key>]`: a number when the item's `rate` uses `scale`, same as any other rating.
-- `marks_data: {<media key>: [{id, t, note, score?, images?, at} | {id, start, end, note, score?, images?, at}]}`:
+- `marks_data: {<media key>: [{id, t, note, score?, images?, at} | {id, start, end, note, score?, images?, at}]}`
+  (`t`, `start`, `end` in seconds, 3 decimals; frame = `floor(t * fps)` with the media's `fps`, default 30):
   written immediately as the user adds/edits/deletes marks (same "saved before the answer"
   pattern as `ratings`).
 - `answer.marks`: a copy of `marks_data` taken at save time, so a single `.answer` read carries
   everything without cross-referencing `marks_data` separately.
+- `media_reviews[<media key>].marks`: in packages (per-media review), each sent review carries that
+  media's marks, and the `Partial review:` notice lists them (`marks: 0:12.05 «note»; 1:03.10–1:04.02 «note»`).
+  Marks alone count as a review, so a user can send just timestamps. Read marks per media there, or
+  all of them in `item.marks_data` while the item is open.
 
 Blind tests keep working: the A/B switch always shows plain letters (A, B, C…), never a media
 label, so the same neutral-naming rule from §2 applies to the ratings shown under each letter too.
